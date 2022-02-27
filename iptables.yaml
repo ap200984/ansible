@@ -2,16 +2,16 @@
 - hosts: all
   become: true
   tasks:
-    - name: Set the policy for the INPUT chain to DROP
-      ansible.builtin.iptables:
-        chain: INPUT
-        policy: ACCEPT
+    # - name: Set the policy for the INPUT chain to DROP
+    #   ansible.builtin.iptables:
+    #     chain: INPUT
+    #     policy: ACCEPT
 
-    - name: Iptables flush filter
-      ansible.builtin.iptables:
-        chain: "{{ item }}"
-        flush: yes
-      with_items: ["INPUT", "FORWARD", "OUTPUT"]
+    # - name: Iptables flush filter
+    #   ansible.builtin.iptables:
+    #     chain: "{{ item }}"
+    #     flush: yes
+    #   with_items: ["INPUT", "FORWARD", "OUTPUT"]
 
     - name: Allow new incoming from localhost
       ansible.builtin.iptables:
@@ -25,37 +25,37 @@
         ctstate: ESTABLISHED,RELATED
         jump: ACCEPT
 
-    - name: Allow new incoming on TCP port 19022 (SSH)
-      ansible.builtin.iptables:
-        chain: INPUT
-        protocol: tcp
-        destination_port: 19022
-        jump: ACCEPT
-        comment: Accept SSH
+    # - name: Allow new incoming on TCP port 19022 (SSH)
+    #   ansible.builtin.iptables:
+    #     chain: INPUT
+    #     protocol: tcp
+    #     destination_port: 19022
+    #     jump: ACCEPT
+    #     comment: Accept SSH
 
-    - name: Allow new incoming on TCP port 80
-      ansible.builtin.iptables:
-        chain: INPUT
-        protocol: tcp
-        destination_port: 80
-        jump: ACCEPT
-        comment: Accept HTTP
+    # - name: Allow new incoming on TCP port 80
+    #   ansible.builtin.iptables:
+    #     chain: INPUT
+    #     protocol: tcp
+    #     destination_port: 80
+    #     jump: ACCEPT
+    #     comment: Accept HTTP
 
-    - name: Allow new incoming on TCP port 443
-      ansible.builtin.iptables:
-        chain: INPUT
-        protocol: tcp
-        destination_port: 443
-        jump: ACCEPT
-        comment: Accept HTTPs
+    # - name: Allow new incoming on TCP port 443
+    #   ansible.builtin.iptables:
+    #     chain: INPUT
+    #     protocol: tcp
+    #     destination_port: 443
+    #     jump: ACCEPT
+    #     comment: Accept HTTPs
 
-    - name: Allow new incoming on TCP port 1953
-      ansible.builtin.iptables:
-        chain: INPUT
-        protocol: tcp
-        destination_port: 1953
-        jump: ACCEPT
-        comment: Accept HTTP
+    # - name: Allow new incoming on TCP port 1953
+    #   ansible.builtin.iptables:
+    #     chain: INPUT
+    #     protocol: tcp
+    #     destination_port: 1953
+    #     jump: ACCEPT
+    #     comment: Accept HTTP
 
     - name: Allow new incoming on UDP port 1701
       ansible.builtin.iptables:
@@ -70,6 +70,7 @@
         chain: INPUT
         source: 10.0.0.0/11
         jump: ACCEPT
+        comment: Accept internal network
 
     - name: Allow GRE from list
       ansible.builtin.iptables:
@@ -77,14 +78,32 @@
         source: "{{ item }}"
         protocol: GRE
         jump: ACCEPT
-      with_items: ["45.141.102.72", "45.35.14.80", "172.107.174.18", "86.110.170.70"]
+        comment: Accept GRE from my hosts
+      with_items:
+        [
+          "45.141.102.72",
+          "45.35.14.80",
+          "172.107.174.18",
+          "86.110.170.70",
+          "213.138.67.146",
+        ]
 
-    # - name: Allow GRE from list
-    #   ansible.builtin.iptables:
-    #     chain: INPUT
-    #     source: 45.35.14.80
-    #     protocol: GRE
-    #     jump: ACCEPT
+    - name: Allow connections on multiple ports
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_ports:
+          - "80"
+          - "443"
+          - "19022"
+          - "1953"
+          - "3000"
+          - "5222"
+          - "5269"
+          - "5280"
+          - "5443"
+
+        jump: ACCEPT
 
     - name: DROP output to 10.0.0.0/11 not through tunnels
       ansible.builtin.iptables:
@@ -92,6 +111,7 @@
         destination: 10.0.0.0/11
         out_interface: eth0
         jump: DROP
+        comment: Drop packets to my network not from tunnels
 
     - name: Set the policy for the INPUT chain to DROP
       ansible.builtin.iptables:
