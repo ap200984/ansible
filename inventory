@@ -1,3 +1,16 @@
+[staging:vars]
+ansible_user=ansible
+
+[staging]
 10.9.0.156
 10.9.0.157
-#10.9.0.78
+10.9.0.160
+
+[prod:vars]
+ansible_user=ansible
+
+[prod]
+45.35.14.80:19022
+172.107.174.18:19022
+45.141.102.72:19022
+
