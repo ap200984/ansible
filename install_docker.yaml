@@ -1,0 +1,42 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    # - name: Set the policy for the INPUT chain to ACCEPT
+    #   ansible.builtin.iptables:
+    #     chain: INPUT
+    #     policy: ACCEPT
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400 #One day
+
+    - name: Install prereq
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add docker GPG key
+      command: "curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
+    
+    - name: Set up the stable repository
+      command: echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        update_cache: yes
+
+    - name: Install docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
