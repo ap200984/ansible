@@ -29,5 +29,5 @@ ansible all -i inventory -m ping
 ansible all -i inventory -a "sudo iptables -S"
 
 # zabbix-proxy
-sudo docker run --name zabbix-proxy-sqlite3 -e ZBX_HOSTNAME=RuVDS -e ZBX_SERVER_HOST=45.35.14.80 -d zabbix/zabbix-proxy-sqlite3:alpine-5.4.11
+sudo docker run --name zabbix-proxy-sqlite3 -e ZBX_HOSTNAME=RuVDS -e ZBX_SERVER_HOST=45.35.14.80 -e ZBX_CONFIGFREQUENCY=30 -d --restart unless-stopped zabbix/zabbix-proxy-sqlite3:alpine-5.4.11
 sudo docker logs zabbix-proxy-sqlite3
