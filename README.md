@@ -31,3 +31,24 @@ ansible all -i inventory -a "sudo iptables -S"
 # zabbix-proxy
 sudo docker run --name zabbix-proxy-sqlite3 -e ZBX_HOSTNAME=RuVDS -e ZBX_SERVER_HOST=45.35.14.80 -e ZBX_CONFIGFREQUENCY=30 -d --restart unless-stopped zabbix/zabbix-proxy-sqlite3:alpine-5.4.11
 sudo docker logs zabbix-proxy-sqlite3
+
+# nginx
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt
+
+sudo cat /etc/nginx/conf.d/my_server.conf
+server {
+    listen              443 ssl;
+    server_name         _;
+    ssl_certificate     /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    location / {
+	proxy_pass http://localhost:80/;
+    }
+
+    location /test {
+	proxy_pass http://localhost:80/;
+    }
+}
