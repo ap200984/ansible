@@ -52,3 +52,36 @@ server {
 	proxy_pass http://localhost:80/;
     }
 }
+
+# zabbix 6.0
+sudo wget https://repo.zabbix.com/zabbix/6.0/debian/pool/main/z/zabbix-release/zabbix-release_6.0-1+debian10_all.deb
+sudo dpkg -i zabbix-release_6.0-1+debian10_all.deb
+sudo apt update
+sudo at install nginx
+sudo apt install zabbix-server-pgsql zabbix-frontend-php php7.3-pgsql zabbix-nginx-conf zabbix-sql-scripts zabbix-agent
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo apt-get update
+sudo apt-get -y install postgresql
+sudo systemctl enable --now postgresql
+sudo -u postgres createuser --pwprompt zabbix
+[passwd for zabbix user]
+sudo -u postgres createdb -O zabbix zabbix
+zcat /usr/share/doc/zabbix-sql-scripts/postgresql/server.sql.gz | sudo -u zabbix psql zabbix
+sudo vim /etc/nginx/conf.d/zabbix.conf
+    listen 80;
+    server_name 10.9.0.157;
+sudo vim /etc/zabbix/zabbix_server.conf
+    BDPasswd=xxxxxxxx
+sudo systemctl restart zabbix-server zabbix-agent nginx php7.3-fpm
+sudo systemctl enable zabbix-server zabbix-agent nginx php7.3-fpm
+
+# grafana
+sudo apt-get install -y gnupg2 curl software-properties-common
+curl https://packages.grafana.com/gpg.key | sudo apt-key add -
+sudo add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+sudo apt update
+sudo apt install grafana
+sudo systemctl enable --now grafana-server
+sudo systemctl start grafana-server
+[http://my-ip-address:3000]
