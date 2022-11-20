@@ -1,0 +1,5 @@
+[staging:vars]
+ansible_user=ansible
+
+[staging]
+10.9.0.160:22

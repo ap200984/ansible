@@ -1,0 +1,6 @@
+[prod:vars]
+ansible_user=ansible
+
+[prod]
+45.141.102.72:19022
+

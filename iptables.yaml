@@ -70,7 +70,6 @@
           - "5269"
           - "5280"
           - "5443"
-
         jump: ACCEPT
 
     - name: DROP output to 10.0.0.0/11 not through tunnels
@@ -86,13 +85,3 @@
         chain: INPUT
         policy: DROP
 
-    - name: Save current state of the firewall in system file
-      community.general.iptables_state:
-        state: saved
-        path: /etc/iptables.conf
-
-    - name: Add iptables restore to /etc/network/interfaces
-      lineinfile:
-        state: present
-        path: "/etc/network/interfaces"
-        line: "post-up /sbin/iptables-restore < /etc/iptables.conf"

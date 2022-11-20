@@ -85,3 +85,46 @@ sudo apt install grafana
 sudo systemctl enable --now grafana-server
 sudo systemctl start grafana-server
 [http://my-ip-address:3000]
+
+
+domain reg.ru 89 рублей в год
+172.107.174.18 vds4.online
+
+nginx
+# configuration file /etc/nginx/conf.d/proxy.conf:
+upstream  test {
+    server vds4.online;
+}
+
+server {
+    listen              443 ssl;
+    #listen		80;
+    server_name         172.107.174.18;
+    ssl_certificate     /etc/nginx/conf.d/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/nginx/conf.d/nginx-selfsigned.key;
+    ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    #return 308 https://$host$request_uri;
+
+
+    location /owncloud {
+        proxy_pass http://172.17.0.2:1953;
+        proxy_http_version 1.1;
+        #proxy_set_header Connection "";
+    }
+
+    location /jabber {
+        proxy_pass http://172.107.174.18:5280/admin;
+        proxy_http_version 1.1;
+    }
+    location / {
+        proxy_pass http://127.0.0.1;
+        proxy_http_version 1.1;
+    }
+}
+
+apt install certbot python3-certbot-nginx
+certbot --nginx -d
+
+
