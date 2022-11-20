@@ -91,7 +91,7 @@ domain reg.ru 89 рублей в год
 172.107.174.18 vds4.online
 
 nginx
-# configuration file /etc/nginx/conf.d/proxy.conf:
+root@d59bfaccc9fc:/# cat /etc/nginx/conf.d/proxy.conf 
 upstream  test {
     server vds4.online;
 }
@@ -99,9 +99,9 @@ upstream  test {
 server {
     listen              443 ssl;
     #listen		80;
-    server_name         172.107.174.18;
-    ssl_certificate     /etc/nginx/conf.d/nginx-selfsigned.crt;
-    ssl_certificate_key /etc/nginx/conf.d/nginx-selfsigned.key;
+    server_name         vds4.online;
+    ssl_certificate /etc/letsencrypt/live/vds4.online/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/vds4.online/privkey.pem; # managed by Certbot
     ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
     ssl_ciphers         HIGH:!aNULL:!MD5;
 
@@ -111,20 +111,51 @@ server {
     location /owncloud {
         proxy_pass http://172.17.0.2:1953;
         proxy_http_version 1.1;
-        #proxy_set_header Connection "";
+
+#        proxy_set_header    Accept-Encoding     "";
+#        proxy_set_header    Host                172.107.174.18;
+#        proxy_set_header    X-Real-IP           $remote_addr;
+#        proxy_set_header    X-Forwarded-For     $proxy_add_x_forwarded_for;
+#        proxy_set_header    X-Forwarded-Proto   http;
+#        proxy_set_header    Authorization       "";
+
     }
 
-    location /jabber {
+    location /admin {
         proxy_pass http://172.107.174.18:5280/admin;
         proxy_http_version 1.1;
+	
+	proxy_set_header    Accept-Encoding     "";
+        proxy_set_header    Host                172.107.174.18/admin;
+        proxy_set_header    X-Real-IP           $remote_addr;
+        proxy_set_header    X-Forwarded-For     $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto   http;
+        proxy_set_header    Authorization       "";
     }
     location / {
-        proxy_pass http://127.0.0.1;
+        proxy_pass http://vds4.online:2080;
         proxy_http_version 1.1;
+	
+	access_log /var/log/nginx/rocket.chat.access.log;
+	error_log /var/log/nginx/rocket.chat.error.log;
+
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Nginx-Proxy true;
     }
+
 }
+
 
 apt install certbot python3-certbot-nginx
 certbot --nginx -d
 
 
+# rocket.chat
+sudo  docker run --name db -d mongo:4.4 --replSet rs0 --oplogSize 128
+docker exec -ti db mongo --eval "printjson(rs.initiate())"
+sudo docker run --name rocketchat -p 2080:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/local -d rocket.chat
