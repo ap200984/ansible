@@ -1,0 +1,124 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: zabbix-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for zabbix
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Postgres container
+      become: true
+      community.docker.docker_container:
+        name: postgres-server
+        image: "postgres:latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+        volumes:
+          - /postgres:/var/lib/postgresql/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Zabbix snmp traps
+      community.docker.docker_container:
+        name: zabbix-snmptraps
+        image: "zabbix/zabbix-snmptraps:alpine-6.2-latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 162:1162/udp
+        volumes:
+          - /zbx_instance/snmptraps:/var/lib/zabbix/snmptraps:rw
+          - /var/lib/zabbix/mibs:/usr/share/snmp/mibs:ro
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Zabbix backend
+      community.docker.docker_container:
+        name: zabbix-server-pgsql
+        image: "zabbix/zabbix-server-pgsql:alpine-6.2-latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          DB_SERVER_HOST: "postgres-server"
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+          ZBX_ENABLE_SNMP_TRAPS: "true"
+        ports:
+          - 10051:10051
+        volumes_from:
+          - zabbix-snmptraps
+        volumes:
+          - /postgres:/var/lib/postgresql/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Zabbix frontend
+      community.docker.docker_container:
+        name: zabbix-web-nginx-pgsql
+        image: "zabbix/zabbix-web-nginx-pgsql:alpine-6.2-latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          ZBX_SERVER_HOST: "zabbix-server-pgsql"
+          DB_SERVER_HOST: "postgres-server"
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+        ports:
+          - 443:8443
+          - 80:80
+          - 8080:8080
+        volumes:
+          - /etc/ssl/nginx:/etc/ssl/nginx:ro
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Add zabbix-agent2
+      become: true
+      apt:
+        deb: https://repo.zabbix.com/zabbix/6.2/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.2-4%2Bubuntu20.04_all.deb
+
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+
+    - name: Install zabbix-agent2
+      become: true
+      apt:
+        name:
+          - zabbix-agent2
+        state: present
+
+    - name: Allow new incoming from docker_network_name
+      iptables:
+        chain: INPUT
+        source: "{{ docker_network_subnet }}"
+        jump: ACCEPT
+
+    - name: Configure zabbix-agent2 server section
+      lineinfile:
+        dest: /etc/zabbix/zabbix_agent2.conf
+        regexp: ^Server=
+        line: Server={{ docker_network_range }}
+
+    - name: Restart zabbix-agent2
+      become: true
+      service:
+        name: zabbix-agent2
+        state: restarted

@@ -45,3 +45,11 @@
           - docker-ce-cli
           - containerd.io
         state: present
+    
+    - name: Install puthon3-docker for ansible mgmt
+      apt:
+        name:
+          - python3-docker
+          - python3-distutils
+        state: present
+
