@@ -1,0 +1,47 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for ejabberd
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: ejabberd
+      community.docker.docker_container:
+        name: ejabberd
+        image: "ejabberd/ecs"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 1883:1883/tcp
+          - 4369:4369/tcp
+          - 5222:5222/tcp
+          - 5269:5269/tcp
+          - 5280:5280/tcp
+          - 5443:5443/tcp
+        volumes:
+          - /home/ejabberd:/etc/ejabberd:rw
+          - /home/database:/etc/ejabberd/database:rw
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: set password
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
+      ignore_errors: true
+
+    # - name: set password
+    #   community.docker.docker_container_exec:
+    #     container: ejabberd
+    #     argv:
+    #      - /bin/sh
+    #      - "-c"
+    #      - "ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"

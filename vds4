@@ -1,7 +1,7 @@
 [prod:vars]
 ansible_user=ansible
+private_key_file=~/.ssh/ansible
 
 [prod]
-#172.107.174.18:19022
-69.30.237.130
+69.30.237.130:19022
 

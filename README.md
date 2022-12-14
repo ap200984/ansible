@@ -89,6 +89,7 @@ sudo systemctl start grafana-server
 
 domain reg.ru 89 рублей в год
 172.107.174.18 vds4.online
+69.30.237.130
 
 nginx
 root@d59bfaccc9fc:/# cat /etc/nginx/conf.d/proxy.conf 
@@ -160,7 +161,7 @@ sudo  docker run --name db -d mongo:4.4 --replSet rs0 --oplogSize 128
 docker exec -ti db mongo --eval "printjson(rs.initiate())"
 sudo docker run --name rocketchat -p 2080:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/local -d rocket.chat
 
-# owncloud 
+# owncloud
 sudo docker run --name owncloud -d -e OWNCLOUD_DOMAIN=localhost:8080 -p1953:8080 -v /owncloud:/mnt/data owncloud/server
 
 # SOCKS5 proxy
@@ -173,4 +174,12 @@ sudo docker run -d -v /etc/my_proxy/:/etc/nginx/conf.d/ --name proxy -p 80:80 -p
 sudo docker run --name ejabberd -d -p 5222:5222 -p 5969:5269 -p 5280:5280 ejabberd/ecs
 
 
+# todo:
+zabbix-agent hostname
+apt install fio
+conatiners owncloud
 
+ansible-galaxy collection install community.docker
+
+sudo apt -y install software-properties-common
+sudo apt-add-repository ppa:ansible/ansible

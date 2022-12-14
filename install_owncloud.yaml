@@ -1,0 +1,31 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for owncloud
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Owncloud
+      community.docker.docker_container:
+        name: owncloud
+        image: "owncloud/server"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          OWNCLOUD_DOMAIN: "localhost:8080"
+        ports:
+          - 1953:8080/tcp
+        volumes:
+          - /owncloud:/mnt/data:rw
+        state: "started"
+        restart_policy: "unless-stopped"
