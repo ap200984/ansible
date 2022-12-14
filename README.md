@@ -159,3 +159,18 @@ certbot --nginx -d
 sudo  docker run --name db -d mongo:4.4 --replSet rs0 --oplogSize 128
 docker exec -ti db mongo --eval "printjson(rs.initiate())"
 sudo docker run --name rocketchat -p 2080:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/local -d rocket.chat
+
+# owncloud 
+sudo docker run --name owncloud -d -e OWNCLOUD_DOMAIN=localhost:8080 -p1953:8080 -v /owncloud:/mnt/data owncloud/server
+
+# SOCKS5 proxy
+sudo docker run -d --name socks5 -p 1980:1080 -e PROXY_USER=proxy -e PROXY_PASSWORD=proxy_K174gl1a serjs/go-socks5-proxy
+
+# nginx proxy
+sudo docker run -d -v /etc/my_proxy/:/etc/nginx/conf.d/ --name proxy -p 80:80 -p 443:443 nginx
+
+# ejabberd
+sudo docker run --name ejabberd -d -p 5222:5222 -p 5969:5269 -p 5280:5280 ejabberd/ecs
+
+
+
