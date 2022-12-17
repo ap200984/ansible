@@ -11,7 +11,7 @@
       ansible.builtin.iptables:
         chain: "{{ item }}"
         flush: yes
-      with_items: ["INPUT", "FORWARD", "OUTPUT"]
+      with_items: ["INPUT", "OUTPUT"]
 
     - name: Allow new incoming from localhost
       ansible.builtin.iptables:
@@ -84,6 +84,16 @@
       ansible.builtin.iptables:
         chain: INPUT
         policy: DROP
+
+    - name: Save current state of the firewall in system file
+      community.general.iptables_state:
+        state: saved
+        path: /etc/iptables.conf
+
+    - name: add couchbase host to properties
+      lineinfile:
+        dest: /etc/network/ineterfaces
+        line: iptables-restore < /etc/iptables.conf
 
 # -P INPUT ACCEPT
 # -P FORWARD DROP
