@@ -7,7 +7,7 @@
     docker_network_range: 172.20.240.0/20
 
   tasks:
-    - name: Create a network for owncloud
+    - name: Create a network for gitlab
       become: true
       docker_network:
         name: "{{ docker_network_name }}"
@@ -15,18 +15,23 @@
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
-    - name: Owncloud
+    - name: gitlab
       community.docker.docker_container:
-        name: owncloud
-        image: "owncloud/server"
+        name: gitlab
+        image: "gitlab/gitlab-ee:latest"
         networks:
           - name: "{{ docker_network_name }}"
         env:
-          OWNCLOUD_DOMAIN: "69.30.237.130"
+          hostname: "vds4.online"
+          shm-size: "256m"
         ports:
-          - 1953:8080/tcp
+          - 1443:443/tcp
+          - 8081:80/tcp
+          - 2222:22/tcp
         volumes:
-          - /owncloud:/mnt/data:rw
+          - /srv/gitlab/config:/etc/gitlab:rw
+          - /srv/gitlab/logs:/var/log/gitlab:rw
+          - /srv/gitlab/data:/var/opt/gitlab:rw
         state: "started"
         restart_policy: "unless-stopped"
 
@@ -38,13 +43,13 @@
 #   array (
 #     0 => 
 #     array (
-#       'path' => '/var/www/owncloud/apps',
+#       'path' => '/var/www/gitlab/apps',
 #       'url' => '/apps',
 #       'writable' => false,
 #     ),
 #     1 => 
 #     array (
-#       'path' => '/var/www/owncloud/custom',
+#       'path' => '/var/www/gitlab/custom',
 #       'url' => '/custom',
 #       'writable' => true,
 #     ),
@@ -56,11 +61,11 @@
 #   'datadirectory' => '/mnt/data/files',
 #   'dbtype' => 'sqlite',
 #   'dbhost' => '',
-#   'dbname' => 'owncloud',
+#   'dbname' => 'gitlab',
 #   'dbuser' => '',
 #   'dbpassword' => '',
 #   'dbtableprefix' => 'oc_',
-#   'log_type' => 'owncloud',
+#   'log_type' => 'gitlab',
 #   'supportedDatabases' => 
 #   array (
 #     0 => 'sqlite',
@@ -71,7 +76,7 @@
 #   'default_language' => 'en',
 #   'overwrite.cli.url' => 'http://localhost:8080/',
 #   'htaccess.RewriteBase' => '/',
-#   'logfile' => '/mnt/data/files/owncloud.log',
+#   'logfile' => '/mnt/data/files/gitlab.log',
 #   'memcache.local' => '\\OC\\Memcache\\APCu',
 #   'filelocking.enabled' => true,
 #   'passwordsalt' => 'cyVHtQ/Nc2s/fjEncNkHnB5LD+sDBO',
