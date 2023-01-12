@@ -45,3 +45,14 @@
     #      - /bin/sh
     #      - "-c"
     #      - "ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
+
+# Добавить домен 45.35.14.80:
+#   sudo docker exec -it ejabberd sh
+#   в файле /home/ejabberd/conf/ejabberd.yml добавить 
+#     hosts:
+#       - localhost
+#       - 45.35.14.80
+#   Рестарт сервиса: ./bin/ejabberdctl restart
+
+# Добавить пользователей в новом домене через WEB-интерфейс (p3717 без указания @ и домена)
+
