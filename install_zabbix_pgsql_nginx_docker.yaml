@@ -26,6 +26,8 @@
           POSTGRES_USER: "zabbix"
           POSTGRES_PASSWORD: "zabbix2"
           POSTGRES_DB: "zabbix"
+        ports:
+          - 6432:5432/tcp
         volumes:
           - /postgres:/var/lib/postgresql/data
         state: "started"

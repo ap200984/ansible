@@ -1,0 +1,30 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: zabbix-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for pgadmin
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: pgadmin
+      community.docker.docker_container:
+        name: pgadmin
+        image: "dpage/pgadmin4"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          PGADMIN_DEFAULT_EMAIL: "user@domain.com"
+          PGADMIN_DEFAULT_PASSWORD: "pgadmin_Taran#32"
+        ports:
+          - 8082:80/tcp
+        state: "started"
+        restart_policy: "unless-stopped"
