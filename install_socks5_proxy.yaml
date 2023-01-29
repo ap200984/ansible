@@ -23,7 +23,7 @@
           - name: "{{ docker_network_name }}"
         env:
           PROXY_USER: "proxy"
-          PROXY_PASSWORD: "proxy_#32Taran"
+          PROXY_PASSWORD: "proxy_Taran#32"
         ports:
           - 1980:1080/tcp
         state: "started"
