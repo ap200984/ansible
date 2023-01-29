@@ -2,7 +2,7 @@
 - hosts: all
   become: true
   vars:
-    docker_network_name: zabbix-net
+    docker_network_name: docker-net
     docker_network_subnet: 172.20.0.0/16
     docker_network_range: 172.20.240.0/20
 
