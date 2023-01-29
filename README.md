@@ -88,8 +88,9 @@ sudo systemctl start grafana-server
 
 
 domain reg.ru 89 рублей в год
-172.107.174.18 vds4.online
-69.30.237.130
+#172.107.174.18 vds4.online
+69.30.237.130 vds4.online
+
 
 nginx
 root@d59bfaccc9fc:/# cat /etc/nginx/conf.d/proxy.conf 
