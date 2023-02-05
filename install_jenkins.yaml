@@ -1,0 +1,36 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for jenkins
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: /opt/jenkins
+        state: directory
+        owner: "1000"
+        mode: "0755"
+
+    - name: jenkins
+      community.docker.docker_container:
+        name: jenkins
+        image: "jenkins/jenkins"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 9090:8080/tcp
+        volumes:
+          - /opt/jenkins:/var/jenkins_home:rw
+        state: "started"
+        restart_policy: "unless-stopped"
