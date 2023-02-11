@@ -3,9 +3,10 @@ ansible_user=ansible
 ip_address=45.35.14.80
 grey_address=10.20.0.1
 second_octet=20
-gre_oktet=254
-l2tp_oktet=255
+gre_octet=254
+l2tp_octet=255
 domain=vds2.online
+host_name=VDS2
 
 [prod]
 45.35.14.80:19022

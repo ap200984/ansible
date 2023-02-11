@@ -1,23 +1,129 @@
 ---
-
 - hosts: all
   become: true
   tasks:
+    - name: update repository index
+      apt:
+        update_cache: yes
+      when: ansible_distribution in ["Ubuntu","Debian"]
 
-  - name: update repository index
-    apt:
-      update_cache: yes
-    when: ansible_distribution in ["Ubuntu","Debian"]
+    - name: install xl2tpd
+      apt:
+        name: xl2tpd
+        state: latest
 
-  - name: install xl2tpd
-    apt:
-      name: xl2tpd
-      state: latest
+    - name: install quagga package
+      apt:
+        name: quagga
+        state: latest
 
-  - name: install quagga package
-    apt:
-      name: quagga
-      state: latest
+    - name: copy bgpd.conf
+      copy:
+        src: bgpd.conf
+        dest: /etc/quagga/bgpd.conf
+        owner: quagga
+        group: quagga
+        mode: "0640"
 
-  - name: update bgpd.conf
-    
+    - name: copy daemons
+      copy:
+        src: daemons
+        dest: /etc/quagga/daemons
+        owner: quagga
+        group: quagga
+        mode: "0644"
+
+    - name: copy debian.conf
+      copy:
+        src: debian.conf
+        dest: /etc/quagga/debian.conf
+        owner: quagga
+        group: quagga
+        mode: "0644"
+
+    - name: copy zebra.conf
+      copy:
+        src: zebra.conf
+        dest: /etc/quagga/zebra.conf
+        owner: quagga
+        group: quagga
+        mode: "0640"
+
+    - name: copy xl2tpd.conf
+      copy:
+        src: xl2tpd.conf
+        dest: /etc/xl2tpd/xl2tpd.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: copy chap-secrets
+      copy:
+        src: chap-secrets
+        dest: /etc/ppp/chap-secrets
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: set second octet bgpd.conf
+      replace:
+        path: /etc/quagga/bgpd.conf
+        regexp: '{\$SECOND_OCTET}'
+        replace: "{{ second_octet }}"
+
+    - name: set second octet xl2tpd.conf
+      replace:
+        path: /etc/xl2tpd/xl2tpd.conf
+        regexp: '{\$SECOND_OCTET}'
+        replace: "{{ second_octet }}"
+
+    - name: set l2tp octet bgpd.conf
+      replace:
+        path: /etc/quagga/bgpd.conf
+        regexp: '{\$L2TP_OCTET}'
+        replace: "{{ l2tp_octet }}"
+
+    - name: set l2tp octet xl2tpd.conf
+      replace:
+        path: /etc/xl2tpd/xl2tpd.conf
+        regexp: '{\$L2TP_OCTET}'
+        replace: "{{ l2tp_octet }}"
+
+    - name: set second octet chap-secrets
+      replace:
+        path: /etc/ppp/chap-secrets
+        regexp: '{\$SECOND_OCTET}'
+        replace: "{{ second_octet }}"
+
+    - name: set l2tp octet chap-secrets
+      replace:
+        path: /etc/ppp/chap-secrets
+        regexp: '{\$L2TP_OCTET}'
+        replace: "{{ l2tp_octet }}"
+
+    - name: set ip_address xl2tpd.conf
+      replace:
+        path: /etc/xl2tpd/xl2tpd.conf
+        regexp: '{\$IP_ADDRESS}'
+        replace: "{{ ip_address }}"
+
+    - name: set host_name bgpd.conf
+      replace:
+        path: /etc/quagga/bgpd.conf
+        regexp: '{\$HOST_NAME}'
+        replace: "{{ host_name }}"
+
+    - name: restart xl2tpd
+      service:
+        name: xl2tpd
+        state: restarted
+
+    - name: restart bgpd
+      service:
+        name: bgpd
+        state: restarted
+
+    - name: restart zebra
+      service:
+        name: zebra
+        state: restarted

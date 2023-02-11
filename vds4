@@ -1,5 +1,12 @@
 [prod:vars]
 ansible_user=ansible
+ip_address=69.30.237.130
+second_octet=22
+gre_octet=254
+l2tp_octet=255
+domain=vds4.online
+host_name=VDS4
+
 private_key_file=~/.ssh/ansible
 
 [prod]
