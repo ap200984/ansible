@@ -1,5 +1,7 @@
 [prod:vars]
 ansible_user=ansible
+ip_address=45.35.14.80
+domain=vds2.online
 
 [prod]
 45.35.14.80:19022

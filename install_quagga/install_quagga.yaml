@@ -1,0 +1,18 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: update repository index
+    apt:
+      update_cache: yes
+    when: ansible_distribution in ["Ubuntu","Debian"]
+
+  - name: install quagga package
+    apt:
+      name: quagga
+      state: latest
+
+  - name: update bgpd.conf
+    
