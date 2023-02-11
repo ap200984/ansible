@@ -9,6 +9,11 @@
       update_cache: yes
     when: ansible_distribution in ["Ubuntu","Debian"]
 
+  - name: install xl2tpd
+    apt:
+      name: xl2tpd
+      state: latest
+
   - name: install quagga package
     apt:
       name: quagga
