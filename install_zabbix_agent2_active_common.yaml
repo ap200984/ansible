@@ -38,7 +38,8 @@
     - name: add zabbix to docker group
       user:
         name: zabbix
-        group: docker
+        groups: docker
+        append: yes
 
     # - name: add setfacl
     #   become: true
