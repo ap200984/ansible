@@ -29,6 +29,12 @@
         regexp: ^ServerActive=
         line: ServerActive={{ zabbix_server_ip }}
 
+    - name: Configure hostname
+      lineinfile:
+        dest: /etc/zabbix/zabbix_agent2.conf
+        regexp: ^Hostname=
+        line: Hostname={{ ansible_hostname }}
+
     - name: add zabbix to docker group
       user:
         name: zabbix

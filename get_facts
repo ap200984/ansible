@@ -15,3 +15,8 @@
       debug: msg="{{ inventory_hostname }}"
     - name: get_hostname_short
       debug: msg="{{ inventory_hostname_short }}"
+    - name: Print all available facts
+      ansible.builtin.debug:
+        var: ansible_facts
+    - name: get_ansible_hostname
+      debug: msg="{{ ansible_hostname }}"
