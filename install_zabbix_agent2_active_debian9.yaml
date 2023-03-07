@@ -29,6 +29,26 @@
         regexp: ^ServerActive=
         line: ServerActive={{ zabbix_server_ip }}
 
+    - name: add zabbix to docker group
+      user:
+        name: zabbix
+        group: docker
+
+    # - name: add setfacl
+    #   become: true
+    #   apt:
+    #     name:
+    #       - acl
+    #     state: present
+
+    # - name: setfacl to docker socket
+    #   ansible.posix.acl:
+    #     path: /var/run/docker.sock
+    #     entity: zabbix
+    #     etype: user
+    #     permissions: r
+    #     state: present
+
     - name: Restart zabbix-agent2
       become: true
       service:

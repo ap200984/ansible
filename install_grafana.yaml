@@ -1,22 +1,28 @@
 ---
-
 - hosts: all
   become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
   tasks:
+    - name: Create a network for grafana
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
 
-  - name: update repository index
-    apt:
-      update_cache: yes
-    when: ansible_distribution in ["Ubuntu","Debian"]
-
-  - name: install apache2 package
-    apt:
-      name: apache2
-      state: latest
-    when: ansible_distribution == "Debian"
-
-  - name: add php support for appache
-    apt:
-      name: libapache2-mod-php
-    when: ansible_distribution == "Debian"
-
+    - name: Install grafana
+      community.docker.docker_container:
+        name: grafana
+        image: "grafana/grafana"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 3000:3000/tcp
+#        volumes:
+        state: "started"
+        restart_policy: "unless-stopped"
