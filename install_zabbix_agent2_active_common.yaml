@@ -5,13 +5,10 @@
     zabbix_server_ip: 45.35.14.80
 
   tasks:
-    - name: check_url
-      debug: msg="{{ ansible_distribution }}{{ ansible_distribution_version}}"
     - name: Add zabbix-agent2
       become: true
-      gather_facts: yes
       apt:
-        deb: https://repo.zabbix.com/zabbix/6.2/debian/pool/main/z/zabbix-release/zabbix-release_6.2-4%2B{{ ansible_distribution }}{{ ansible_distribution_version}}_all.deb
+        deb: "https://repo.zabbix.com/zabbix/6.2/debian/pool/main/z/zabbix-release/zabbix-release_6.2-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_version}}_all.deb"
 
     - name: Update and upgrade apt packages
       become: true
