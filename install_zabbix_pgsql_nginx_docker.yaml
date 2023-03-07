@@ -89,10 +89,17 @@
         state: "started"
         restart_policy: "unless-stopped"
 
-    - name: Add zabbix-agent2
+    - name: Add zabbix-agent2 on debian
       become: true
+      when: ansible_distribution|lower == "debian"
       apt:
-        deb: https://repo.zabbix.com/zabbix/6.2/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.2-4%2Bubuntu20.04_all.deb
+        deb: "https://repo.zabbix.com/zabbix/6.2/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_6.2-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_major_version}}_all.deb"
+
+    - name: Add zabbix-agent2 on ubuntu
+      become: true
+      when: ansible_distribution|lower == "ubuntu"
+      apt:
+        deb: "https://repo.zabbix.com/zabbix/6.2/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_6.2-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_version}}_all.deb"
 
     - name: Update and upgrade apt packages
       become: true
@@ -106,6 +113,12 @@
         name:
           - zabbix-agent2
         state: present
+
+    - name: add zabbix to docker group
+      user:
+        name: zabbix
+        groups: docker
+        append: yes
 
     - name: Allow new incoming from docker_network_name
       iptables:
