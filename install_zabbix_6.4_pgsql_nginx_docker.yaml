@@ -89,6 +89,22 @@
         state: "started"
         restart_policy: "unless-stopped"
 
+    - name: Configure zabbix frontend. 1st stage (copying file)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql cp /usr/share/zabbix/include/defines.inc.php /tmp/defines.inc.php"
+      ignore_errors: true
+
+    - name: Configure zabbix frontend. 2nd stage (increasing DASHBOARD_MAX_ROWS)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql sed -i \"s|define('DASHBOARD_MAX_ROWS.*|define('DASHBOARD_MAX_ROWS',\t\t65536);|\" /tmp/defines.inc.php"
+      ignore_errors: true
+
+    - name: Configure zabbix frontend. 3rd stage (increasing DASHBOARD_WIDGET_MAX_ROWS)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql sed -i \"s|define('DASHBOARD_WIDGET_MAX_ROWS.*|define('DASHBOARD_WIDGET_MAX_ROWS',\t65536);|\" /tmp/defines.inc.php"
+      ignore_errors: true
+
+    - name: Configure zabbix frontend. 4th stage (copying file back)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql cp /tmp/defines.inc.php /usr/share/zabbix/include/defines.inc.php"
+      ignore_errors: true
+
     - name: Add zabbix-agent2 on debian
       become: true
       when: ansible_distribution|lower == "debian"
