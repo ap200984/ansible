@@ -1,0 +1,29 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for speedtest
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: speedtest
+      community.docker.docker_container:
+        name: speedtest
+        image: "openspeedtest/latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 3005:3000/tcp
+          - 3001:3001/tcp
+        state: "started"
+        restart_policy: "unless-stopped"
+
