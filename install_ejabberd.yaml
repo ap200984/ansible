@@ -15,7 +15,7 @@
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
-    - name: ejabberd
+    - name: Install ejabberd
       community.docker.docker_container:
         name: ejabberd
         image: "ejabberd/ecs"
@@ -29,8 +29,11 @@
           - 5280:5280/tcp
           - 5443:5443/tcp
         volumes:
-          - /etc/containers/ejabberd_etc:/etc/ejabberd:rw
-          - /etc/containers/ejabberd_home:/home/ejabberd:rw
+        # - /etc/containers/ejabberd_home:/home/ejabberd:rw
+          - /home/ejabberd_conf:/home/ejabberd/conf:rw
+          - /home/ejabberd_conf/ejabberd.yml:/home/ejabberd/conf/ejabberd.yml:rw
+        #  - /etc/containers/ejabberd_etc:/etc/ejabberd:rw
+        #  - /etc/containers/ejabberd_home:/home/ejabberd:rw
         #  - /home/ejabberd:/etc/ejabberd:rw
         #  - /home/database:/etc/ejabberd/database:rw
         state: "started"
@@ -44,7 +47,7 @@
       shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
       ignore_errors: true
 
-    
+    # ^hosts:\n(^.*\n)+(?=loglevel:)
 
     # - name: set password
     #   community.docker.docker_container_exec:
@@ -64,3 +67,17 @@
 
 # Добавить пользователей в новом домене через WEB-интерфейс (p3717 без указания @ и домена)
 
+# user@vds4:~$ ls -la database/
+# total 172
+# drwxr-xr-x 3 9000 9000  4096 Mar  9 10:24 .
+# drwxr-xr-x 7 user user  4096 Mar  9 10:21 ..
+# drwxr-xr-x 4 9000 9000  4096 Mar  9 10:27 ejabberd@fcdad9e36abd
+# -rw-r--r-- 1 9000 9000 15145 Mar  9 10:24 lite.new.sql
+# -rw-r--r-- 1 9000 9000 13568 Mar  9 10:24 lite.sql
+# -rw-r--r-- 1 9000 9000 24747 Mar  9 10:24 mssql.sql
+# -rw-r--r-- 1 9000 9000 20005 Mar  9 10:24 mysql.new.sql
+# -rw-r--r-- 1 9000 9000 14229 Mar  9 10:24 mysql.old-to-new.sql
+# -rw-r--r-- 1 9000 9000 18017 Mar  9 10:24 mysql.sql
+# -rw-r--r-- 1 9000 9000 25231 Mar  9 10:24 pg.new.sql
+# -rw-r--r-- 1 9000 9000 14709 Mar  9 10:24 pg.sql
+# user@vds4:~$ docker run -d --name ejabberd -v $(pwd)/database:/home/ejabberd/database ejabberd/ecs
