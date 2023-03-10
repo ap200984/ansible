@@ -15,7 +15,7 @@
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
-    - name: Install ejabberd
+    - name: install ejabberd
       community.docker.docker_container:
         name: ejabberd
         image: "ejabberd/ecs"
@@ -29,13 +29,11 @@
           - 5280:5280/tcp
           - 5443:5443/tcp
         volumes:
+        # - /etc/containers/ejabberd_etc:/etc/ejabberd:rw
         # - /etc/containers/ejabberd_home:/home/ejabberd:rw
-          - /home/ejabberd_conf:/home/ejabberd/conf:rw
-          - /home/ejabberd_conf/ejabberd.yml:/home/ejabberd/conf/ejabberd.yml:rw
-        #  - /etc/containers/ejabberd_etc:/etc/ejabberd:rw
-        #  - /etc/containers/ejabberd_home:/home/ejabberd:rw
-        #  - /home/ejabberd:/etc/ejabberd:rw
-        #  - /home/database:/etc/ejabberd/database:rw
+        # - /home/ejabberd:/etc/ejabberd:rw
+        # - /home/database:/etc/ejabberd/database:rw
+          - /home/ejabberd1:/home/ejabberd:rw
         state: "started"
         restart_policy: "unless-stopped"
 
@@ -43,9 +41,18 @@
     #  lineinfile:
     #    path: 
 
-    - name: set password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
-      ignore_errors: true
+    # - name: set password
+    #   shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
+    #   ignore_errors: true
+
+    # - name: set password
+    #   shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin {{ item }} ejabberd_Taran#32"
+    #   ignore_errors: true
+    #   loop:
+    #     - localhost
+    #     - "{{ ip_address }}"
+    #     - "{{ domain }}"
+
 
     # ^hosts:\n(^.*\n)+(?=loglevel:)
 
