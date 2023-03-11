@@ -22,8 +22,8 @@
         group: 9000
     
     - name: create configuration file
-      copy:
-        src: ejabberd.yml
+      template:
+        src: ejabberd.yml.j2
         dest: /etc/ejabberd/ejabberd.yml
         owner: 9000
         group: 9000
@@ -47,17 +47,7 @@
         state: "started"
         restart_policy: "unless-stopped"
 
-
-
-    #- name: add vhosts file
-    #  lineinfile:
-    #    path: 
-
-    # - name: set password
-    #   shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
-    #   ignore_errors: true
-
-    - name: set password
+    - name: set admin password
       shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin {{ item }} ejabberd_Taran#32"
       ignore_errors: true
       loop:
@@ -65,24 +55,24 @@
         - "{{ ip_address }}"
         - "{{ domain }}"
 
+    - name: set p7317 password
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register p7317 {{ item }} ejabberd_Taran#32"
+      ignore_errors: true
+      loop:
+        - localhost
+        - "{{ ip_address }}"
+        - "{{ domain }}"
 
-    # ^hosts:\n(^.*\n)+(?=loglevel:)
-
-    # - name: set password
-    #   community.docker.docker_container_exec:
-    #     container: ejabberd
-    #     argv:
-    #      - /bin/sh
-    #      - "-c"
-    #      - "ejabberd bin/ejabberdctl register admin localhost ejabberd_Taran#32"
-
-# Добавить домен 45.35.14.80:
-#   sudo docker exec -it ejabberd sh
-#   в файле /home/ejabberd/conf/ejabberd.yml добавить 
-#     hosts:
-#       - localhost
-#       - 45.35.14.80
-#   Рестарт сервиса: ./bin/ejabberdctl restart
+    - name: set n9194 password
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register n9194 {{ item }} ejabberd_Taran#32"
+      ignore_errors: true
+      loop:
+        - localhost
+        - "{{ ip_address }}"
+        - "{{ domain }}"
+    
+    - name: restart ejabberd server
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl restart"
 
 # Добавить пользователей в новом домене через WEB-интерфейс (p3717 без указания @ и домена)
 

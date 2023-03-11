@@ -16,8 +16,8 @@
 
 hosts:
   - localhost
-  - 69.30.237.130
-  - vds4.online
+  - {{ ip_address }}
+  - {{ domain }}
 
 loglevel: 4
 log_rotate_size: 10485760
@@ -85,7 +85,7 @@ listen:
   ##  transport: udp
   ##  module: ejabberd_stun
   ##  use_turn: true
-  ##  turn_ip: "{{ IP }}"
+  ##  turn_ip: {{ "{{ IP }}" }}
   ##  auth_type: user
   ##  auth_realm: "example.com"
   ##-
@@ -93,7 +93,7 @@ listen:
   ##  ip: "0.0.0.0"
   ##  module: ejabberd_stun
   ##  use_turn: true
-  ##  turn_ip: "{{ IP }}"
+  ##  turn_ip: {{ "{{ IP }}" }}
   ##  auth_type: user
   ##  auth_realm: "example.com"
   ##- 
@@ -103,7 +103,7 @@ listen:
   ##  certfile: "/home/ejabberd/conf/server.pem"
   ##  tls: true
   ##  use_turn: true
-  ##  turn_ip: "{{ IP }}"
+  ##  turn_ip: {{ "{{ IP }}" }}
   ##  auth_type: user
   ##  auth_realm: "example.com"
   ##
@@ -138,6 +138,7 @@ acl:
   admin:
     user:
       - "admin@localhost"
+      - "admin"
 
 access_rules:
   local:
