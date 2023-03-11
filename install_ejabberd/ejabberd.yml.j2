@@ -42,7 +42,7 @@ listen:
     port: 5222
     ip: "::"
     module: ejabberd_c2s
-    max_stanza_size: 262144
+    max_stanza_size: 2621440
     shaper: c2s_shaper
     access: c2s
     starttls_required: true
@@ -50,7 +50,7 @@ listen:
     port: 5269
     ip: "::"
     module: ejabberd_s2s_in
-    max_stanza_size: 524288
+    max_stanza_size: 5242880
   -
     port: 5443
     ip: "::"
@@ -188,16 +188,17 @@ api_permissions:
 
 shaper:
   normal: 1000
-  fast: 50000
+  fast: 50000000
 
 shaper_rules:
-  max_user_sessions: 10
+  max_user_sessions: 100
   max_user_offline_messages:
     5000: admin
-    100: all
+    5000: all
   c2s_shaper:
     none: admin
-    normal: all
+#    normal: all
+    none: all
   s2s_shaper: fast
 
 max_fsm_queue: 10000
@@ -252,7 +253,7 @@ modules:
   mod_private: {}
   mod_proxy65:
     access: local
-    max_connections: 5
+    max_connections: 50
   mod_pubsub:
     access_createnode: pubsub_createnode
     plugins:
