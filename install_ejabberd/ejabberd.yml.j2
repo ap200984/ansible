@@ -43,7 +43,7 @@ listen:
     ip: "::"
     module: ejabberd_c2s
     max_stanza_size: 2621440
-    shaper: c2s_shaper
+#    shaper: c2s_shaper
     access: c2s
     starttls_required: true
   -
@@ -70,6 +70,8 @@ listen:
     module: ejabberd_http
     request_handlers:
       "/admin": ejabberd_web_admin
+      "/bosh": mod_bosh
+
   -
     port: 1883
     ip: "::"
@@ -186,20 +188,20 @@ api_permissions:
       - status
       - connected_users_number
 
-shaper:
-  normal: 1000
-  fast: 50000000
-
-shaper_rules:
-  max_user_sessions: 100
-  max_user_offline_messages:
-    5000: admin
-    5000: all
-  c2s_shaper:
-    none: admin
-#    normal: all
-    none: all
-  s2s_shaper: fast
+# shaper:
+#  normal: 1000000000
+#   fast: 50000000000
+# 
+# shaper_rules:
+#   max_user_sessions: 100
+#   max_user_offline_messages:
+#     5000: admin
+#     5000: all
+#   c2s_shaper:
+#     none: admin
+# #    normal: all
+#     none: all
+#   s2s_shaper: fast
 
 max_fsm_queue: 10000
 
