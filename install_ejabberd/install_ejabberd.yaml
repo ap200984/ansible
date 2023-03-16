@@ -70,7 +70,24 @@
         - localhost
         - "{{ ip_address }}"
         - "{{ domain }}"
-    
+
+    - name: set user1 password
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user1 {{ item }} user1"
+      ignore_errors: true
+      loop:
+        - localhost
+        - "{{ ip_address }}"
+        - "{{ domain }}"
+
+    - name: set user2 password
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user2 {{ item }} user2"
+      ignore_errors: true
+      loop:
+        - localhost
+        - "{{ ip_address }}"
+        - "{{ domain }}"
+
+
     - name: restart ejabberd server
       shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl restart"
 

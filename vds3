@@ -1,5 +1,8 @@
 [staging:vars]
 ansible_user=ansible
+ip_address=10.9.0.160
+domain=vds3.online
 
 [staging]
-86.110.170.70:19022
+#86.110.170.70:19022
+10.9.0.160
