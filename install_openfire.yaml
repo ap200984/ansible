@@ -1,0 +1,31 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for openfire
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: install openfire
+      community.docker.docker_container:
+        name: openfire
+        image: "sameersbn/openfire"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 9090:9090/tcp
+          - 5222:5222/tcp
+          - 7777:7777/tcp
+        volumes:
+          - /srv/docker/openfire:/var/lib/openfire:rw
+        state: "started"
+        restart_policy: "unless-stopped"
+

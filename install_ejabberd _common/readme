@@ -1,0 +1,11 @@
+Для использования десктопного клиента можно добавить в конфиг bosh
+  -
+    port: 5280
+    ip: "::"
+    module: ejabberd_http
+    request_handlers:
+      "/admin": ejabberd_web_admin
+      "/bosh": mod_bosh
+
+Тогда для подключения http://45.141.102.72:5280/bosh
+

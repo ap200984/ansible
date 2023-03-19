@@ -1,0 +1,8 @@
+[prod:vars]
+ansible_user=ansible
+ip_address=194.87.244.107
+domain=hidenrw.ru
+
+[prod]
+194.87.244.107
+
