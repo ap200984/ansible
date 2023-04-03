@@ -1,0 +1,73 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for zabbix-proxy
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+
+    # - name: Postgres container
+    #   become: true
+    #   community.docker.docker_container:
+    #     name: postgres-server
+    #     image: "postgres:latest"
+    #     networks:
+    #       - name: "{{ docker_network_name }}"
+    #     env:
+    #       POSTGRES_USER: "zabbix"
+    #       POSTGRES_PASSWORD: "zabbix_proxy"
+    #       POSTGRES_DB: "zabbix"
+    #     ports:
+    #       - 5432:5432/tcp
+    #     volumes:
+    #       - /postgres:/var/lib/postgresql/data
+    #     state: "started"
+    #     restart_policy: "unless-stopped"
+
+    - name: Mysql container
+      become: true
+      community.docker.docker_container:
+        name: mysql-server
+        image: "mysql:latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_proxy"
+          MYSQL_DATABASE: "zabbix_proxy"
+        ports:
+          - 3306:3306/tcp
+        volumes:
+          - /mysql:/var/lib/mysql:rw
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: zabbix-proxy
+      community.docker.docker_container:
+        name: zabbix-proxy
+        image: "zabbix/zabbix-proxy-mysql:latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          DB_SERVER_HOST: "localhost"
+          ZBX_HOSTNAME: "{{ host_name }}"
+          ZBX_SERVER_HOST: "vds2.online"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_proxy"
+        state: "started"
+        restart_policy: "unless-stopped"
