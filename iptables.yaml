@@ -92,7 +92,7 @@
 
     - name: add couchbase host to properties
       lineinfile:
-        dest: /etc/network/ineterfaces
+        dest: /etc/network/interfaces
         line: iptables-restore < /etc/iptables.conf
 
 # -P INPUT ACCEPT
