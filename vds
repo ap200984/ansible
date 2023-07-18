@@ -2,6 +2,7 @@
 ansible_user=ansible
 ip_address=45.141.102.72
 domain=vds.online
+second_octet=19
 
 [prod]
 45.141.102.72:19022
