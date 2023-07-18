@@ -22,7 +22,7 @@
         networks:
           - name: "{{ docker_network_name }}"
         env:
-          OWNCLOUD_DOMAIN: "69.30.237.130"
+          OWNCLOUD_DOMAIN: "{{ ip_address }}:1953"
         ports:
           - 1953:8080/tcp
         volumes:
