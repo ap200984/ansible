@@ -22,7 +22,9 @@
         networks:
           - name: "{{ docker_network_name }}"
         env:
-          OWNCLOUD_DOMAIN: "{{ ip_address }}:1953"
+          OWNCLOUD_TRUSTED_DOMAINS: "{{ domain }}:1953, {{ ip_address }}:1953"
+          ADMIN_USERNAME: "admin"
+          ADMIN_PASSWORD: "owncloud_Taran#32"
         ports:
           - 1953:8080/tcp
         volumes:
