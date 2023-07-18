@@ -30,6 +30,10 @@
         state: "started"
         restart_policy: "unless-stopped"
 
+#Username/Password: admin/admin
+
+
+
 # old server
 
 # <?php
