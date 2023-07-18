@@ -50,6 +50,7 @@
           MYSQL_USER: "zabbix"
           MYSQL_PASSWORD: "zabbix_proxy"
           MYSQL_DATABASE: "zabbix_proxy"
+          MYSQL_ROOT_PASSWORD: "zabbix_proxy"
         ports:
           - 3306:3306/tcp
         volumes:
