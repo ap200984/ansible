@@ -1,0 +1,27 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for socks5
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: socks5_no_auth
+      community.docker.docker_container:
+        name: socks5_no_auth
+        image: "serjs/go-socks5-proxy"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 1981:1080/tcp
+        state: "started"
+        restart_policy: "unless-stopped"
