@@ -1,0 +1,14 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: install atop
+    apt:
+      update_cache: yes
+
+  - name: install atop
+    apt:
+      name: atop
+      state: latest
