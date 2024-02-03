@@ -5,7 +5,7 @@
   tasks:
     - name: Create nginx directory if it does not exist
       ansible.builtin.file:
-        path: //etc/nginx/conf.d/
+        path: /etc/nginx/conf.d/
         state: directory
 
     - name: Synchronize config files
@@ -23,10 +23,10 @@
         image: "nginx"
         network_mode: host
         env:
-          TZ: "America/Chicago"
+          TZ: "UTC"
           LETSENCRYPT: "true"
           LE_EMAIL: "example@example.com"
-          LE_FQDN: "vds4.space"
+          LE_FQDN: "vds2.space"
         ports:
           - 80:80/tcp
           - 443:443/tcp

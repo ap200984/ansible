@@ -88,22 +88,22 @@ sudo systemctl start grafana-server
 
 
 domain reg.ru 89 рублей в год
-#172.107.174.18 vds4.online
-69.30.237.130 vds4.online
+#172.107.174.18 vds4.space
+69.30.237.130 vds4.space
 
 
 nginx
 root@d59bfaccc9fc:/# cat /etc/nginx/conf.d/proxy.conf 
 upstream  test {
-    server vds4.online;
+    server vds4.space;
 }
 
 server {
     listen              443 ssl;
     #listen		80;
-    server_name         vds4.online;
-    ssl_certificate /etc/letsencrypt/live/vds4.online/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/vds4.online/privkey.pem; # managed by Certbot
+    server_name         vds4.space;
+    ssl_certificate /etc/letsencrypt/live/vds4.space/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/vds4.space/privkey.pem; # managed by Certbot
     ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
     ssl_ciphers         HIGH:!aNULL:!MD5;
 
@@ -135,7 +135,7 @@ server {
         proxy_set_header    Authorization       "";
     }
     location / {
-        proxy_pass http://vds4.online:2080;
+        proxy_pass http://vds4.space:2080;
         proxy_http_version 1.1;
 	
 	access_log /var/log/nginx/rocket.chat.access.log;
@@ -184,3 +184,9 @@ ansible-galaxy collection install community.docker
 
 sudo apt -y install software-properties-common
 sudo apt-add-repository ppa:ansible/ansible
+
+
+# Reg.ru
+Купить любой домен 2го уровня за 200р. на год (напр., vds2.space)
+Зайти в ЛК -> Главная -> Домены -> Настройка домена -> DNS-серверы и управление зоной -> Добавить A-запись * тем же IP-адресом
+Выждать около получаса и проверить резлв любого поддемена (напр., abc.vds2.space)

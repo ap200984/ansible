@@ -1,0 +1,7 @@
+[prod:vars]
+ansible_user=ansible
+ip_address=10.9.0.120
+domain=debian12.k16k112
+
+[prod]
+10.9.0.120

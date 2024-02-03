@@ -5,7 +5,7 @@ grey_address=10.20.0.1
 second_octet=20
 gre_octet=254
 l2tp_octet=255
-domain=vds2.online
+domain=vds2.space
 host_name=VDS2
 
 [prod]

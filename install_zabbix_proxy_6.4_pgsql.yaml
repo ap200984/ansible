@@ -67,7 +67,7 @@
         env:
           DB_SERVER_HOST: "localhost"
           ZBX_HOSTNAME: "{{ host_name }}"
-          ZBX_SERVER_HOST: "vds2.online"
+          ZBX_SERVER_HOST: "vds2.space"
           MYSQL_USER: "zabbix"
           MYSQL_PASSWORD: "zabbix_proxy"
         state: "started"

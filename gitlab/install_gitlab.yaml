@@ -18,20 +18,21 @@
     - name: gitlab
       community.docker.docker_container:
         name: gitlab
-        image: "gitlab/gitlab-ee:latest"
+        image: "gitlab/gitlab-ce:16.5.8-ce.0"
+        memory: "4g"
         networks:
           - name: "{{ docker_network_name }}"
         env:
-          hostname: "vds4.online"
+          hostname:  "{{ inventory_hostname }}"
           shm-size: "256m"
         ports:
           - 1443:443/tcp
           - 8081:80/tcp
           - 2222:22/tcp
         volumes:
-          - /srv/gitlab/config:/etc/gitlab:rw
-          - /srv/gitlab/logs:/var/log/gitlab:rw
-          - /srv/gitlab/data:/var/opt/gitlab:rw
+          - /storage/gitlab/config:/etc/gitlab:rw
+          - /storage/gitlab/logs:/var/log/gitlab:rw
+          - /storage/gitlab/data:/var/opt/gitlab:rw
         state: "started"
         restart_policy: "unless-stopped"
 
