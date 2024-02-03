@@ -81,8 +81,8 @@
           POSTGRES_PASSWORD: "zabbix2"
           POSTGRES_DB: "zabbix"
         ports:
-          - 443:8443
-          - 80:80
+          # - 443:8443
+          # - 80:80
           - 8080:8080
         volumes:
           - /etc/ssl/nginx:/etc/ssl/nginx:ro
