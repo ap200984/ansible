@@ -3,6 +3,9 @@
   gather_facts: yes
   become: false
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
     - name: get_hostname
       debug: msg="{{ inventory_hostname }}"
     - name: get_hostname_short

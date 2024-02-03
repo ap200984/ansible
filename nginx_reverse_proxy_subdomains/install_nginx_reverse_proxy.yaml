@@ -3,6 +3,9 @@
   become: true
 
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
     - name: Create nginx directory if it does not exist
       ansible.builtin.file:
         path: /etc/nginx/conf.d/

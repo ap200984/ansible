@@ -7,6 +7,9 @@
     docker_network_range: 172.20.240.0/20
 
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
     - name: Create a network for gitlab
       become: true
       docker_network:

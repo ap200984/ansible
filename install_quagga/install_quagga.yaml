@@ -2,6 +2,9 @@
 - hosts: all
   become: true
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
     - name: update repository index
       apt:
         update_cache: yes

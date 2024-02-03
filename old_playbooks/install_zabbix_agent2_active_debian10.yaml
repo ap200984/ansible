@@ -5,6 +5,9 @@
     zabbix_server_ip: 45.35.14.80
 
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
     - name: Add zabbix-agent2
       become: true
       apt:

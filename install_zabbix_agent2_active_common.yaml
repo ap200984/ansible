@@ -5,6 +5,12 @@
     zabbix_server_ip: 108.181.172.80
 
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
+    - name: Include Zabbix variables
+      include_vars: secrets/common_secrets.yml
+
     # - name: Add zabbix-agent2 on debian
     #   become: true
     #   when: ansible_distribution|lower == "debian"
@@ -69,17 +75,14 @@
         name: zabbix-agent2
         state: restarted
 
-    - name: Include Zabbix variables
-      include_vars: secrets/zabbix_creds.yml
-
     - name: Create a host in zabbix
       vars:
         ansible_host: "zabbix.vds2.space"
         ansible_zabbix_url_path: ""
         ansible_network_os: "community.zabbix.zabbix"
         ansible_connection: "httpapi"
-        # ansible_user: "api_user"
-        # ansible_httpapi_pass: "*********"
+        ansible_user: "api_user"
+        ansible_httpapi_pass: "api_{{ common_passwd }}"
       become: false
       community.zabbix.zabbix_host:
         host_name: "{{ ansible_hostname }}"

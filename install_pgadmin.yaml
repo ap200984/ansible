@@ -7,6 +7,9 @@
     docker_network_range: 172.20.240.0/20
 
   tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
     - name: Create a network for pgadmin
       become: true
       docker_network:
@@ -23,7 +26,7 @@
           - name: "{{ docker_network_name }}"
         env:
           PGADMIN_DEFAULT_EMAIL: "user@domain.com"
-          PGADMIN_DEFAULT_PASSWORD: "pgadmin_Taran#32"
+          PGADMIN_DEFAULT_PASSWORD: "pgadmin_{{ common_passwd }}"
         ports:
           - 8082:80/tcp
         state: "started"
