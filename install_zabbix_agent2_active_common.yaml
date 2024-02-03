@@ -5,17 +5,17 @@
     zabbix_server_ip: 108.181.172.80
 
   tasks:
-    - name: Add zabbix-agent2 on debian
-      become: true
-      when: ansible_distribution|lower == "debian"
-      apt:
-        deb: "https://repo.zabbix.com/zabbix/6.2/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_6.2-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_major_version}}_all.deb"
+    # - name: Add zabbix-agent2 on debian
+    #   become: true
+    #   when: ansible_distribution|lower == "debian"
+    #   apt:
+    #     deb: "https://repo.zabbix.com/zabbix/6.4/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_6.4-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_major_version}}_all.deb"
 
     - name: Add zabbix-agent2 on ubuntu
       become: true
       when: ansible_distribution|lower == "ubuntu"
       apt:
-        deb: "https://repo.zabbix.com/zabbix/6.2/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_6.2-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_version}}_all.deb"
+        deb: "https://repo.zabbix.com/zabbix/6.4/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_6.4-4%2B{{ ansible_distribution|lower }}{{ ansible_distribution_version}}_all.deb"
 
     - name: Update and upgrade apt packages
       become: true
@@ -48,23 +48,53 @@
         groups: docker
         append: yes
 
-    # - name: add setfacl
-    #   become: true
-    #   apt:
-    #     name:
-    #       - acl
-    #     state: present
+    - name: add setfacl
+      become: true
+      apt:
+        name:
+          - acl
+        state: present
 
-    # - name: setfacl to docker socket
-    #   ansible.posix.acl:
-    #     path: /var/run/docker.sock
-    #     entity: zabbix
-    #     etype: user
-    #     permissions: r
-    #     state: present
+    - name: setfacl to docker socket
+      ansible.posix.acl:
+        path: /var/run/docker.sock
+        entity: zabbix
+        etype: user
+        permissions: r
+        state: present
 
     - name: Restart zabbix-agent2
       become: true
       service:
         name: zabbix-agent2
         state: restarted
+
+    - name: Include Zabbix variables
+      include_vars: secrets/zabbix_creds.yml
+
+    - name: Create a host in zabbix
+      vars:
+        ansible_host: "zabbix.vds2.space"
+        ansible_zabbix_url_path: ""
+        ansible_network_os: "community.zabbix.zabbix"
+        ansible_connection: "httpapi"
+        # ansible_user: "api_user"
+        # ansible_httpapi_pass: "*********"
+      become: false
+      community.zabbix.zabbix_host:
+        host_name: "{{ ansible_hostname }}"
+        visible_name: "{{ ansible_hostname }}"
+        host_groups:
+          - "Linux servers"
+        link_templates:
+          - "Linux by Zabbix agent active"
+          - "Docker by Zabbix agent 2 active"
+        status: enabled
+        state: present
+        interfaces:
+          - type: 1
+            main: 1
+            useip: 1
+            ip: "127.0.0.1"
+            dns: ""
+            port: "10050"
