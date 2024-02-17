@@ -8,7 +8,7 @@
 
   tasks:
     - name: Include secrets
-      include_vars: secrets/common_secrets.yml
+      include_vars: ../secrets/common_secrets.yml
 
     - name: Create a network for ejabberd
       docker_network:
