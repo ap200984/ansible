@@ -1,7 +1,18 @@
 ---
 - hosts: all
   become: true
+  vars_files:
+    - secrets/common_secrets.yml
   tasks:
+    - name: Install iptables, iptables-persistent, Fail2Ban & ipset
+      apt:
+        name:
+          - "iptables"
+          - "iptables-persistent"
+          - "fail2ban"
+          - "ipset"
+        state: latest
+
     - name: Include secrets
       include_vars: secrets/common_secrets.yml
 
@@ -28,36 +39,27 @@
         ctstate: ESTABLISHED,RELATED
         jump: ACCEPT
 
-    - name: Allow new incoming on UDP port 1701
-      ansible.builtin.iptables:
-        chain: INPUT
-        protocol: udp
-        destination_port: 1701
-        jump: ACCEPT
-        comment: Accept L2TP
+    - name: Create ipset for allowed_hosts
+      ansible.builtin.command:
+        cmd: "ipset create allowed_hosts hash:ip"
+      ignore_errors: yes
 
-    - name: Allow new incoming from 10.0.0.0/11
-      ansible.builtin.iptables:
-        chain: INPUT
-        source: 10.0.0.0/11
-        jump: ACCEPT
-        comment: Accept internal network
+    - name: Flush ipset to ensure it's empty before adding IPs
+      ansible.builtin.command:
+        cmd: "ipset flush allowed_hosts"
 
-    - name: Allow GRE from list
+    - name: Add allowed IPs to ipset
+      ansible.builtin.command:
+        cmd: "ipset add allowed_hosts {{ item }}"
+      loop: "{{ allowed_ips }}"
+
+    - name: Allow traffic from allowed_hosts ipset to specific port
       ansible.builtin.iptables:
         chain: INPUT
-        source: "{{ item }}"
-        protocol: GRE
+        match_set: "allowed_hosts"
+        match_set_flags: src
         jump: ACCEPT
-        comment: Accept GRE from my hosts
-      with_items:
-        [
-          "45.141.102.72",
-          "45.35.14.80",
-          "69.30.237.130",
-          "86.110.170.70",
-          "213.138.67.146",
-        ]
+        comment: "Accept connections to SSH port from allowed_hosts"
 
     - name: Allow connections on multiple ports
       ansible.builtin.iptables:
@@ -73,6 +75,7 @@
           - "5269"
           - "5280"
           - "5443"
+          - "19022"
         jump: ACCEPT
 
     - name: DROP output to 10.0.0.0/11 not through tunnels
@@ -88,42 +91,62 @@
         chain: INPUT
         policy: DROP
 
-    - name: Save current state of the firewall in system file
-      community.general.iptables_state:
-        state: saved
-        path: /etc/iptables.conf
+    - name: Save iptables configuration for Debian/Ubuntu
+      become: yes
+      shell: iptables-save > /etc/iptables/rules.v4
+      args:
+        executable: /bin/bash
 
-    - name: add couchbase host to properties
+
+    # - name: Save current state of the firewall in system file
+    #   community.general.iptables_state:
+    #     state: saved
+    #     path: /etc/iptables.conf
+
+    # - name: add couchbase host to properties
+    #   lineinfile:
+    #     dest: /etc/network/interfaces
+    #     line: iptables-restore < /etc/iptables.conf
+
+
+    - name: Configure SSH jail to use port 19022
       lineinfile:
-        dest: /etc/network/interfaces
-        line: iptables-restore < /etc/iptables.conf
+        path: /etc/fail2ban/jail.local
+        line: "port = 19022"
+        insertafter: "[sshd]"
+        create: yes
+      notify: restart fail2ban
+    - name: Create block_list ipset
+      command: ipset create block_list hash:ip
+      ignore_errors: yes
+    - name: Apply custom Fail2Ban action to use block_list ipset
+      copy:
+        dest: /etc/fail2ban/action.d/blocklist.conf
+        content: |
+          [Definition]
+          actionstart = ipset create block_list hash:ip
+          actionstop =
+          actioncheck =
+          actionban = ipset add block_list <ip>
+          actionunban = ipset del block_list <ip>
+          [Init]
+    - name: Configure sshd jail to use blocklist action and set max retry
+      blockinfile:
+        path: /etc/fail2ban/jail.local
+        block: |
+          [sshd]
+          enabled = true
+          port = 19022
+          filter = sshd
+          action = iptables[name=SSH, port=19022, protocol=tcp]
+                  blocklist
+          logpath = %(sshd_log)s
+          maxretry = 5
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+      notify: restart fail2ban
 
-# -P INPUT ACCEPT
-# -P FORWARD DROP
-# -P OUTPUT ACCEPT
-# -N DOCKER
-# -N DOCKER-ISOLATION-STAGE-1
-# -N DOCKER-ISOLATION-STAGE-2
-# -N DOCKER-USER
-# -A FORWARD -j DOCKER-USER
-# -A FORWARD -j DOCKER-ISOLATION-STAGE-1
-# -A FORWARD -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-# -A FORWARD -o docker0 -j DOCKER
-# -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
-# -A FORWARD -i docker0 -o docker0 -j ACCEPT
-# -A FORWARD -o br-4008c1205dd4 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-# -A FORWARD -o br-4008c1205dd4 -j DOCKER
-# -A FORWARD -i br-4008c1205dd4 ! -o br-4008c1205dd4 -j ACCEPT
-# -A FORWARD -i br-4008c1205dd4 -o br-4008c1205dd4 -j ACCEPT
-# -A DOCKER -d 172.20.240.1/32 ! -i br-4008c1205dd4 -o br-4008c1205dd4 -p tcp -m tcp --dport 8443 -j ACCEPT
-# -A DOCKER -d 172.20.240.1/32 ! -i br-4008c1205dd4 -o br-4008c1205dd4 -p tcp -m tcp --dport 8080 -j ACCEPT
-# -A DOCKER -d 172.20.240.2/32 ! -i br-4008c1205dd4 -o br-4008c1205dd4 -p udp -m udp --dport 1162 -j ACCEPT
-# -A DOCKER -d 172.20.240.4/32 ! -i br-4008c1205dd4 -o br-4008c1205dd4 -p tcp -m tcp --dport 10051 -j ACCEPT
-# -A DOCKER -d 172.20.240.1/32 ! -i br-4008c1205dd4 -o br-4008c1205dd4 -p tcp -m tcp --dport 80 -j ACCEPT
-# -A DOCKER-ISOLATION-STAGE-1 -i docker0 ! -o docker0 -j DOCKER-ISOLATION-STAGE-2
-# -A DOCKER-ISOLATION-STAGE-1 -i br-4008c1205dd4 ! -o br-4008c1205dd4 -j DOCKER-ISOLATION-STAGE-2
-# -A DOCKER-ISOLATION-STAGE-1 -j RETURN
-# -A DOCKER-ISOLATION-STAGE-2 -o docker0 -j DROP
-# -A DOCKER-ISOLATION-STAGE-2 -o br-4008c1205dd4 -j DROP
-# -A DOCKER-ISOLATION-STAGE-2 -j RETURN
-# -A DOCKER-USER -j RETURN
+  handlers:
+    - name: restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted

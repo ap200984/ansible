@@ -25,12 +25,12 @@
         networks:
           - name: "{{ docker_network_name }}"
         env:
-          OWNCLOUD_TRUSTED_DOMAINS: "owncloud.{{ domain }}:1953, {{ domain }}:1953, {{ ip_address }}:1953" # "86.110.170.70:1953"
+          OWNCLOUD_TRUSTED_DOMAINS: "owncloud.{{ domain }}, {{ domain }}:1953, {{ ip_address }}:1953, localhost:1953, 127.0.0.1:1953" # "86.110.170.70:1953"
           ADMIN_USERNAME: "admin"
         ports:
           - 1953:8080/tcp
         volumes:
-          - /storage/owncloud:/mnt/data:rw
+          - /owncloud:/mnt/data:rw
         state: "started"
         restart_policy: "unless-stopped"
 
