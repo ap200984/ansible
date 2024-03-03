@@ -91,23 +91,35 @@
         chain: INPUT
         policy: DROP
 
-    - name: Save iptables configuration for Debian/Ubuntu
-      become: yes
-      shell: iptables-save > /etc/iptables/rules.v4
+    - name: Save ipset list
+      ansible.builtin.shell: "ipset save > /etc/ipset.conf"
       args:
         executable: /bin/bash
 
+    - name: Create systemd service for ipset
+      copy:
+        dest: /etc/systemd/system/ipset-restore.service
+        content: |
+          [Unit]
+          Description=Restore ipset configuration
+          Before=netfilter-persistent.service
 
-    # - name: Save current state of the firewall in system file
-    #   community.general.iptables_state:
-    #     state: saved
-    #     path: /etc/iptables.conf
+          [Service]
+          Type=oneshot
+          ExecStart=/bin/bash -c '/sbin/ipset -exist restore < /etc/ipset.conf'
 
-    # - name: add couchbase host to properties
-    #   lineinfile:
-    #     dest: /etc/network/interfaces
-    #     line: iptables-restore < /etc/iptables.conf
+          [Install]
+          WantedBy=multi-user.target
+      notify:
+        - reload systemd
+        - enable ipset-restore service
 
+    # Save iptables configuration for persistence
+    - name: Save iptables configuration for persistence
+      ansible.builtin.shell: "iptables-save > /etc/iptables/rules.v4"
+      args:
+        executable: /bin/bash
+      notify: restart iptables-persistent
 
     - name: Configure SSH jail to use port 19022
       lineinfile:
@@ -150,3 +162,18 @@
       service:
         name: fail2ban
         state: restarted
+
+    - name: restart iptables-persistent
+      service:
+        name: netfilter-persistent
+        state: restarted
+
+    - name: reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: enable ipset-restore service
+      ansible.builtin.service:
+        name: ipset-restore
+        enabled: yes
+        state: started
