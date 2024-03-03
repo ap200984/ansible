@@ -1,0 +1,60 @@
+---
+- name: Install ELK Stack on Debian using Docker
+  hosts: all
+  become: yes
+  tasks:
+    # - name: Install Docker
+    #   apt:
+    #     name: docker.io
+    #     state: present
+    #   become: true
+
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+      become: true
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create directory for ELK stack
+      file:
+        path: /srv/elk
+        state: directory
+        mode: '0755'
+
+    - name: Deploy Docker Compose file
+      copy:
+        dest: /srv/elk/docker-compose.yml
+        content: |
+          version: '3'
+          services:
+            elasticsearch:
+              image: docker.elastic.co/elasticsearch/elasticsearch:7.9.3
+              environment:
+                - discovery.type=single-node
+              ports:
+                - "9200:9200"
+                - "9300:9300"
+            logstash:
+              image: docker.elastic.co/logstash/logstash:7.9.3
+              ports:
+                - "5000:5000"
+            kibana:
+              image: docker.elastic.co/kibana/kibana:7.9.3
+              ports:
+                - "5601:5601"
+          volumes:
+            elasticsearch-data:
+              driver: local
+      become: true
+
+    - name: Run Docker Compose to start ELK
+      command: docker-compose up -d
+      args:
+        chdir: /srv/elk/
+      become: true
