@@ -18,6 +18,14 @@
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
+    - name: Create directory for Grafana configuration
+      file:
+        path: /etc/grafana
+        state: directory
+        owner: root
+        group: root
+        mode: '0770'
+
     - name: Install grafana
       community.docker.docker_container:
         name: grafana
@@ -26,6 +34,9 @@
           - name: "{{ docker_network_name }}"
         ports:
           - 3000:3000/tcp
-#        volumes:
+        volumes:
+          - /etc/grafana:/var/lib/grafana:rw
         state: "started"
         restart_policy: "unless-stopped"
+
+# defalut login: admin/admin
