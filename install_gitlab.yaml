@@ -47,3 +47,5 @@
 
 # Set root password for the first time
 # sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
+
+# ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/my_gitlab -C "my_gitlab"
