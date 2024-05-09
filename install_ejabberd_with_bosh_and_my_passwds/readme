@@ -17,6 +17,9 @@ sudo certbot certonly --manual --preferred-challenges dns -d "*.vds2.space" -d "
 sudo chown -R root:ejabberd /etc/letsencrypt/ (Это может и не обязательно)
 sudo chmod -R a+rx /etc/letsencrypt
 
+!!!
+This certificate will not be renewed automatically
+
 
 Для использования десктопного клиента можно добавить в конфиг bosh
   -

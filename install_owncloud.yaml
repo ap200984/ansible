@@ -36,7 +36,19 @@
 
 #Username/Password: admin/admin
 
-
+#Для работы по HTTPS прокидывать сертификаты не требуестя - достаточно обратного прокси с терминицией SSL
+#Но сертификат должен обязательно соответствовать домену/поддомену
+#проверить можно через curl -v https://owncloud.vds4.space
+#   Если 
+#   * SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+#   * Server certificate:
+#   *  subject: CN=*.vds4.space
+#   *  subjectAltName: host "owncloud.vds4.space" matched cert's "*.vds4.space"
+#   *  SSL certificate verify ok.
+#   , то все ok.
+#   Если 
+#   * subjectAltName does not match owncloud.vds4.space
+#   , то поддомен не соответствует сертификату и надо получить новый
 
 # old server
 
