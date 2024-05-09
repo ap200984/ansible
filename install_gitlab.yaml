@@ -1,0 +1,46 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
+    - name: Create a network for gitlab
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    # - name: Create directory for gitlab configuration
+    #   file:
+    #     path: /etc/gitlab
+    #     state: directory
+    #     owner: root
+    #     group: root
+    #     mode: '0770'
+
+    - name: Install gitlab
+      community.docker.docker_container:
+        name: gitlab
+        image: "gitlab/gitlab-ce"
+        networks:
+          - name: "{{ docker_network_name }}"
+        # env:
+        #   GITLAB_OMNIBUS_CONFIG: "external_url 'https://gitlab.{{ domain }}'"
+        ports:
+          - 1443:443/tcp
+          - 1080:80/tcp
+          - 1022:22/tcp
+        volumes:
+          - /gitlab/config:/etc/gitlab
+          - /gitlab/logs:/var/log/gitlab
+          - /gitlab/data:/var/opt/gitlab
+        state: "started"
+        restart_policy: "unless-stopped"
