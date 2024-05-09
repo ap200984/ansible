@@ -16,9 +16,7 @@
 
 hosts:
   - localhost
-  - {{ ip_address }}
   - ejabberd.{{ domain }}
-  - {{ domain }}
 
 loglevel: 4
 log_rotate_size: 10485760
@@ -26,17 +24,17 @@ log_rotate_date: ""
 log_rotate_count: 1
 log_rate_limit: 100
 
-certfiles:
-  - /home/ejabberd/conf/server.pem
-
-ca_file: "/home/ejabberd/conf/cacert.pem"
+#certfiles:
+#  - /home/ejabberd/conf/server.pem
+#
+#ca_file: "/home/ejabberd/conf/cacert.pem"
 
 ## When using let's encrypt to generate certificates
-##certfiles:
-##  - /etc/letsencrypt/live/localhost/fullchain.pem
-##  - /etc/letsencrypt/live/localhost/privkey.pem
-##
-##ca_file: "/etc/letsencrypt/live/localhost/fullchain.pem"
+certfiles:
+  - /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+  - /etc/letsencrypt/live/{{ domain }}/privkey.pem
+
+ca_file: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
 
 listen:
   -

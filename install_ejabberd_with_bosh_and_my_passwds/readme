@@ -1,3 +1,21 @@
+Установка сертификатов
+sudo certbot certonly --manual --preferred-challenges dns -d "*.vds2.space" -d "vds2.space"
+
+По первому запросу добавить указанную TXT запись для поддомена _acme-challenge
+(Напр., yuccN8PuhnwMwqVnuXxlWIoRr86hYUw_ASIrMHaq7nU)
+ВЫЖДАТЬ 10 минут
+
+По второму запмросу добавить еще одну указанную TXT запись для того же поддомена
+ВЫЖДАТЬ еще 10 минут
+Нажать ENTER
+
+Будет создана директория /etc/letsencrypt
+
+На нее нужно будет установить права
+sudo chown -R root:ejabberd /etc/letsencrypt/ (Это может и не обязательно)
+sudo chmod -R a+rx /etc/letsencrypt
+
+
 Для использования десктопного клиента можно добавить в конфиг bosh
   -
     port: 5280
