@@ -1,4 +1,4 @@
-Установка сертификатов
+Установка сертификатов с поддержкой протокола ACME
 sudo certbot certonly --manual --preferred-challenges dns -d "*.vds2.space" -d "vds2.space"
 
 По первому запросу добавить указанную TXT запись для поддомена _acme-challenge
