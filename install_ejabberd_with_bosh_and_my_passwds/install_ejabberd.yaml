@@ -47,10 +47,11 @@
         ports:
           # - 1883:1883/tcp
           # - 4369:4369/tcp
+          # - 3478:3478/udp
           - 5222:5222/tcp
           # - 5269:5269/tcp
           - 5280:5280/tcp
-          # - 5443:5443/tcp
+          - 5443:5443/tcp
         volumes:
           - /etc/ejabberd/database:/home/ejabberd/database:rw
           - /etc/ejabberd/ejabberd.yml:/home/ejabberd/conf/ejabberd.yml:rw
@@ -58,26 +59,26 @@
         state: "started"
         restart_policy: "unless-stopped"
 
-    - name: set admin password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin {{ item }} ejabberd_{{ common_passwd }}"
-      ignore_errors: true
-      loop:
-        - localhost
-        - "ejabberd.{{ domain }}"
+    # - name: set admin password
+    #   shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin {{ item }} ejabberd_{{ common_passwd }}"
+    #   ignore_errors: true
+    #   loop:
+    #     - localhost
+    #     - "ejabberd.{{ domain }}"
 
-    - name: set user1 password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user1 {{ item }} ejabberd_{{ common_passwd }}"
-      ignore_errors: true
-      loop:
-        - localhost
-        - "ejabberd.{{ domain }}"
+    # - name: set user1 password
+    #   shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user1 {{ item }} ejabberd_{{ common_passwd }}"
+    #   ignore_errors: true
+    #   loop:
+    #     - localhost
+    #     - "ejabberd.{{ domain }}"
 
-    - name: set user2 password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user2 {{ item }} ejabberd_{{ common_passwd }}"
-      ignore_errors: true
-      loop:
-        - localhost
-        - "ejabberd.{{ domain }}"
+    # - name: set user2 password
+    #   shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user2 {{ item }} ejabberd_{{ common_passwd }}"
+    #   ignore_errors: true
+    #   loop:
+    #     - localhost
+    #     - "ejabberd.{{ domain }}"
 
     - name: restart ejabberd server
       shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl restart"

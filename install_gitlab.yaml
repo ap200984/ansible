@@ -35,7 +35,7 @@
         # env:
         #   GITLAB_OMNIBUS_CONFIG: "external_url 'https://gitlab.{{ domain }}'"
         ports:
-          - 1443:443/tcp
+          # - 1443:443/tcp
           - 1080:80/tcp
           - 1022:22/tcp
         volumes:
@@ -44,3 +44,6 @@
           - /gitlab/data:/var/opt/gitlab
         state: "started"
         restart_policy: "unless-stopped"
+
+# Set root password for the first time
+# sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"

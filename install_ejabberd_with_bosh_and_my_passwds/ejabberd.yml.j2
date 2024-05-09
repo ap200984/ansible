@@ -41,15 +41,15 @@ listen:
     port: 5222
     ip: "::"
     module: ejabberd_c2s
-    max_stanza_size: 2621440
-    shaper: c2s_shaper
+    max_stanza_size: 2621440000
+#    shaper: c2s_shaper
     access: c2s
     starttls_required: true
   -
     port: 5269
     ip: "::"
     module: ejabberd_s2s_in
-    max_stanza_size: 5242880
+    max_stanza_size: 52428800000
   -
     port: 5443
     ip: "::"
@@ -86,9 +86,9 @@ listen:
   ##  transport: udp
   ##  module: ejabberd_stun
   ##  use_turn: true
-  ##  turn_ip: {{ "{{ IP }}" }}
+  ##  turn_ip: {{ "{{ ip_address }}" }}
   ##  auth_type: user
-  ##  auth_realm: "example.com"
+  ##  auth_realm: "ejabberd.{{ domain }}"
   ##-
   ##  port: 3478
   ##  ip: "0.0.0.0"
@@ -197,8 +197,8 @@ shaper_rules:
     5000: admin
     5000: all
   c2s_shaper:
-    none: admin
-    normal: all
+#    none: admin
+#    normal: all
     none: all
   s2s_shaper: fast
 
