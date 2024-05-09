@@ -3,10 +3,12 @@ sudo certbot certonly --manual --preferred-challenges dns -d "*.vds2.space" -d "
 
 По первому запросу добавить указанную TXT запись для поддомена _acme-challenge
 (Напр., yuccN8PuhnwMwqVnuXxlWIoRr86hYUw_ASIrMHaq7nU)
-ВЫЖДАТЬ 10 минут
+Нажать ENTER
 
 По второму запмросу добавить еще одну указанную TXT запись для того же поддомена
-ВЫЖДАТЬ еще 10 минут
+
+ВЫЖДАТЬ 10 минут
+
 Нажать ENTER
 
 Будет создана директория /etc/letsencrypt
@@ -27,3 +29,4 @@ sudo chmod -R a+rx /etc/letsencrypt
 
 Тогда для подключения http://45.141.102.72:5280/bosh
 
+sudo certbot certonly --manual --preferred-challenges dns -d "*.vds4.space" -d "vds4.space"
