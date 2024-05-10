@@ -1,8 +1,9 @@
 [staging:vars]
 ansible_user=ansible
-ip_address=10.9.0.160
+ip_address=86.110.170.70
 domain=vds3.space
+subdomains_ports=['gitlab:1080', 'owncloud:1081']
 
 [staging]
-#86.110.170.70:19022
-10.9.0.120
+86.110.170.70:19022
+#10.9.0.120

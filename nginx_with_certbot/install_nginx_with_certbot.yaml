@@ -1,0 +1,83 @@
+---
+- name: Deploy Nginx and Certbot containers
+  hosts: all
+  become: yes
+  vars:
+    # domain: "{{ domain }}"
+    lets_encrypt_email: "{{ lets_encrypt_email }}"  # Or set Let's Encrypt email manually
+    # subdomains: "{{ subdomains }}"  # List of subdomains, напр., subdomains: ['blog.vds3.space', 'shop.vds3.space']
+
+  tasks:
+    - name: Include secrets
+      include_vars: ../secrets/lets_encrypt.yml
+
+    - name: Ensure Nginx log and Certbot directories exist
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: '/var/log/nginx', owner: 'root', group: 'root', mode: '0755' }
+        - { path: '/etc/nginx/conf.d', owner: 'root', group: 'root', mode: '0755' }
+        - { path: '/etc/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
+        - { path: '/var/lib/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
+        - { path: '/var/log/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
+        - { path: '/var/www/html', owner: 'www-data', group: 'www-data', mode: '0755' }
+
+    - name: Template Nginx configuration files for subdomains
+      ansible.builtin.template:
+        src: "./templates/{{ item }}.conf.j2"
+        dest: "/etc/nginx/conf.d/{{ item }}.conf"
+      loop: "{{ subdomains }}"
+      when: "item + '.conf.j2' in (lookup('fileglob', 'templates/*.conf.j2', wantlist=True) | map('basename') | list)"
+
+    - name: Pull the Nginx Docker image
+      docker_image:
+        name: nginx
+        source: pull
+
+    - name: Create Nginx container
+      docker_container:
+        name: nginx
+        image: nginx
+        state: started
+        restart_policy: always
+        published_ports:
+          - "80:80"
+          - "443:443"
+        volumes:
+          - "/var/log/nginx:/var/log/nginx"
+          - "/etc/letsencrypt:/etc/letsencrypt"
+          - "/etc/nginx/conf.d:/etc/nginx/conf.d"
+          - "/var/www/html:/var/www/html"
+        env:
+          VIRTUAL_HOST: "{{ domain }}"
+          LETSENCRYPT_HOST: "{{ domain }}"
+          LETSENCRYPT_EMAIL: "{{ lets_encrypt_email }}"
+
+    - name: Pull the Certbot Docker image
+      docker_image:
+        name: certbot/certbot
+        source: pull
+
+    - name: Create Certbot container
+      docker_container:
+        name: certbot
+        image: certbot/certbot
+        state: started
+        restart_policy: always
+        command: "certonly --webroot --webroot-path=/var/www/html --email {{ lets_encrypt_email }} --agree-tos --no-eff-email -d {{ domain }}{% for subdomain in subdomains %} -d {{ subdomain }}.{{ domain }}{% endfor %}"
+        volumes:
+          - "/etc/letsencrypt:/etc/letsencrypt"
+          - "/var/lib/letsencrypt:/var/lib/letsencrypt"
+          - "/var/log/letsencrypt:/var/log/letsencrypt"
+          - "/var/www/html:/var/www/html"
+
+  post_tasks:
+    - name: Reload Nginx configuration inside the container
+      community.docker.docker_container_exec:
+        container: nginx
+        command: nginx -s reload
+

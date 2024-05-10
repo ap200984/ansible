@@ -33,14 +33,13 @@
         networks:
           - name: "{{ docker_network_name }}"
         # env:
-        #   GITLAB_OMNIBUS_CONFIG: "external_url 'https://gitlab.{{ domain }}'"
+        #   GITLAB_OMNIBUS_CONFIG: "external_url 'https://gitlab.{{ domain }}/'; gitlab_rails['gitlab_shell_ssh_port']=1022;"
         ports:
-          # - 1443:443/tcp
           - 1080:80/tcp
           - 1022:22/tcp
         volumes:
           - /gitlab/config:/etc/gitlab
-          - /gitlab/logs:/var/log/gitlab
+          - /var/log/gitlab:/var/log/gitlab
           - /gitlab/data:/var/opt/gitlab
         state: "started"
         restart_policy: "unless-stopped"
