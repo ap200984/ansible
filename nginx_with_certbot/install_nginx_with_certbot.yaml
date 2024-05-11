@@ -2,16 +2,12 @@
 - name: Deploy Nginx and Certbot containers
   hosts: all
   become: yes
-  vars:
-    # domain: "{{ domain }}"
-    lets_encrypt_email: "{{ lets_encrypt_email }}"  # Or set Let's Encrypt email manually
-    # subdomains: "{{ subdomains }}"  # List of subdomains, напр., subdomains: ['blog.vds3.space', 'shop.vds3.space']
 
   tasks:
     - name: Include secrets
       include_vars: ../secrets/lets_encrypt.yml
 
-    - name: Ensure Nginx log and Certbot directories exist
+    - name: Ensure necessary directories exist
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: directory
@@ -28,10 +24,12 @@
 
     - name: Template Nginx configuration files for subdomains
       ansible.builtin.template:
-        src: "./templates/{{ item }}.conf.j2"
-        dest: "/etc/nginx/conf.d/{{ item }}.conf"
-      loop: "{{ subdomains }}"
-      when: "item + '.conf.j2' in (lookup('fileglob', 'templates/*.conf.j2', wantlist=True) | map('basename') | list)"
+        src: "./templates/subdomain.conf.j2"
+        dest: "/etc/nginx/conf.d/{{ item.split(':')[0] }}.conf"
+      vars:
+        subdomain: "{{ item.split(':')[0] }}"
+        port: "{{ item.split(':')[1] }}"
+      loop: "{{ subdomains_ports }}"
 
     - name: Pull the Nginx Docker image
       docker_image:
@@ -49,8 +47,8 @@
           - "443:443"
         volumes:
           - "/var/log/nginx:/var/log/nginx"
+          - "/etc/nginx:/etc/nginx"
           - "/etc/letsencrypt:/etc/letsencrypt"
-          - "/etc/nginx/conf.d:/etc/nginx/conf.d"
           - "/var/www/html:/var/www/html"
         env:
           VIRTUAL_HOST: "{{ domain }}"
@@ -68,12 +66,17 @@
         image: certbot/certbot
         state: started
         restart_policy: always
-        command: "certonly --webroot --webroot-path=/var/www/html --email {{ lets_encrypt_email }} --agree-tos --no-eff-email -d {{ domain }}{% for subdomain in subdomains %} -d {{ subdomain }}.{{ domain }}{% endfor %}"
+        entrypoint: /bin/sh
+        command: >
+          -c "apk add --no-cache --update py3-pip nginx &&
+              pip install certbot-nginx &&
+              certbot --nginx --email {{ lets_encrypt_email }} --agree-tos --no-eff-email -d {{ domain }}{% for item in subdomains_ports %} -d {{ item.split(':')[0] }}.{{ domain }}{% endfor %}"
         volumes:
           - "/etc/letsencrypt:/etc/letsencrypt"
           - "/var/lib/letsencrypt:/var/lib/letsencrypt"
           - "/var/log/letsencrypt:/var/log/letsencrypt"
           - "/var/www/html:/var/www/html"
+          - "/etc/nginx:/etc/nginx"
 
   post_tasks:
     - name: Reload Nginx configuration inside the container
