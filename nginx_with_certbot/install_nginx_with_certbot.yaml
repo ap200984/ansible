@@ -22,6 +22,27 @@
         - { path: '/var/log/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
         - { path: '/var/www/html', owner: 'www-data', group: 'www-data', mode: '0755' }
 
+    - name: Check if nginx.conf exists
+      ansible.builtin.stat:
+        path: /etc/nginx/nginx.conf
+      register: nginx_conf
+
+    - name: Deploy temporary Nginx container to populate config if nginx.conf is missing
+      docker_container:
+        name: temporary-nginx
+        image: nginx
+        state: started
+        volumes:
+          - "/etc/nginx:/etc/nginx_target"
+        command: "/bin/sh -c 'cp -ar /etc/nginx/* /etc/nginx_target/ && sleep 10'"
+      when: not nginx_conf.stat.exists
+
+    - name: Stop temporary Nginx container
+      docker_container:
+        name: temporary-nginx
+        state: absent
+      when: not nginx_conf.stat.exists
+
     - name: Template Nginx configuration files for subdomains
       ansible.builtin.template:
         src: "./templates/subdomain.conf.j2"
