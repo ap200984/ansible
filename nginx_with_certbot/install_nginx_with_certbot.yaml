@@ -34,7 +34,8 @@
         state: started
         volumes:
           - "/etc/nginx:/etc/nginx_target"
-        command: "/bin/sh -c 'cp -ar /etc/nginx/* /etc/nginx_target/ && sleep 10'"
+          - "/var/www/html:/var/www_target"
+        command: "/bin/sh -c 'cp -ar /etc/nginx/* /etc/nginx_target/; cp -ar /usr/share/nginx/html/* /var/www_target/'"
       when: not nginx_conf.stat.exists
 
     - name: Stop temporary Nginx container
@@ -42,6 +43,11 @@
         name: temporary-nginx
         state: absent
       when: not nginx_conf.stat.exists
+
+    - name: Template Nginx configuration files for main domain
+      ansible.builtin.template:
+        src: "./templates/domain.conf.j2"
+        dest: "/etc/nginx/conf.d/{{ domain }}.conf"
 
     - name: Template Nginx configuration files for subdomains
       ansible.builtin.template:
@@ -66,6 +72,7 @@
         published_ports:
           - "80:80"
           - "443:443"
+        # network_mode: host
         volumes:
           - "/var/log/nginx:/var/log/nginx"
           - "/etc/nginx:/etc/nginx"
@@ -76,28 +83,33 @@
           LETSENCRYPT_HOST: "{{ domain }}"
           LETSENCRYPT_EMAIL: "{{ lets_encrypt_email }}"
 
+    - name: Reload Nginx configuration inside the container
+      community.docker.docker_container_exec:
+        container: nginx
+        command: nginx -s reload
+
     - name: Pull the Certbot Docker image
       docker_image:
         name: certbot/certbot
         source: pull
 
-    - name: Create Certbot container
-      docker_container:
-        name: certbot
-        image: certbot/certbot
-        state: started
-        restart_policy: always
-        entrypoint: /bin/sh
-        command: >
-          -c "apk add --no-cache --update py3-pip nginx &&
-              pip install certbot-nginx &&
-              certbot --nginx --email {{ lets_encrypt_email }} --agree-tos --no-eff-email -d {{ domain }}{% for item in subdomains_ports %} -d {{ item.split(':')[0] }}.{{ domain }}{% endfor %}"
-        volumes:
-          - "/etc/letsencrypt:/etc/letsencrypt"
-          - "/var/lib/letsencrypt:/var/lib/letsencrypt"
-          - "/var/log/letsencrypt:/var/log/letsencrypt"
-          - "/var/www/html:/var/www/html"
-          - "/etc/nginx:/etc/nginx"
+    # - name: Create Certbot container
+    #   docker_container:
+    #     name: certbot
+    #     image: certbot/certbot
+    #     state: started
+    #     restart_policy: always
+    #     entrypoint: /bin/sh
+    #     command: >
+    #       -c "apk add --no-cache --update py3-pip nginx &&
+    #           pip install certbot-nginx &&
+    #           certbot --nginx --email {{ lets_encrypt_email }} --agree-tos --no-eff-email -d {{ domain }}{% for item in subdomains_ports %} -d {{ item.split(':')[0] }}.{{ domain }}{% endfor %}"
+    #     volumes:
+    #       - "/etc/letsencrypt:/etc/letsencrypt"
+    #       #- "/var/lib/letsencrypt:/var/lib/letsencrypt"
+    #       #- "/var/log/letsencrypt:/var/log/letsencrypt"
+    #       - "/var/www/html:/var/www/html"
+    #       - "/etc/nginx:/etc/nginx"
 
   post_tasks:
     - name: Reload Nginx configuration inside the container
@@ -105,3 +117,6 @@
         container: nginx
         command: nginx -s reload
 
+# sudo docker rm -f nginx && sudo rm -rf /etc/letsencrypt && sudo rm -rf /var/lib/letsencrypt && sudo rm -rf /var/log/letsencrypt && sudo rm -rf /var/www/html && sudo rm -rf /etc/nginx
+# apt update && apt install -y certbot python3-certbot-nginx
+# certbot --nginx --email ap200984@yandex.ru --agree-tos --no-eff-email -d vds1.space -d grafana.vds1.space -d speedtest.vds1.space

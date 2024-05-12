@@ -1,0 +1,10 @@
+server {
+    listen 80 default_server;
+    server_name {{ domain }};
+
+    location / {
+        root /var/www/html;
+        index index.html;
+        allow all;
+    }
+}
