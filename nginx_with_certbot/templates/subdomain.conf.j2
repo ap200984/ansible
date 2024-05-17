@@ -1,6 +1,7 @@
 server {
     listen 80;
     server_name {{ subdomain }}.{{ domain }};
+    client_max_body_size 0M;
 
     location / {
         proxy_pass http://{{ ip_address }}:{{ port }};
