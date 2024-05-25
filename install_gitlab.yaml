@@ -29,13 +29,12 @@
           - 1022:22/tcp
         volumes:
           - /gitlab/config:/etc/gitlab
-          - /var/log/gitlab:/var/log/gitlab
-          # - /dev/null:/var/log/gitlab
+          # - /var/log/gitlab:/var/log/gitlab
           - /gitlab/data:/var/opt/gitlab
         env:
           GITLAB_OMNIBUS_CONFIG: |
-            external_url 'https://gitlab.vds4.space/';
-            gitlab_rails['gitlab_shell_ssh_host'] = 'gitlab.vds4.space';
+            external_url 'https://gitlab.{{ domain }}/';
+            gitlab_rails['gitlab_shell_ssh_host'] = 'gitlab.{{ domain }}';
             gitlab_rails['gitlab_shell_ssh_port'] = 1022;
             nginx['listen_port'] = 80;
             nginx['listen_https'] = false;
@@ -44,6 +43,7 @@
             };
         state: "started"
         restart_policy: "unless-stopped"
+        log_driver: "none"
 
 
 
@@ -53,16 +53,31 @@
 # ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/my_gitlab -C "my_gitlab"
 
 
-sudo docker run -d --name gitlab \
-  -p 1080:80 \
-  -p 1022:22 \
-  -v /gitlab/config:/etc/gitlab \
-  -v /var/log/gitlab:/var/log/gitlab \
-  -v /gitlab/data:/var/opt/gitlab \
-  -e GITLAB_OMNIBUS_CONFIG="external_url 'http://10.9.0.120/'; \
-                             gitlab_rails['gitlab_shell_ssh_host'] = '10.9.0.120'; \
-                             gitlab_rails['gitlab_shell_ssh_port'] = 1022; \
-                             nginx['listen_port'] = 80; \
-                             nginx['listen_https'] = false;" \
-  --restart unless-stopped \
-  gitlab/gitlab-ce
+# sudo docker run -d --name gitlab \
+#   -p 1080:80 \
+#   -p 1022:22 \
+#   -v /gitlab/config:/etc/gitlab \
+#   -v /var/log/gitlab:/var/log/gitlab \
+#   -v /gitlab/data:/var/opt/gitlab \
+#   -e GITLAB_OMNIBUS_CONFIG="external_url 'http://10.9.0.120/'; \
+#                              gitlab_rails['gitlab_shell_ssh_host'] = '10.9.0.120'; \
+#                              gitlab_rails['gitlab_shell_ssh_port'] = 1022; \
+#                              nginx['listen_port'] = 80; \
+#                              nginx['listen_https'] = false;" \
+#   --restart unless-stopped \
+#   gitlab/gitlab-ce
+
+#   # -v /var/log/gitlab:/var/log/gitlab \
+# sudo docker run -d --name gitlab \
+#   --log-opt max-size=1k \
+#   -p 1080:80 \
+#   -p 1022:22 \
+#   -v /gitlab/config:/etc/gitlab \
+#   -v /gitlab/data:/var/opt/gitlab \
+#   -e GITLAB_OMNIBUS_CONFIG="external_url 'http://10.9.0.120/'; \
+#                              gitlab_rails['gitlab_shell_ssh_host'] = '10.9.0.120'; \
+#                              gitlab_rails['gitlab_shell_ssh_port'] = 1022; \
+#                              nginx['listen_port'] = 80; \
+#                              nginx['listen_https'] = false;" \
+#   --restart unless-stopped \
+#   gitlab/gitlab-ce

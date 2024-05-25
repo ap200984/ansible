@@ -6,7 +6,7 @@ second_octet=19
 l2tp_octet=255
 gre_octet=254
 host_name=VDS
-subdomains_ports=['speedtest:3005', 'grafana:3000']
+subdomains_ports=['speedtest:3005', 'grafana:3000', gitlab:1080]
 
 [prod]
 45.141.102.72:19022
