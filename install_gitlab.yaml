@@ -18,33 +18,51 @@
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
-    # - name: Create directory for gitlab configuration
-    #   file:
-    #     path: /etc/gitlab
-    #     state: directory
-    #     owner: root
-    #     group: root
-    #     mode: '0770'
-
     - name: Install gitlab
       community.docker.docker_container:
         name: gitlab
         image: "gitlab/gitlab-ce"
         networks:
           - name: "{{ docker_network_name }}"
-        # env:
-        #   GITLAB_OMNIBUS_CONFIG: "external_url 'https://gitlab.{{ domain }}/'; gitlab_rails['gitlab_shell_ssh_port']=1022;"
         ports:
           - 1080:80/tcp
           - 1022:22/tcp
         volumes:
           - /gitlab/config:/etc/gitlab
           - /var/log/gitlab:/var/log/gitlab
+          # - /dev/null:/var/log/gitlab
           - /gitlab/data:/var/opt/gitlab
+        env:
+          GITLAB_OMNIBUS_CONFIG: |
+            external_url 'https://gitlab.vds4.space/';
+            gitlab_rails['gitlab_shell_ssh_host'] = 'gitlab.vds4.space';
+            gitlab_rails['gitlab_shell_ssh_port'] = 1022;
+            nginx['listen_port'] = 80;
+            nginx['listen_https'] = false;
+            nginx['proxy_set_headers'] = {
+              "X-Forwarded-Proto" => "https"
+            };
         state: "started"
         restart_policy: "unless-stopped"
+
+
 
 # Set root password for the first time
 # sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
 
 # ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/my_gitlab -C "my_gitlab"
+
+
+sudo docker run -d --name gitlab \
+  -p 1080:80 \
+  -p 1022:22 \
+  -v /gitlab/config:/etc/gitlab \
+  -v /var/log/gitlab:/var/log/gitlab \
+  -v /gitlab/data:/var/opt/gitlab \
+  -e GITLAB_OMNIBUS_CONFIG="external_url 'http://10.9.0.120/'; \
+                             gitlab_rails['gitlab_shell_ssh_host'] = '10.9.0.120'; \
+                             gitlab_rails['gitlab_shell_ssh_port'] = 1022; \
+                             nginx['listen_port'] = 80; \
+                             nginx['listen_https'] = false;" \
+  --restart unless-stopped \
+  gitlab/gitlab-ce
