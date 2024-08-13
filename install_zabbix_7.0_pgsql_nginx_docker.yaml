@@ -74,7 +74,7 @@
     - name: Zabbix frontend
       community.docker.docker_container:
         name: zabbix-web-nginx-pgsql
-        image: "zabbix/zabbix-web-nginx-pgsql:ubuntu-6.4-latest"
+        image: "zabbix/zabbix-web-nginx-pgsql:ubuntu-7.0-latest"
         networks:
           - name: "{{ docker_network_name }}"
         env:
