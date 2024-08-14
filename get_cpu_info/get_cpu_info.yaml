@@ -1,0 +1,13 @@
+---
+- name: Gather and display processor architecture information
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Print processor architecture
+      debug:
+        msg: >
+          Processor Architecture: {{ ansible_processor[1] }}
+    - name: Print processor architecture all
+      debug:
+        msg: >
+          Processor Architecture All: {{ ansible_processor }}
