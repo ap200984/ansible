@@ -37,6 +37,77 @@
         group: root
         mode: 0700
 
+    - name: Install Python3 and pip
+      apt:
+        name:
+          - python3
+          - python3-pip
+        state: present
+        update_cache: yes
+
+
+    - name: Install required Python modules
+      pip:
+        name:
+          - qrcode[pil]
+          - Pillow
+        executable: pip3
+        extra_args: "--break-system-packages"
+
+    - name: Copy Python script to /etc/wireguard
+      copy:
+        dest: /etc/wireguard/generate_qr_codes.py
+        content: |
+          import qrcode
+          import os
+
+          # Path to the folder where peer configuration files are stored
+          config_folder = "/etc/wireguard/peers"
+
+          # Output folder for QR code images
+          output_folder = "./qr_codes"
+          os.makedirs(output_folder, exist_ok=True)
+
+          # Iterate over each configuration file in the config folder
+          for config_file in os.listdir(config_folder):
+              if config_file.endswith(".conf"):
+                  peer_name = config_file.split('.')[0]  # Get the peer name (e.g., "wg0")
+
+                  # Read the configuration file content
+                  with open(os.path.join(config_folder, config_file), 'r') as f:
+                      config_content = f.read()
+
+                  # Generate the QR code from the configuration content
+                  qr = qrcode.QRCode(
+                      version=1,
+                      error_correction=qrcode.constants.ERROR_CORRECT_L,
+                      box_size=10,  # Box size for PNG
+                      border=4,
+                  )
+                  qr.add_data(config_content)
+                  qr.make(fit=True)
+
+                  # Create and save the QR code as an image file
+                  img = qr.make_image(fill='black', back_color='white')
+                  img_path = os.path.join(output_folder, f"{peer_name}.png")
+                  img.save(img_path)
+                  print(f"QR code image saved for {peer_name}: {img_path}")
+
+                  # Now generate the QR code for terminal display with smaller box size
+                  qr_terminal = qrcode.QRCode(
+                      version=1,
+                      error_correction=qrcode.constants.ERROR_CORRECT_L,
+                      box_size=1,  # Smaller box size for terminal display
+                      border=1,
+                  )
+                  qr_terminal.add_data(config_content)
+                  qr_terminal.make(fit=True)
+
+                  # Display the QR code in the terminal
+                  print(f"QR code for {peer_name} (Terminal View):")
+                  qr_terminal.print_ascii()
+                  print("\n")
+
     - name: Generate server private key if not set
       command: "wg genkey"
       register: server_private_key_gen
@@ -121,10 +192,10 @@
 
     - name: Create peer configuration files
       copy:
-        dest: /etc/wireguard/peers/wg{{ loop_index }}.conf
+        dest: /etc/wireguard/peers/wg_client{{ loop_index }}.conf
         content: |
           [Interface]
-          Address = {{ peer_base_ip }}{{ loop_index }}/24
+          Address = {{ peer_base_ip }}{{ loop_index + 2 }}/24
           PrivateKey = {{ peer_private_keys.results[loop_index - 1].stdout }}
 
           [Peer]
