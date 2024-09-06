@@ -8,7 +8,7 @@
     subnet: "10.66.66.0/24"
     interface_name: wg0
     server_private_key: "8DThCDSjwD15n6nApLUPD8cijXyeF28ImPXVmVoYY0M="
-    peer_count: 10
+    peer_count: 2
     peer_base_ip: "10.66.66."
 
   tasks:
@@ -49,7 +49,7 @@
       when: server_private_key == ''
 
     - name: Generate server public key
-      command: "echo {{ server_private_key }} | wg pubkey"
+      shell: "echo {{ server_private_key }} | wg pubkey"
       register: server_public_key
 
     - name: Configure WireGuard server
@@ -90,11 +90,20 @@
       register: peer_private_keys
 
     - name: Generate public key for each peer
-      command: "echo {{ item.stdout }} | wg pubkey"
+      command: "wg pubkey"
+      args:
+        stdin: "{{ item.stdout }}"
       loop: "{{ peer_private_keys.results }}"
       loop_control:
         loop_var: item
       register: peer_public_keys
+
+    - name: Generate preshared key for each peer
+      command: "wg genpsk"
+      loop: "{{ range(1, peer_count + 1) | list }}"
+      loop_control:
+        loop_var: peer_num
+      register: peer_preshared_keys
 
     - name: Add peer configurations to WireGuard server
       lineinfile:
@@ -103,7 +112,8 @@
         line: |
           [Peer]
           PublicKey = {{ item.stdout }}
-          AllowedIPs = {{ peer_base_ip }}{{ loop_index }}/32
+          PresharedKey = {{ peer_preshared_keys.results[loop_index].stdout }}
+          AllowedIPs = {{ peer_base_ip }}{{ loop_index + 2 }}/32
       loop: "{{ peer_public_keys.results }}"
       loop_control:
         index_var: loop_index
@@ -119,6 +129,7 @@
 
           [Peer]
           PublicKey = {{ server_public_key.stdout }}
+          PresharedKey = {{ peer_preshared_keys.results[loop_index - 1].stdout }}
           Endpoint = {{ ansible_default_ipv4.address }}:{{ listen_port }}
           AllowedIPs = 0.0.0.0/0
           PersistentKeepalive = 21
