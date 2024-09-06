@@ -1,0 +1,120 @@
+---
+- name: Install and configure WireGuard server with peers
+  hosts: wireguard_servers
+  become: true
+  vars:
+    listen_port: 56685
+    server_ip: "10.66.66.1"
+    subnet: "10.66.66.0/24"
+    interface_name: wg0
+    server_private_key: "8DThCDSjwD15n6nApLUPD8cijXyeF28ImPXVmVoYY0M="
+    peer_count: 10
+    peer_base_ip: "10.66.66."
+
+  tasks:
+    - name: Install WireGuard and required tools
+      apt:
+        name:
+          - wireguard
+          - wireguard-tools
+          - iptables
+        state: present
+        update_cache: yes
+
+    - name: Ensure /etc/wireguard directory exists
+      file:
+        path: /etc/wireguard
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+
+    - name: Generate server private key if not set
+      command: "wg genkey"
+      register: server_private_key_gen
+      when: server_private_key == ''
+      changed_when: true
+
+    - name: Set server private key from generated key
+      set_fact:
+        server_private_key: "{{ server_private_key_gen.stdout }}"
+      when: server_private_key == ''
+
+    - name: Generate server public key
+      command: "echo {{ server_private_key }} | wg pubkey"
+      register: server_public_key
+
+    - name: Configure WireGuard server
+      copy:
+        dest: /etc/wireguard/{{ interface_name }}.conf
+        content: |
+          [Interface]
+          Address = {{ server_ip }}/24
+          ListenPort = {{ listen_port }}
+          PrivateKey = {{ server_private_key }}
+          PostUp = iptables -I INPUT -p udp --dport {{ listen_port }} -j ACCEPT
+          PostUp = iptables -I FORWARD -i eth0 -o {{ interface_name }} -j ACCEPT
+          PostUp = iptables -I FORWARD -i {{ interface_name }} -j ACCEPT
+          PostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          PostUp = ip6tables -I FORWARD -i {{ interface_name }} -j ACCEPT
+          PostUp = ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          PostDown = iptables -D INPUT -p udp --dport {{ listen_port }} -j ACCEPT
+          PostDown = iptables -D FORWARD -i eth0 -o {{ interface_name }} -j ACCEPT
+          PostDown = iptables -D FORWARD -i {{ interface_name }} -j ACCEPT
+          PostDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+          PostDown = ip6tables -D FORWARD -i {{ interface_name }} -j ACCEPT
+          PostDown = ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: Enable and start WireGuard service
+      systemd:
+        name: wg-quick@{{ interface_name }}
+        enabled: yes
+        state: started
+
+    - name: Generate peer configuration files
+      loop: "{{ range(1, peer_count + 1) | list }}"
+      vars:
+        peer_ip: "{{ peer_base_ip }}{{ item + 1 }}"
+        peer_name: "wg{{ item }}"
+      block:
+        - name: Generate private key for peer {{ item }}
+          command: "wg genkey"
+          register: peer_private_key
+
+        - name: Generate public key for peer {{ item }}
+          command: "echo {{ peer_private_key.stdout }} | wg pubkey"
+          register: peer_public_key
+
+        - name: Add peer to server configuration
+          lineinfile:
+            path: /etc/wireguard/{{ interface_name }}.conf
+            insertafter: EOF
+            line: |
+              [Peer]
+              PublicKey = {{ peer_public_key.stdout }}
+              AllowedIPs = {{ peer_ip }}/32
+
+        - name: Create peer configuration for {{ peer_name }}
+          copy:
+            dest: /etc/wireguard/peers/{{ peer_name }}.conf
+            content: |
+              [Interface]
+              Address = {{ peer_ip }}/24
+              PrivateKey = {{ peer_private_key.stdout }}
+
+              [Peer]
+              PublicKey = {{ server_public_key.stdout }}
+              Endpoint = {{ ansible_default_ipv4.address }}:{{ listen_port }}
+              AllowedIPs = 0.0.0.0/0
+              PersistentKeepalive = 21
+            owner: root
+            group: root
+            mode: 0600
+
+    - name: Restart WireGuard to apply changes
+      systemd:
+        name: wg-quick@{{ interface_name }}
+        state: restarted

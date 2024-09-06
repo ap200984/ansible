@@ -45,7 +45,15 @@
         restart_policy: "unless-stopped"
         log_driver: "none"
 
-
+    - name: Install GitLab Runner
+      community.docker.docker_container:
+        name: "gitlab-runner"
+        image: "gitlab/gitlab-runner:latest"
+        volumes:
+          - /gitlab/gitlab-runner:/etc/gitlab-runner
+          - /var/run/docker.sock:/var/run/docker.sock
+        state: started
+        restart_policy: unless-stopped
 
 # Set root password for the first time
 # sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
@@ -53,31 +61,3 @@
 # ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/my_gitlab -C "my_gitlab"
 
 
-# sudo docker run -d --name gitlab \
-#   -p 1080:80 \
-#   -p 1022:22 \
-#   -v /gitlab/config:/etc/gitlab \
-#   -v /var/log/gitlab:/var/log/gitlab \
-#   -v /gitlab/data:/var/opt/gitlab \
-#   -e GITLAB_OMNIBUS_CONFIG="external_url 'http://10.9.0.120/'; \
-#                              gitlab_rails['gitlab_shell_ssh_host'] = '10.9.0.120'; \
-#                              gitlab_rails['gitlab_shell_ssh_port'] = 1022; \
-#                              nginx['listen_port'] = 80; \
-#                              nginx['listen_https'] = false;" \
-#   --restart unless-stopped \
-#   gitlab/gitlab-ce
-
-#   # -v /var/log/gitlab:/var/log/gitlab \
-# sudo docker run -d --name gitlab \
-#   --log-opt max-size=1k \
-#   -p 1080:80 \
-#   -p 1022:22 \
-#   -v /gitlab/config:/etc/gitlab \
-#   -v /gitlab/data:/var/opt/gitlab \
-#   -e GITLAB_OMNIBUS_CONFIG="external_url 'http://10.9.0.120/'; \
-#                              gitlab_rails['gitlab_shell_ssh_host'] = '10.9.0.120'; \
-#                              gitlab_rails['gitlab_shell_ssh_port'] = 1022; \
-#                              nginx['listen_port'] = 80; \
-#                              nginx['listen_https'] = false;" \
-#   --restart unless-stopped \
-#   gitlab/gitlab-ce
