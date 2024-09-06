@@ -1,6 +1,6 @@
 ---
 - name: Install and configure WireGuard server with peers
-  hosts: wireguard_servers
+  hosts: all
   become: true
   vars:
     listen_port: 56685
@@ -24,6 +24,14 @@
     - name: Ensure /etc/wireguard directory exists
       file:
         path: /etc/wireguard
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+
+    - name: Ensure /etc/wireguard/peers directory exists
+      file:
+        path: /etc/wireguard/peers
         state: directory
         owner: root
         group: root
@@ -74,45 +82,50 @@
         enabled: yes
         state: started
 
-    - name: Generate peer configuration files
+    - name: Generate private key for each peer
+      command: "wg genkey"
       loop: "{{ range(1, peer_count + 1) | list }}"
-      vars:
-        peer_ip: "{{ peer_base_ip }}{{ item + 1 }}"
-        peer_name: "wg{{ item }}"
-      block:
-        - name: Generate private key for peer {{ item }}
-          command: "wg genkey"
-          register: peer_private_key
+      loop_control:
+        loop_var: peer_num
+      register: peer_private_keys
 
-        - name: Generate public key for peer {{ item }}
-          command: "echo {{ peer_private_key.stdout }} | wg pubkey"
-          register: peer_public_key
+    - name: Generate public key for each peer
+      command: "echo {{ item.stdout }} | wg pubkey"
+      loop: "{{ peer_private_keys.results }}"
+      loop_control:
+        loop_var: item
+      register: peer_public_keys
 
-        - name: Add peer to server configuration
-          lineinfile:
-            path: /etc/wireguard/{{ interface_name }}.conf
-            insertafter: EOF
-            line: |
-              [Peer]
-              PublicKey = {{ peer_public_key.stdout }}
-              AllowedIPs = {{ peer_ip }}/32
+    - name: Add peer configurations to WireGuard server
+      lineinfile:
+        path: /etc/wireguard/{{ interface_name }}.conf
+        insertafter: EOF
+        line: |
+          [Peer]
+          PublicKey = {{ item.stdout }}
+          AllowedIPs = {{ peer_base_ip }}{{ loop_index }}/32
+      loop: "{{ peer_public_keys.results }}"
+      loop_control:
+        index_var: loop_index
+        loop_var: item
 
-        - name: Create peer configuration for {{ peer_name }}
-          copy:
-            dest: /etc/wireguard/peers/{{ peer_name }}.conf
-            content: |
-              [Interface]
-              Address = {{ peer_ip }}/24
-              PrivateKey = {{ peer_private_key.stdout }}
+    - name: Create peer configuration files
+      copy:
+        dest: /etc/wireguard/peers/wg{{ loop_index }}.conf
+        content: |
+          [Interface]
+          Address = {{ peer_base_ip }}{{ loop_index }}/24
+          PrivateKey = {{ peer_private_keys.results[loop_index - 1].stdout }}
 
-              [Peer]
-              PublicKey = {{ server_public_key.stdout }}
-              Endpoint = {{ ansible_default_ipv4.address }}:{{ listen_port }}
-              AllowedIPs = 0.0.0.0/0
-              PersistentKeepalive = 21
-            owner: root
-            group: root
-            mode: 0600
+          [Peer]
+          PublicKey = {{ server_public_key.stdout }}
+          Endpoint = {{ ansible_default_ipv4.address }}:{{ listen_port }}
+          AllowedIPs = 0.0.0.0/0
+          PersistentKeepalive = 21
+      loop: "{{ peer_private_keys.results }}"
+      loop_control:
+        index_var: loop_index
+        loop_var: item
 
     - name: Restart WireGuard to apply changes
       systemd:
