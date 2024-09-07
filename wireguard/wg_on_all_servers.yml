@@ -10,6 +10,10 @@
         update_cache: yes
       tags: update
 
+    - name: Find the default network interface
+      set_fact:
+        wg_interface: "{{ ansible_default_ipv4.interface }}"
+
     - name: Purge WireGuard and remove WireGuard directory
       block:
         - name: Purge WireGuard package

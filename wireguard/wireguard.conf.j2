@@ -2,6 +2,8 @@
 Address = {{ servers[inventory_hostname].private_ip }}
 PrivateKey = {{ wg_private_key.stdout }}
 ListenPort = {{ wireguard_port }}
+PostUp = iptables -t nat -A POSTROUTING -o {{ wg_interface }} -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -o {{ wg_interface }} -j MASQUERADE
 
 {% for peer in servers[inventory_hostname].peers %}
 [Peer]
