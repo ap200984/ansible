@@ -31,11 +31,11 @@ AllowedIPs = 0.0.0.0/0,::/0
         - Allowed Address: 0.0.0.0/0
         - Preshared Key: взять из сгенерированного конфига для этого клиента
         - Persistent Keepalive: поставил 25 с, нодумаю, не обязательно
+    - добавить IP адрес на интерфейсе wg_client_vds4, указанный в сгенерированном конфиге (Address)
 
 3. На стороне сервера
     - открытй ключ необходимо прописать в конфигурации сервера (vds4)
-        - файл /etc/wireguard/wg0.conf
-        добавить
+        - файл /etc/wireguard/wg0.conf добавить
 ### Client temp
 [Peer]
 PublicKey = ZVp4hWCC6XRI9j2Mj8zAV70XYiFxUXRjttg1LjetVAo= (взят из интерфейса микротика при повторогом входе в него после создания)
