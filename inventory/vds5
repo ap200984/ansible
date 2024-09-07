@@ -1,7 +1,8 @@
 [prod:vars]
 ansible_user=ansible
 ip_address=217.144.189.206
-second_octet=23
+second_octet=21
+wg_octet=253
 gre_octet=254
 l2tp_octet=255
 domain=vds5.space

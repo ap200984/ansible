@@ -26,6 +26,7 @@ AllowedIPs = 0.0.0.0/0,::/0
         - имя: wg_client_vds4 (можно такое же как у интерфейса)
         - Public Key: взять из сгенерированного конфига для этого клиента
             (он же есть на сервере из значения SERVER_PUB_KEY в файле /etc/wireguard/params)
+        - Private Key: оставить пустым
         - Endpoint: взять из сгенерированного конфига для этого клиента (только IP без :)
         - Endpoint Port: взять из сгенерированного конфига для этого клиента (только номер порта после :)
         - Allowed Address: 0.0.0.0/0
@@ -42,4 +43,35 @@ PublicKey = ZVp4hWCC6XRI9j2Mj8zAV70XYiFxUXRjttg1LjetVAo= (взят из инте
 PresharedKey = JMppS4CDS4YQobcnZZ6PIrNlK2FYOnTUEyza6+gTMS8= (сгенеррован изначально)
 AllowedIPs = 10.66.66.8/32,fd42:42:42::8/128 (IP адрес, который нужно назначить этому клиенту)
 
+    - перезапустить службу wg
+        - sudo service wg-quick@wg0 restart
+
+
+Ошибка в логах микротика:
+    wg_client_vds4: [wg_client_vds4] v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=: Handshake for peer did not complete after 5 seconds, retrying (try 2)
+
+
+
+
+Соединенение двух Linux серверов:
+vds4 # wg genkey > private
+vds4 # wg pubkey < private
+vds4 # ip link add wg0 type wireguard
+vds4 # ip addr add 10.250.0.1/24 dev wg0
+vds4 # wg set wg0 private-key ./private
+vds4 # ip link set wg0 up
+vds4 # wg
+vds4 # wg set wg0 peer [public key from vsd5] allowed-ips 10.250.0.2/32 endpoint 217.144.189.206:56685
+vds4 # wg
+
+
+
+vds5 # wg genkey > private
+vds5 # wg pubkey < private
+vds5 # ip link add wg0 type wireguard
+vds5 # ip addr add 10.250.0.2/24 dev wg0
+vds5 # wg set wg0 private-key ./private
+vds5 # ip link set wg0 up
+vds5 # wg set wg0 peer [public key from vsd4] allowed-ips 10.250.0.1/32 endpoint 69.30.237.130:56685
+vds5 # wg
 

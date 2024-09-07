@@ -1,0 +1,43 @@
+wireguard_port: 56685
+
+# Server-specific configurations
+servers:
+  vds:
+    private_ip: "10.250.0.1/24"
+    peers:
+      - { name: "vds2", public_ip: "{{ hostvars['vds2'].ansible_host }}", private_ip: "10.250.0.2/24" }
+      - { name: "vds3", public_ip: "{{ hostvars['vds3'].ansible_host }}", private_ip: "10.250.0.3/24" }
+      - { name: "vds4", public_ip: "{{ hostvars['vds4'].ansible_host }}", private_ip: "10.250.0.4/24" }
+      - { name: "vds5", public_ip: "{{ hostvars['vds5'].ansible_host }}", private_ip: "10.250.0.5/24" }
+
+  vds2:
+    private_ip: "10.250.0.2/24"
+    peers:
+      - { name: "vds", public_ip: "{{ hostvars['vds'].ansible_host }}", private_ip: "10.250.0.1/24" }
+      - { name: "vds3", public_ip: "{{ hostvars['vds3'].ansible_host }}", private_ip: "10.250.0.3/24" }
+      - { name: "vds4", public_ip: "{{ hostvars['vds4'].ansible_host }}", private_ip: "10.250.0.4/24" }
+      - { name: "vds5", public_ip: "{{ hostvars['vds5'].ansible_host }}", private_ip: "10.250.0.5/24" }
+
+  vds3:
+    private_ip: "10.250.0.3/24"
+    peers:
+      - { name: "vds", public_ip: "{{ hostvars['vds'].ansible_host }}", private_ip: "10.250.0.1/24" }
+      - { name: "vds2", public_ip: "{{ hostvars['vds2'].ansible_host }}", private_ip: "10.250.0.2/24" }
+      - { name: "vds4", public_ip: "{{ hostvars['vds4'].ansible_host }}", private_ip: "10.250.0.4/24" }
+      - { name: "vds5", public_ip: "{{ hostvars['vds5'].ansible_host }}", private_ip: "10.250.0.5/24" }
+
+  vds4:
+    private_ip: "10.250.0.4/24"
+    peers:
+      - { name: "vds", public_ip: "{{ hostvars['vds'].ansible_host }}", private_ip: "10.250.0.1/24" }
+      - { name: "vds2", public_ip: "{{ hostvars['vds2'].ansible_host }}", private_ip: "10.250.0.2/24" }
+      - { name: "vds3", public_ip: "{{ hostvars['vds3'].ansible_host }}", private_ip: "10.250.0.3/24" }
+      - { name: "vds5", public_ip: "{{ hostvars['vds5'].ansible_host }}", private_ip: "10.250.0.5/24" }
+
+  vds5:
+    private_ip: "10.250.0.5/24"
+    peers:
+      - { name: "vds", public_ip: "{{ hostvars['vds'].ansible_host }}", private_ip: "10.250.0.1/24" }
+      - { name: "vds2", public_ip: "{{ hostvars['vds2'].ansible_host }}", private_ip: "10.250.0.2/24" }
+      - { name: "vds3", public_ip: "{{ hostvars['vds3'].ansible_host }}", private_ip: "10.250.0.3/24" }
+      - { name: "vds4", public_ip: "{{ hostvars['vds4'].ansible_host }}", private_ip: "10.250.0.4/24" }

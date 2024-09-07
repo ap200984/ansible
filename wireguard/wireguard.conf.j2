@@ -1,0 +1,11 @@
+[Interface]
+Address = {{ servers[inventory_hostname].private_ip }}
+PrivateKey = {{ wg_private_key.stdout }}
+ListenPort = {{ wireguard_port }}
+
+{% for peer in servers[inventory_hostname].peers %}
+[Peer]
+PublicKey = {{ hostvars[peer.name].wg_public_key.stdout }}
+Endpoint = {{ peer.public_ip }}:{{ wireguard_port }}
+AllowedIPs = {{ peer.private_ip }}
+{% endfor %}
