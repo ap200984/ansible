@@ -8,7 +8,7 @@
     subnet: "10.66.66.0/24"
     interface_name: wg0
     server_private_key: "8DThCDSjwD15n6nApLUPD8cijXyeF28ImPXVmVoYY0M="
-    peer_count: 2
+    peer_count: 10
     peer_base_ip: "10.66.66."
 
   tasks:
