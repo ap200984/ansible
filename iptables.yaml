@@ -59,9 +59,9 @@
         match_set: "allowed_hosts"
         match_set_flags: src
         jump: ACCEPT
-        comment: "Accept connections to SSH port from allowed_hosts"
+        comment: "Accept connections from allowed_hosts"
 
-    - name: Allow connections on multiple ports
+    - name: Allow connections on multiple TCP ports
       ansible.builtin.iptables:
         chain: INPUT
         protocol: tcp
@@ -76,6 +76,14 @@
           - "5280"
           - "5443"
           - "19022"
+        jump: ACCEPT
+
+    - name: Allow connections on multiple UDP ports
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_ports:
+          - "56685"
         jump: ACCEPT
 
     - name: DROP output to 10.0.0.0/11 not through tunnels

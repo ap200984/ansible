@@ -64,28 +64,13 @@
         enabled: yes
         state: started
 
-    - name: Allow WireGuard network in INPUT chain
-      iptables:
-        chain: INPUT
-        source: 10.250.0.0/24
-        jump: ACCEPT
-        comment: "Allow traffic from WireGuard network"
-
-    - name: Allow forwarding for WireGuard network
-      iptables:
-        chain: FORWARD
-        source: 10.250.0.0/24
-        jump: ACCEPT
-        comment: "Allow forwarding for WireGuard network"
-
-    - name: Allow WireGuard network in INPUT chain
-      iptables:
-        chain: INPUT
-        source: "{{ item }}"
-        jump: ACCEPT
-        comment: "Allow traffic from {{ item }}"
-      loop: "{{ groups['wireguard_servers'] | map('extract', hostvars, 'ansible_host') | list }}"
-      when: item is defined
+    - name: copy add_peer.sh script
+      copy:
+        src: add_peer.sh
+        dest: /etc/wireguard
+        owner: root
+        group: root
+        mode: "0640"
 
   handlers:
     - name: Restart WireGuard

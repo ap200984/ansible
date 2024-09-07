@@ -1,0 +1,37 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
+    - name: Create a network for HTTP proxy
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: HTTP proxy
+      community.docker.docker_container:
+        name: squid
+        image: "sameersbn/squid:latest"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          SQUID_CACHE_MEM: "256 MB"
+          SQUID_LOG_STDOUT: "true"
+        ports:
+          - 3128:3128/tcp
+        volumes:
+          #- /etc/squid:/etc/squid
+          - /srv/docker/squid/cache:/var/spool/squid
+          - /srv/docker/squid/logs:/var/log/squid
+        state: "started"
+        restart_policy: "unless-stopped"
