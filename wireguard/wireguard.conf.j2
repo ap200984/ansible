@@ -7,5 +7,5 @@ ListenPort = {{ wireguard_port }}
 [Peer]
 PublicKey = {{ hostvars[peer.name].wg_public_key.stdout }}
 Endpoint = {{ peer.public_ip }}:{{ wireguard_port }}
-AllowedIPs = {{ peer.private_ip }}
+AllowedIPs = {{ peer.private_ip.split('/')[0] }}/32
 {% endfor %}
