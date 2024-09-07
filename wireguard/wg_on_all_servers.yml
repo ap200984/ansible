@@ -5,6 +5,30 @@
     - vars.yml
 
   tasks:
+    - name: Update apt package list
+      apt:
+        update_cache: yes
+      tags: update
+
+    - name: Purge WireGuard and remove WireGuard directory
+      block:
+        - name: Purge WireGuard package
+          apt:
+            name: wireguard
+            state: absent
+            purge: yes
+
+        - name: Remove WireGuard directory
+          file:
+            path: /etc/wireguard
+            state: absent
+      tags: purge
+
+    - name: Delete WireGuard interface wg0
+      command: ip link del wg0
+      ignore_errors: yes
+      tags: cleanup
+
     - name: Install WireGuard
       apt:
         name: wireguard
@@ -39,6 +63,29 @@
         name: wg-quick@wg0
         enabled: yes
         state: started
+
+    - name: Allow WireGuard network in INPUT chain
+      iptables:
+        chain: INPUT
+        source: 10.250.0.0/24
+        jump: ACCEPT
+        comment: "Allow traffic from WireGuard network"
+
+    - name: Allow forwarding for WireGuard network
+      iptables:
+        chain: FORWARD
+        source: 10.250.0.0/24
+        jump: ACCEPT
+        comment: "Allow forwarding for WireGuard network"
+
+    - name: Allow WireGuard network in INPUT chain
+      iptables:
+        chain: INPUT
+        source: "{{ item }}"
+        jump: ACCEPT
+        comment: "Allow traffic from {{ item }}"
+      loop: "{{ groups['wireguard_servers'] | map('extract', hostvars, 'ansible_host') | list }}"
+      when: item is defined
 
   handlers:
     - name: Restart WireGuard
