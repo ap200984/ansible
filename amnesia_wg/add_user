@@ -1,0 +1,4 @@
+wg_manager:x:1001:1001::/home/wg_manager:/bin/bash
++ sudoer
+
+
