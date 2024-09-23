@@ -1,0 +1,43 @@
+---
+- name: Enable command logging for all users using auditd
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure auditd is installed
+      apt:
+        name:
+          - auditd
+          - audispd-plugins
+        state: present
+        update_cache: yes
+
+    - name: Add audit rules to log all commands by all users
+      copy:
+        content: |
+          -w /bin/bash -p x -k user_commands
+          -a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=unset -k user_commands
+        dest: /etc/audit/rules.d/audit.rules
+        owner: root
+        group: root
+        mode: "0640"
+
+    - name: Restart auditd service to apply changes
+      service:
+        name: auditd
+        state: restarted
+        enabled: yes
+
+    - name: Verify auditd service is running
+      systemd:
+        name: auditd
+        state: started
+        enabled: yes
+
+    - name: Check if audit rules are applied
+      shell: "auditctl -l | grep 'execve'"
+      register: auditctl_check
+      ignore_errors: yes
+
+    - name: Display audit rule verification
+      debug:
+        var: auditctl_check.stdout
