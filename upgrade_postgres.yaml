@@ -1,75 +1,83 @@
 ---
-- name: Upgrade PostgreSQL from initial to desired version
-  hosts: all
-  become: true
+- name: Upgrade PostgreSQL data directory from {{ postgres_initial_version }} to {{ postgres_desired_version }}
+  hosts: localhost
   vars:
-    initial_postgres_version: "15.8"
-    desired_postgres_version: "17.0"
-    backup_file_path: "/backup.sql"
-
+    postgres_initial_version: "15.8"
+    postgres_desired_version: "17.0"
+    postgres_data_dir: "/postgres"
+    postgres_dump_file: "/tmp/postgres_dump.sql"
+    postgres_container_name: "postgres-server"
+    docker_network_name: "your_network_name"
   tasks:
-
-    - name: Backup existing PostgreSQL data
-      shell: |
-        docker exec -t postgres-server pg_dumpall -c -U zabbix > {{ backup_file_path }}
-      args:
-        creates: "{{ backup_file_path }}"
-      register: backup_status
-
-    - name: Ensure backup was successful
-      fail:
-        msg: "Backup failed!"
-      when: backup_status.rc != 0
-
-    - name: Stop existing PostgreSQL container
+    - name: Stop the existing PostgreSQL container
+      become: true
       community.docker.docker_container:
-        name: postgres-server
+        name: "{{ postgres_container_name }}"
         state: stopped
 
-    - name: Run temporary PostgreSQL {{ desired_postgres_version }} container for upgrade
+    - name: Run temporary PostgreSQL {{ postgres_initial_version }} container to dump all databases
+      become: true
       community.docker.docker_container:
-        name: postgres-upgrade
-        image: "postgres:{{ desired_postgres_version }}"
-        command: |
-          bash -c 'pg_upgrade -b /usr/lib/postgresql/{{ initial_postgres_version.split(".")[0] }}/bin/ \
-                           -B /usr/lib/postgresql/{{ desired_postgres_version.split(".")[0] }}/bin/ \
-                           -d /var/lib/postgresql/data -D /var/lib/postgresql/data.new'
+        name: "postgres-dump"
+        image: "postgres:{{ postgres_initial_version }}"
         volumes:
-          - /postgres:/var/lib/postgresql/data
+          - "{{ postgres_data_dir }}:/var/lib/postgresql/data"
         env:
-          POSTGRES_USER: "zabbix"
           POSTGRES_PASSWORD: "zabbix2"
+        command: "sleep infinity"
         state: started
-      register: upgrade_status
-      ignore_errors: true
+        detach: yes
 
-    - name: Move old data directory to backup (in case of issues)
-      shell: mv /postgres /postgres_old
-      when: upgrade_status is succeeded
+    - name: Wait for PostgreSQL to be ready
+      become: true
+      retries: 10
+      delay: 5
+      shell: |
+        docker exec postgres-dump pg_isready
+      register: pg_isready_output
+      until: pg_isready_output.rc == 0
 
-    - name: Check if upgraded data directory exists
-      stat:
-        path: /postgres/data.new
-      register: upgrade_data_new
+    - name: Dump all databases to file
+      become: true
+      shell: |
+        docker exec postgres-dump pg_dumpall -U postgres -f /tmp/postgres_dump.sql
+      environment:
+        PGPASSWORD: "zabbix2"
 
-    - name: Fail if pg_upgrade did not create data.new
-      fail:
-        msg: "pg_upgrade did not complete successfully, /postgres/data.new not found."
-      when: not upgrade_data_new.stat.exists
+    - name: Copy dump file from container to host
+      become: true
+      shell: |
+        docker cp postgres-dump:/tmp/postgres_dump.sql {{ postgres_dump_file }}
 
-    - name: Move upgraded data directory into place
-      shell: mv /postgres/data.new /postgres
-      when: upgrade_data_new.stat.exists
-
-    - name: Remove the temporary upgrade container
+    - name: Stop and remove temporary dump container
+      become: true
       community.docker.docker_container:
-        name: postgres-upgrade
+        name: "postgres-dump"
         state: absent
+        force_kill: yes
+        remove_volumes: yes
 
-    - name: Start PostgreSQL container with upgraded version
+    - name: Rename old data directory
+      become: true
+      command: mv {{ postgres_data_dir }} {{ postgres_data_dir }}_{{ postgres_initial_version }}
+      args:
+        removes: "{{ postgres_data_dir }}"
+        creates: "{{ postgres_data_dir }}_{{ postgres_initial_version }}"
+
+    - name: Create new data directory
+      become: true
+      file:
+        path: "{{ postgres_data_dir }}"
+        state: directory
+        owner: 999
+        group: 999
+        mode: '0700'
+
+    - name: Start new PostgreSQL {{ postgres_desired_version }} container
+      become: true
       community.docker.docker_container:
-        name: postgres-server
-        image: "postgres:{{ desired_postgres_version }}"
+        name: "{{ postgres_container_name }}"
+        image: "postgres:{{ postgres_desired_version }}"
         networks:
           - name: "{{ docker_network_name }}"
         env:
@@ -77,13 +85,41 @@
           POSTGRES_PASSWORD: "zabbix2"
           POSTGRES_DB: "zabbix"
         ports:
-          - 6432:5432/tcp
+          - "6432:5432"
         volumes:
-          - /postgres:/var/lib/postgresql/data
-        state: "started"
-        restart_policy: "unless-stopped"
-      when: upgrade_data_new.stat.exists
+          - "{{ postgres_data_dir }}:/var/lib/postgresql/data"
+        state: started
+        restart_policy: unless-stopped
 
-    - name: Restore PostgreSQL data from backup (only if upgrade failed)
-      shell: docker exec -i postgres-server psql -U zabbix -d zabbix < {{ backup_file_path }}
-      when: upgrade_status is failed
+    - name: Wait for new PostgreSQL to be ready
+      become: true
+      retries: 10
+      delay: 5
+      shell: |
+        docker exec {{ postgres_container_name }} pg_isready
+      register: pg_isready_output_new
+      until: pg_isready_output_new.rc == 0
+
+    - name: Copy dump file to new container
+      become: true
+      shell: |
+        docker cp {{ postgres_dump_file }} {{ postgres_container_name }}:/tmp/postgres_dump.sql
+
+    - name: Restore databases from dump file
+      become: true
+      shell: |
+        docker exec {{ postgres_container_name }} psql -U postgres -f /tmp/postgres_dump.sql
+      environment:
+        PGPASSWORD: "zabbix2"
+
+    - name: Remove dump file from host
+      become: true
+      file:
+        path: "{{ postgres_dump_file }}"
+        state: absent
+
+    - name: Remove old data directory
+      become: true
+      file:
+        path: "{{ postgres_data_dir }}_{{ postgres_initial_version }}"
+        state: absent
