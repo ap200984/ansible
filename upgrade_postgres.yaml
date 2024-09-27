@@ -5,7 +5,7 @@
   vars:
     initial_postgres_version: "15.8"
     desired_postgres_version: "17.0"
-    backup_file_path: "/postgres/backup.sql"
+    backup_file_path: "/backup.sql"
 
   tasks:
 
@@ -40,14 +40,26 @@
           POSTGRES_USER: "zabbix"
           POSTGRES_PASSWORD: "zabbix2"
         state: started
+      register: upgrade_status
       ignore_errors: true
 
     - name: Move old data directory to backup (in case of issues)
       shell: mv /postgres /postgres_old
-      when: backup_status is succeeded
+      when: upgrade_status is succeeded
+
+    - name: Check if upgraded data directory exists
+      stat:
+        path: /postgres/data.new
+      register: upgrade_data_new
+
+    - name: Fail if pg_upgrade did not create data.new
+      fail:
+        msg: "pg_upgrade did not complete successfully, /postgres/data.new not found."
+      when: not upgrade_data_new.stat.exists
 
     - name: Move upgraded data directory into place
       shell: mv /postgres/data.new /postgres
+      when: upgrade_data_new.stat.exists
 
     - name: Remove the temporary upgrade container
       community.docker.docker_container:
@@ -70,7 +82,8 @@
           - /postgres:/var/lib/postgresql/data
         state: "started"
         restart_policy: "unless-stopped"
+      when: upgrade_data_new.stat.exists
 
-    - name: Restore PostgreSQL data
+    - name: Restore PostgreSQL data from backup (only if upgrade failed)
       shell: docker exec -i postgres-server psql -U zabbix -d zabbix < {{ backup_file_path }}
-      when: backup_status is succeeded
+      when: upgrade_status is failed
