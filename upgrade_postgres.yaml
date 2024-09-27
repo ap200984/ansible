@@ -1,0 +1,76 @@
+---
+- name: Upgrade PostgreSQL from initial to desired version
+  hosts: all
+  become: true
+  vars:
+    initial_postgres_version: "15.8"
+    desired_postgres_version: "17.0"
+    backup_file_path: "/postgres/backup.sql"
+
+  tasks:
+
+    - name: Backup existing PostgreSQL data
+      shell: |
+        docker exec -t postgres-server pg_dumpall -c -U zabbix > {{ backup_file_path }}
+      args:
+        creates: "{{ backup_file_path }}"
+      register: backup_status
+
+    - name: Ensure backup was successful
+      fail:
+        msg: "Backup failed!"
+      when: backup_status.rc != 0
+
+    - name: Stop existing PostgreSQL container
+      community.docker.docker_container:
+        name: postgres-server
+        state: stopped
+
+    - name: Run temporary PostgreSQL {{ desired_postgres_version }} container for upgrade
+      community.docker.docker_container:
+        name: postgres-upgrade
+        image: "postgres:{{ desired_postgres_version }}"
+        command: |
+          bash -c 'pg_upgrade -b /usr/lib/postgresql/{{ initial_postgres_version.split(".")[0] }}/bin/ \
+                           -B /usr/lib/postgresql/{{ desired_postgres_version.split(".")[0] }}/bin/ \
+                           -d /var/lib/postgresql/data -D /var/lib/postgresql/data.new'
+        volumes:
+          - /postgres:/var/lib/postgresql/data
+        env:
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+        state: started
+      ignore_errors: true
+
+    - name: Move old data directory to backup (in case of issues)
+      shell: mv /postgres /postgres_old
+      when: backup_status is succeeded
+
+    - name: Move upgraded data directory into place
+      shell: mv /postgres/data.new /postgres
+
+    - name: Remove the temporary upgrade container
+      community.docker.docker_container:
+        name: postgres-upgrade
+        state: absent
+
+    - name: Start PostgreSQL container with upgraded version
+      community.docker.docker_container:
+        name: postgres-server
+        image: "postgres:{{ desired_postgres_version }}"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+        ports:
+          - 6432:5432/tcp
+        volumes:
+          - /postgres:/var/lib/postgresql/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Restore PostgreSQL data
+      shell: docker exec -i postgres-server psql -U zabbix -d zabbix < {{ backup_file_path }}
+      when: backup_status is succeeded
