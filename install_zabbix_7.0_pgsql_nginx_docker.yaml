@@ -119,6 +119,7 @@
       when: ansible_distribution|lower == "ubuntu"
       apt:
         deb: "https://repo.zabbix.com/zabbix/7.0/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_7.0-1%2B{{ ansible_distribution|lower }}{{ ansible_distribution_version}}_all.deb"
+      ignore_errors: true
 
     - name: Update and upgrade apt packages
       become: true
