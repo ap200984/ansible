@@ -1,13 +1,13 @@
 ---
 - name: Upgrade PostgreSQL data directory from {{ postgres_initial_version }} to {{ postgres_desired_version }}
-  hosts: localhost
+  hosts: all
   vars:
     postgres_initial_version: "15.8"
     postgres_desired_version: "17.0"
     postgres_data_dir: "/postgres"
     postgres_dump_file: "/tmp/postgres_dump.sql"
     postgres_container_name: "postgres-server"
-    docker_network_name: "your_network_name"
+    docker_network_name: "docker-net"
     postgres_user: "zabbix"
     postgres_password: "zabbix2"
     postgres_db: "zabbix"
