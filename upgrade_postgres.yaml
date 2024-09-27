@@ -1,13 +1,16 @@
 ---
 - name: Upgrade PostgreSQL data directory from {{ postgres_initial_version }} to {{ postgres_desired_version }}
-  hosts: all
+  hosts: localhost
   vars:
     postgres_initial_version: "15.8"
     postgres_desired_version: "17.0"
     postgres_data_dir: "/postgres"
     postgres_dump_file: "/tmp/postgres_dump.sql"
     postgres_container_name: "postgres-server"
-    docker_network_name: docker-net
+    docker_network_name: "your_network_name"
+    postgres_user: "zabbix"
+    postgres_password: "zabbix2"
+    postgres_db: "zabbix"
   tasks:
     - name: Stop the existing PostgreSQL container
       become: true
@@ -23,26 +26,27 @@
         volumes:
           - "{{ postgres_data_dir }}:/var/lib/postgresql/data"
         env:
-          POSTGRES_PASSWORD: "zabbix2"
-        command: "sleep infinity"
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+          POSTGRES_DB: "{{ postgres_db }}"
         state: started
-        detach: yes
+        restart_policy: unless-stopped
 
     - name: Wait for PostgreSQL to be ready
       become: true
       retries: 10
       delay: 5
       shell: |
-        docker exec postgres-dump pg_isready
+        docker exec postgres-dump pg_isready -U {{ postgres_user }}
       register: pg_isready_output
       until: pg_isready_output.rc == 0
 
     - name: Dump all databases to file
       become: true
       shell: |
-        docker exec postgres-dump pg_dumpall -U postgres -f /tmp/postgres_dump.sql
+        docker exec postgres-dump pg_dumpall -U {{ postgres_user }} -f /tmp/postgres_dump.sql
       environment:
-        PGPASSWORD: "zabbix2"
+        PGPASSWORD: "{{ postgres_password }}"
 
     - name: Copy dump file from container to host
       become: true
@@ -55,7 +59,7 @@
         name: "postgres-dump"
         state: absent
         force_kill: yes
-        remove_volumes: yes
+        keep_volumes: no  # Updated parameter
 
     - name: Rename old data directory
       become: true
@@ -81,9 +85,9 @@
         networks:
           - name: "{{ docker_network_name }}"
         env:
-          POSTGRES_USER: "zabbix"
-          POSTGRES_PASSWORD: "zabbix2"
-          POSTGRES_DB: "zabbix"
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+          POSTGRES_DB: "{{ postgres_db }}"
         ports:
           - "6432:5432"
         volumes:
@@ -96,7 +100,7 @@
       retries: 10
       delay: 5
       shell: |
-        docker exec {{ postgres_container_name }} pg_isready
+        docker exec {{ postgres_container_name }} pg_isready -U {{ postgres_user }}
       register: pg_isready_output_new
       until: pg_isready_output_new.rc == 0
 
@@ -108,9 +112,9 @@
     - name: Restore databases from dump file
       become: true
       shell: |
-        docker exec {{ postgres_container_name }} psql -U postgres -f /tmp/postgres_dump.sql
+        docker exec {{ postgres_container_name }} psql -U {{ postgres_user }} -f /tmp/postgres_dump.sql
       environment:
-        PGPASSWORD: "zabbix2"
+        PGPASSWORD: "{{ postgres_password }}"
 
     - name: Remove dump file from host
       become: true
