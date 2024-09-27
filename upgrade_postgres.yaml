@@ -1,6 +1,6 @@
 ---
 - name: Upgrade PostgreSQL data directory from {{ postgres_initial_version }} to {{ postgres_desired_version }}
-  hosts: localhost
+  hosts: all
   vars:
     postgres_initial_version: "15.8"
     postgres_desired_version: "17.0"
