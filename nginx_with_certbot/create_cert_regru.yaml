@@ -24,19 +24,13 @@
     - name: Ensure Docker network exists
       community.docker.docker_network:
         name: "{{ docker_network_name }}"
-        ipam_options:
+        ipam_config:
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
     - name: Ensure /etc/letsencrypt directory exists on the host
       file:
         path: /etc/letsencrypt
-        state: directory
-        mode: '0755'
-
-    - name: Ensure /etc/nginx/conf.d directory exists on the host
-      file:
-        path: /etc/nginx/conf.d
         state: directory
         mode: '0755'
 
@@ -83,7 +77,7 @@
     - name: Run Certbot to obtain SSL certificates for {{ domain }} and *.{{ domain }}
       community.docker.docker_container_exec:
         container: certbot_container
-        command: certbot certonly --authenticator dns -d {{ domain }} -d "*.{{ domain }}" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds 600
+        command: certbot certonly --authenticator dns -d {{ domain }} -d "*.{{ domain }}" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds 900
 
     - name: Stop and remove the Docker container
       community.docker.docker_container:

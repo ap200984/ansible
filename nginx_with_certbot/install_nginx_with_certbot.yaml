@@ -1,122 +1,58 @@
 ---
-- name: Deploy Nginx and Certbot containers
+- name: Setup NGINX Docker container with SSL and HTTP to HTTPS redirection
   hosts: all
-  become: yes
+  become: true
+
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+    nginx_image: "nginx:latest"
+    nginx_conf_dir: "/etc/nginx/conf.d"
+    letsencrypt_dir: "/etc/letsencrypt"
+    restart_policy: "unless-stopped"
 
   tasks:
-    - name: Include secrets
-      include_vars: ../secrets/lets_encrypt.yml
+    - name: Create a network for nginx
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
 
-    - name: Ensure necessary directories exist
-      ansible.builtin.file:
-        path: "{{ item.path }}"
+    - name: Ensure the NGINX configuration directory exists
+      file:
+        path: "{{ nginx_conf_dir }}"
         state: directory
-        owner: "{{ item.owner }}"
-        group: "{{ item.group }}"
-        mode: "{{ item.mode }}"
-      loop:
-        - { path: '/var/log/nginx', owner: 'root', group: 'root', mode: '0755' }
-        - { path: '/etc/nginx/conf.d', owner: 'root', group: 'root', mode: '0755' }
-        - { path: '/etc/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
-        - { path: '/var/lib/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
-        - { path: '/var/log/letsencrypt', owner: 'root', group: 'root', mode: '0755' }
-        - { path: '/var/www/html', owner: 'www-data', group: 'www-data', mode: '0755' }
 
-    - name: Check if nginx.conf exists
-      ansible.builtin.stat:
-        path: /etc/nginx/nginx.conf
-      register: nginx_conf
+    - name: Copy common.conf to the NGINX conf directory
+      copy:
+        src: common.conf
+        dest: "{{ nginx_conf_dir }}/common.conf"
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Deploy temporary Nginx container to populate config if nginx.conf is missing
-      docker_container:
-        name: temporary-nginx
-        image: nginx
-        state: started
-        volumes:
-          - "/etc/nginx:/etc/nginx_target"
-          - "/var/www/html:/var/www_target"
-        command: "/bin/sh -c 'cp -ar /etc/nginx/* /etc/nginx_target/; cp -ar /usr/share/nginx/html/* /var/www_target/'"
-      when: not nginx_conf.stat.exists
+    - name: Copy grafana.conf to the NGINX conf directory
+      copy:
+        src: grafana.conf
+        dest: "{{ nginx_conf_dir }}/grafana.conf"
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Stop temporary Nginx container
-      docker_container:
-        name: temporary-nginx
-        state: absent
-      when: not nginx_conf.stat.exists
-
-    - name: Template Nginx configuration files for main domain
-      ansible.builtin.template:
-        src: "./templates/domain.conf.j2"
-        dest: "/etc/nginx/conf.d/{{ domain }}.conf"
-
-    - name: Template Nginx configuration files for subdomains
-      ansible.builtin.template:
-        src: "./templates/subdomain.conf.j2"
-        dest: "/etc/nginx/conf.d/{{ item.split(':')[0] }}.conf"
-      vars:
-        subdomain: "{{ item.split(':')[0] }}"
-        port: "{{ item.split(':')[1] }}"
-      loop: "{{ subdomains_ports }}"
-
-    - name: Pull the Nginx Docker image
-      docker_image:
-        name: nginx
-        source: pull
-
-    - name: Create Nginx container
+    - name: Run NGINX Docker container
       docker_container:
         name: nginx
-        image: nginx
+        image: "{{ nginx_image }}"
         state: started
-        restart_policy: always
-        published_ports:
+        restart_policy: "{{ restart_policy }}"
+        ports:
           - "80:80"
           - "443:443"
-        # network_mode: host
         volumes:
-          - "/var/log/nginx:/var/log/nginx"
-          - "/etc/nginx:/etc/nginx"
-          - "/etc/letsencrypt:/etc/letsencrypt"
-          - "/var/www/html:/var/www/html"
-        env:
-          VIRTUAL_HOST: "{{ domain }}"
-          LETSENCRYPT_HOST: "{{ domain }}"
-          LETSENCRYPT_EMAIL: "{{ lets_encrypt_email }}"
-
-    - name: Reload Nginx configuration inside the container
-      community.docker.docker_container_exec:
-        container: nginx
-        command: nginx -s reload
-
-    - name: Pull the Certbot Docker image
-      docker_image:
-        name: certbot/certbot
-        source: pull
-
-    # - name: Create Certbot container
-    #   docker_container:
-    #     name: certbot
-    #     image: certbot/certbot
-    #     state: started
-    #     restart_policy: always
-    #     entrypoint: /bin/sh
-    #     command: >
-    #       -c "apk add --no-cache --update py3-pip nginx &&
-    #           pip install certbot-nginx &&
-    #           certbot --nginx --email {{ lets_encrypt_email }} --agree-tos --no-eff-email -d {{ domain }}{% for item in subdomains_ports %} -d {{ item.split(':')[0] }}.{{ domain }}{% endfor %}"
-    #     volumes:
-    #       - "/etc/letsencrypt:/etc/letsencrypt"
-    #       #- "/var/lib/letsencrypt:/var/lib/letsencrypt"
-    #       #- "/var/log/letsencrypt:/var/log/letsencrypt"
-    #       - "/var/www/html:/var/www/html"
-    #       - "/etc/nginx:/etc/nginx"
-
-  post_tasks:
-    - name: Reload Nginx configuration inside the container
-      community.docker.docker_container_exec:
-        container: nginx
-        command: nginx -s reload
-
-# sudo docker rm -f nginx && sudo rm -rf /etc/letsencrypt && sudo rm -rf /var/lib/letsencrypt && sudo rm -rf /var/log/letsencrypt && sudo rm -rf /var/www/html && sudo rm -rf /etc/nginx
-# apt update && apt install -y certbot python3-certbot-nginx
-# certbot --nginx --email ap200984@yandex.ru --agree-tos --no-eff-email -d vds1.space -d grafana.vds1.space -d speedtest.vds1.space
+          - "{{ letsencrypt_dir }}:/etc/letsencrypt"
+          - "{{ nginx_conf_dir }}:/etc/nginx/conf.d"
+        networks:
+          - name: "{{ docker_network_name }}"
