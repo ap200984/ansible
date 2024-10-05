@@ -8,6 +8,12 @@
 - name: Run Docker container with Ubuntu 24.04 and Certbot Regru
   hosts: all
   become: yes
+
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
   tasks:
     - name: Include regru secrets
       include_vars: ../secrets/regru_secrets.yml
@@ -15,9 +21,22 @@
     - name: Include letsencrypt secrets
       include_vars: ../secrets/letsencrypt_secrets.yml
 
+    - name: Ensure Docker network exists
+      community.docker.docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_options:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
     - name: Ensure /etc/letsencrypt directory exists on the host
       file:
         path: /etc/letsencrypt
+        state: directory
+        mode: '0755'
+
+    - name: Ensure /etc/nginx/conf.d directory exists on the host
+      file:
+        path: /etc/nginx/conf.d
         state: directory
         mode: '0755'
 
@@ -29,6 +48,9 @@
         volumes:
           - /etc/letsencrypt:/etc/letsencrypt
         command: sleep infinity
+        networks:
+          - name: "{{ docker_network_name }}"
+        restart_policy: unless-stopped
 
     - name: Install apt-get update
       community.docker.docker_container_exec:
@@ -61,7 +83,7 @@
     - name: Run Certbot to obtain SSL certificates for {{ domain }} and *.{{ domain }}
       community.docker.docker_container_exec:
         container: certbot_container
-        command: certbot certonly --authenticator dns -d vds5.space -d "*.vds5.space" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds 600
+        command: certbot certonly --authenticator dns -d {{ domain }} -d "*.{{ domain }}" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds 600
 
     - name: Stop and remove the Docker container
       community.docker.docker_container:
@@ -75,9 +97,11 @@
         state: started
         volumes:
           - /etc/letsencrypt:/etc/letsencrypt
-        restart_policy: always
+        restart_policy: unless-stopped
         command: >
           bash -c "while true; do
           certbot renew --non-interactive --quiet;
           sleep 12h;
           done"
+        networks:
+          - name: "{{ docker_network_name }}"
