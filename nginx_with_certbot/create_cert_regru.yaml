@@ -83,19 +83,3 @@
       community.docker.docker_container:
         name: certbot_container
         state: absent
-
-    - name: Start Certbot container for automatic certificate renewal
-      community.docker.docker_container:
-        name: certbot_renewal
-        image: certbot/certbot:latest
-        state: started
-        volumes:
-          - /etc/letsencrypt:/etc/letsencrypt
-        restart_policy: unless-stopped
-        command: >
-          bash -c "while true; do
-          certbot renew --non-interactive --quiet;
-          sleep 12h;
-          done"
-        networks:
-          - name: "{{ docker_network_name }}"
