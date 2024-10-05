@@ -1,6 +1,46 @@
 WireGuard - клиент-серверное приложение, работающее по UDP. Номер порат можно задавать.
 Для установленя соединения достаочно одной из сторон иметь Белый адрес.
 
+add_peer.sh
+- для телефона возвращает qr-код (кончиг можно не смотреть)
+- для микротика надо смотреть файл конфига с именем пира (создаестя в папке, где запускали скрипт)
+[Interface]
+PrivateKey = UOKmnPggHQ+3dAjApQR8rbVuv/N2GFL2cC6/fNIRSFQ=
+Address = 10.250.0.7/32
+DNS = 1.1.1.1,1.0.0.1
+
+[Peer]
+PublicKey = vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks=
+PresharedKey = 3AAA/hMyqzmH3sqmc1oeXbTLjz10kMXlJX0zh/q32qQ=
+Endpoint = 217.144.189.206:56685
+AllowedIPs = 0.0.0.0/0
+
+1. Создать интерфйес для WG (напр. wg_client_vds5)
+    - в prvate_key вписать UOKmnPggHQ+3dAjApQR8rbVuv/N2GFL2cC6/fNIRSFQ=
+2. Создать peer
+    - Public key: vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks=
+    - Private Key: [ОСТАЕТСЯ ПУСТЫМ]
+    - Endpoint: 217.144.189.206
+    - Endpoint Port: 56685
+    - Preshared Key: 3AAA/hMyqzmH3sqmc1oeXbTLjz10kMXlJX0zh/q32qQ=
+    - Persistent Keepalive: 25
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 1. На сервере нужно добавить нового клиента
     wireguard-install.sh
     создается файл с настройками:

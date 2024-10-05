@@ -1,0 +1,90 @@
+---
+- name: Install and configure SSTP server using pip on Debian 11
+  hosts: all
+  become: yes
+  vars:
+    pppd_config_file: "/etc/ppp/options.sstpd"
+    cert_file: "/etc/sstpd/cert.pem"
+    key_file: "/etc/sstpd/key.pem"
+    local_ip: "10.0.0.1"
+    remote_ip_range: "10.0.0.0/24"
+    sstp_port: 443
+    country: "US"
+    state_location: "California"
+    city: "San Francisco"
+    organization: "ExampleOrg"
+    organizational_unit: "IT"
+    common_name: "example.com"
+    email: "admin@example.com"
+  tasks:
+    - name: Install Python pip and dependencies
+      apt:
+        name:
+          - python3-pip
+          - ppp
+          - openssl
+        state: present
+        update_cache: yes
+
+    - name: Install SSTP server from GitHub using pip
+      pip:
+        name: git+https://github.com/sorz/sstp-server.git
+        executable: pip3
+
+    - name: Create pppd configuration file for SSTP
+      copy:
+        dest: "{{ pppd_config_file }}"
+        content: |
+          name sstpd
+          require-mschap-v2
+          nologfd
+          nodefaultroute
+          ms-dns 8.8.8.8
+          ms-dns 8.8.4.4
+        mode: '0644'
+
+    - name: Ensure SSTP certificates directory exists
+      file:
+        path: /etc/sstpd
+        state: directory
+        mode: '0755'
+
+    - name: Generate self-signed SSL certificate and key
+      shell: |
+        openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
+        -subj "/C={{ country }}/ST={{ state_location }}/L={{ city }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ common_name }}/emailAddress={{ email }}" \
+        -keyout "{{ key_file }}" -out "{{ cert_file }}"
+
+    - name: Start SSTP server
+      shell: |
+        sstpd -p {{ sstp_port }} -c {{ cert_file }} -k {{ key_file }} --local {{ local_ip }} --remote {{ remote_ip_range }} &
+      args:
+        creates: /var/run/sstpd.pid
+
+    - name: Create systemd service for SSTP server
+      copy:
+        dest: /etc/systemd/system/sstpd.service
+        content: |
+          [Unit]
+          Description=SSTP VPN server
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/sstpd -p {{ sstp_port }} -c {{ cert_file }} -k {{ key_file }} --local {{ local_ip }} --remote {{ remote_ip_range }}
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify:
+        - Reload systemd
+        - Enable and start SSTP service
+
+  handlers:
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable and start SSTP service
+      service:
+        name: sstpd
+        enabled: yes
+        state: started

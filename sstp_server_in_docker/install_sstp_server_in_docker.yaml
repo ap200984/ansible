@@ -1,0 +1,101 @@
+---
+- hosts: all
+  become: true
+  vars:
+    sstp_conf_dir: /etc/sstp-server
+    ssl_cert_path: "{{ sstp_conf_dir }}/sstp-server.crt"
+    ssl_key_path: "{{ sstp_conf_dir }}/sstp-server.key"
+    ppp_options_file: /etc/ppp/options.sstpd
+    sstp_port: 443
+    local_ip: 10.0.0.1
+    remote_ip_range: 10.0.0.0/24
+    dns_servers:
+      - 8.8.8.8
+      - 8.8.4.4
+    peer_users:
+      - { client: "client1", password: "password1", ip: "192.168.1.10" }
+      - { client: "client2", password: "password2", ip: "192.168.1.11" }
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - ppp
+          - openssl
+        update_cache: yes
+
+    - name: Install SSTP Server from pip
+      pip:
+        name: sstp-server
+        executable: pip3
+
+    - name: Create SSTP server config directory
+      file:
+        path: "{{ sstp_conf_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Generate SSL certificate for SSTP server
+      command: >
+        openssl req -x509 -nodes -days 365
+        -newkey rsa:2048
+        -keyout {{ ssl_key_path }}
+        -out {{ ssl_cert_path }}
+        -subj "/C=US/ST=State/L=City/O=Organization/CN=yourdomain.com"
+      args:
+        creates: "{{ ssl_key_path }}"
+
+    - name: Create PPP options file for SSTP
+      copy:
+        dest: "{{ ppp_options_file }}"
+        content: |
+          name sstpd
+          require-mschap-v2
+          nologfd
+          nodefaultroute
+          ms-dns {{ dns_servers[0] }}
+          ms-dns {{ dns_servers[1] }}
+
+    - name: Create or update PPP chap-secrets file with peer users
+      blockinfile:
+        path: /etc/ppp/chap-secrets
+        block: |
+          {% for peer in peer_users %}
+          {{ peer.client }} * {{ peer.password }} {{ peer.ip }}
+          {% endfor %}
+        create: yes
+
+    - name: Create systemd service file for SSTP server
+      copy:
+        dest: /etc/systemd/system/sstp-server.service
+        content: |
+          [Unit]
+          Description=SSTP Server
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/sstpd -p {{ sstp_port }} -c {{ ssl_cert_path }} -k {{ ssl_key_path }} --local {{ local_ip }} --remote {{ remote_ip_range }}
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon to recognize new service
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start SSTP server service
+      systemd:
+        name: sstp-server
+        enabled: yes
+        state: started
+
+    # - name: Allow traffic on SSTP port ({{ sstp_port }}) through firewall
+    #   ufw:
+    #     rule: allow
+    #     port: "{{ sstp_port }}"
+    #     proto: tcp

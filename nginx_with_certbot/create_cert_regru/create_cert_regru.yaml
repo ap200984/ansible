@@ -1,0 +1,60 @@
+---
+- name: Run Docker container with Ubuntu 24.04 and Certbot Regru
+  hosts: all
+  become: yes
+  tasks:
+    - name: Include secrets
+      include_vars: ../../secrets/regru_secrets.yml
+
+    - name: Ensure /etc/letsencrypt directory exists on the host
+      file:
+        path: /etc/letsencrypt
+        state: directory
+        mode: '0755'
+
+    - name: Run Docker container with Ubuntu 24.04 and mount /etc/letsencrypt
+      community.docker.docker_container:
+        name: certbot_container
+        image: ubuntu:24.04
+        state: started
+        volumes:
+          - /etc/letsencrypt:/etc/letsencrypt
+        command: sleep infinity
+
+    - name: Install apt-get update
+      community.docker.docker_container_exec:
+        container: certbot_container
+        command: apt-get update
+
+    - name: Install python3-pip in container
+      community.docker.docker_container_exec:
+        container: certbot_container
+        command: apt-get install -y python3-pip
+
+    - name: Install certbot-regru via pip in container
+      community.docker.docker_container_exec:
+        container: certbot_container
+        command: pip3 install certbot-regru --break-system-packages
+
+    - name: Create regru.ini on host in /etc/letsencrypt
+      copy:
+        dest: /etc/letsencrypt/regru.ini
+        content: |
+          dns_username = {{ regru_login }}
+          dns_password = {{ regru_passwd }}
+        mode: '0600'
+
+    - name: Set permissions for regru.ini file
+      community.docker.docker_container_exec:
+        container: certbot_container
+        command: chmod 0600 /etc/letsencrypt/regru.ini
+
+    - name: Run Certbot to obtain SSL certificates for {{ domain }} and *.{{ domain }}
+      community.docker.docker_container_exec:
+        container: certbot_container
+        command: certbot certonly --authenticator dns -d vds5.space -d "*.vds5.space" --email {{ regru_login }} --non-interactive --agree-tos --dns-propagation-seconds 600
+
+    - name: Stop and remove the Docker container
+      community.docker.docker_container:
+        name: certbot_container
+        state: absent

@@ -3,6 +3,7 @@ ansible_user=ansible
 ip_address=86.110.170.70
 domain=vds3.space
 subdomains_ports=['gitlab:1080', 'owncloud:1081']
+ansible_ssh_private_key_file=/home/user/.ssh/priv/ansible
 
 [staging]
 86.110.170.70:19022
