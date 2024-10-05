@@ -4,12 +4,16 @@
 # для которой добавляется сертификат
 # https://www.reg.ru/user/account/#/settings/api/ Диапазоны IP-адресов: x.x.x.x/32
 # 0.0.0.0/0 не работает :-(
+# Запускаеть нужно один раз
 - name: Run Docker container with Ubuntu 24.04 and Certbot Regru
   hosts: all
   become: yes
   tasks:
-    - name: Include secrets
-      include_vars: ../../secrets/regru_secrets.yml
+    - name: Include regru secrets
+      include_vars: ../secrets/regru_secrets.yml
+
+    - name: Include letsencrypt secrets
+      include_vars: ../secrets/letsencrypt_secrets.yml
 
     - name: Ensure /etc/letsencrypt directory exists on the host
       file:
@@ -57,9 +61,23 @@
     - name: Run Certbot to obtain SSL certificates for {{ domain }} and *.{{ domain }}
       community.docker.docker_container_exec:
         container: certbot_container
-        command: certbot certonly --authenticator dns -d vds5.space -d "*.vds5.space" --email {{ regru_login }} --non-interactive --agree-tos --dns-propagation-seconds 600
+        command: certbot certonly --authenticator dns -d vds5.space -d "*.vds5.space" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds 600
 
     - name: Stop and remove the Docker container
       community.docker.docker_container:
         name: certbot_container
         state: absent
+
+    - name: Start Certbot container for automatic certificate renewal
+      community.docker.docker_container:
+        name: certbot_renewal
+        image: certbot/certbot:latest
+        state: started
+        volumes:
+          - /etc/letsencrypt:/etc/letsencrypt
+        restart_policy: always
+        command: >
+          bash -c "while true; do
+          certbot renew --non-interactive --quiet;
+          sleep 12h;
+          done"
