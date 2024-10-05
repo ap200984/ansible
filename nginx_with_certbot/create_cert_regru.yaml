@@ -4,7 +4,7 @@
 # для которой добавляется сертификат
 # https://www.reg.ru/user/account/#/settings/api/ Диапазоны IP-адресов: x.x.x.x/32
 # 0.0.0.0/0 не работает :-(
-# Запускаеть нужно один раз
+# Запускаеть нужно один раз - автообноление здесь не выполняется, чтоыб не нагромождать плейбук
 - name: Run Docker container with Ubuntu 24.04 and Certbot Regru
   hosts: all
   become: yes
