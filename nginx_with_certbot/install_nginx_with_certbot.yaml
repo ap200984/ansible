@@ -26,17 +26,17 @@
         path: "{{ nginx_conf_dir }}"
         state: directory
 
-    - name: Copy common.conf to the NGINX conf directory
-      copy:
-        src: common.conf
+    - name: Deploy common NGINX configuration (common.conf)
+      template:
+        src: templates/common.conf.j2
         dest: "{{ nginx_conf_dir }}/common.conf"
         owner: root
         group: root
         mode: '0644'
 
-    - name: Copy grafana.conf to the NGINX conf directory
-      copy:
-        src: grafana.conf
+    - name: Deploy Grafana NGINX configuration (grafana.conf)
+      template:
+        src: templates/grafana.conf.j2
         dest: "{{ nginx_conf_dir }}/grafana.conf"
         owner: root
         group: root
