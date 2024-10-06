@@ -18,7 +18,7 @@
     docker_network_name: docker-net
     docker_network_subnet: 172.20.0.0/16
     docker_network_range: 172.20.240.0/20
-    dns_propagation_seconds: 900
+    dns_propagation_seconds: 600
 
   tasks:
     - name: Include regru secrets
@@ -40,6 +40,14 @@
         state: directory
         mode: '0755'
 
+    - name: Create regru.ini on host in /etc/letsencrypt
+      copy:
+        dest: /etc/letsencrypt/regru.ini
+        content: |
+          dns_username = {{ regru_login }}
+          dns_password = {{ regru_passwd }}
+        mode: '0600'
+
     - name: Run Docker container with Ubuntu 24.04 and mount /etc/letsencrypt
       community.docker.docker_container:
         name: certbot_container
@@ -52,7 +60,7 @@
           - name: "{{ docker_network_name }}"
         restart_policy: unless-stopped
 
-    - name: Install apt-get update
+    - name: apt-get update
       community.docker.docker_container_exec:
         container: certbot_container
         command: apt-get update
@@ -66,14 +74,6 @@
       community.docker.docker_container_exec:
         container: certbot_container
         command: pip3 install certbot-regru --break-system-packages
-
-    - name: Create regru.ini on host in /etc/letsencrypt
-      copy:
-        dest: /etc/letsencrypt/regru.ini
-        content: |
-          dns_username = {{ regru_login }}
-          dns_password = {{ regru_passwd }}
-        mode: '0600'
 
     - name: Set permissions for regru.ini file
       community.docker.docker_container_exec:
