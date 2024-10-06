@@ -34,13 +34,17 @@
         group: root
         mode: '0644'
 
-    - name: Deploy Grafana NGINX configuration (grafana.conf)
+    - name: Deploy all NGINX configuration files from templates
       template:
-        src: templates/grafana.conf.j2
-        dest: "{{ nginx_conf_dir }}/grafana.conf"
+        src: "{{ item }}"
+        dest: "{{ nginx_conf_dir }}/{{ item | basename | regex_replace('.j2$', '') }}"
         owner: root
         group: root
         mode: '0644'
+      with_fileglob:
+        - "templates/*.conf.j2"
+      vars:
+        nginx_conf_dir: "/etc/nginx/conf.d"
 
     - name: Run NGINX Docker container
       docker_container:
@@ -56,3 +60,7 @@
           - "{{ nginx_conf_dir }}:/etc/nginx/conf.d"
         networks:
           - name: "{{ docker_network_name }}"
+
+    - name: Reload NGINX inside the container
+      command: docker exec nginx nginx -s reload
+      become: yes
