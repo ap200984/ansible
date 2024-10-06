@@ -1,16 +1,14 @@
 ---
 - name: Build and run SoftEther VPN Server Docker container
-  hosts: localhost
+  hosts: all
   become: true
+  collections:
+    - community.docker
   tasks:
     - name: Ensure Docker Python module is installed
       pip:
         name: docker
         state: present
-
-    - name: Install community.docker collection
-      ansible.builtin.ansible_galaxy_collection:
-        name: community.docker
 
     - name: Create directory for Docker build context
       file:
@@ -49,13 +47,13 @@
           CMD ["/usr/local/vpnserver/vpnserver", "execsvc"]
 
     - name: Build Docker image
-      community.docker.docker_image:
+      docker_image:
         name: softether-vpn-server
         path: /tmp/softether_docker
         state: present
 
     - name: Run Docker container
-      community.docker.docker_container:
+      docker_container:
         name: sst-server
         image: softether-vpn-server
         state: started
