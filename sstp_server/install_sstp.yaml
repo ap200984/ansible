@@ -1,90 +1,67 @@
 ---
-- name: Install and configure SSTP server using pip on Debian 11
-  hosts: all
-  become: yes
-  vars:
-    pppd_config_file: "/etc/ppp/options.sstpd"
-    cert_file: "/etc/sstpd/cert.pem"
-    key_file: "/etc/sstpd/key.pem"
-    local_ip: "10.0.0.1"
-    remote_ip_range: "10.0.0.0/24"
-    sstp_port: 443
-    country: "US"
-    state_location: "California"
-    city: "San Francisco"
-    organization: "ExampleOrg"
-    organizational_unit: "IT"
-    common_name: "example.com"
-    email: "admin@example.com"
+- name: Build and run SoftEther VPN Server Docker container
+  hosts: localhost
+  become: true
   tasks:
-    - name: Install Python pip and dependencies
-      apt:
-        name:
-          - python3-pip
-          - ppp
-          - openssl
-        state: present
-        update_cache: yes
-
-    - name: Install SSTP server from GitHub using pip
+    - name: Ensure Docker Python module is installed
       pip:
-        name: git+https://github.com/sorz/sstp-server.git
-        executable: pip3
+        name: docker
+        state: present
 
-    - name: Create pppd configuration file for SSTP
-      copy:
-        dest: "{{ pppd_config_file }}"
-        content: |
-          name sstpd
-          require-mschap-v2
-          nologfd
-          nodefaultroute
-          ms-dns 8.8.8.8
-          ms-dns 8.8.4.4
-        mode: '0644'
+    - name: Install community.docker collection
+      ansible.builtin.ansible_galaxy_collection:
+        name: community.docker
 
-    - name: Ensure SSTP certificates directory exists
+    - name: Create directory for Docker build context
       file:
-        path: /etc/sstpd
+        path: /tmp/softether_docker
         state: directory
-        mode: '0755'
 
-    - name: Generate self-signed SSL certificate and key
-      shell: |
-        openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
-        -subj "/C={{ country }}/ST={{ state_location }}/L={{ city }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ common_name }}/emailAddress={{ email }}" \
-        -keyout "{{ key_file }}" -out "{{ cert_file }}"
-
-    - name: Start SSTP server
-      shell: |
-        sstpd -p {{ sstp_port }} -c {{ cert_file }} -k {{ key_file }} --local {{ local_ip }} --remote {{ remote_ip_range }} &
-      args:
-        creates: /var/run/sstpd.pid
-
-    - name: Create systemd service for SSTP server
+    - name: Create Dockerfile
       copy:
-        dest: /etc/systemd/system/sstpd.service
+        dest: /tmp/softether_docker/Dockerfile
         content: |
-          [Unit]
-          Description=SSTP VPN server
-          After=network.target
+          # Use Ubuntu 24.04 as base image
+          FROM ubuntu:24.04
 
-          [Service]
-          ExecStart=/usr/local/bin/sstpd -p {{ sstp_port }} -c {{ cert_file }} -k {{ key_file }} --local {{ local_ip }} --remote {{ remote_ip_range }}
-          Restart=on-failure
+          # Install required packages
+          RUN apt-get update && \
+              apt-get install -y wget make gcc binutils && \
+              apt-get clean
 
-          [Install]
-          WantedBy=multi-user.target
-      notify:
-        - Reload systemd
-        - Enable and start SSTP service
+          # Download and extract SoftEther VPN Server
+          WORKDIR /tmp
+          RUN wget http://www.softether-download.com/files/softether/v4.42-9798-rtm-2023.06.30-tree/Linux/SoftEther_VPN_Server/64bit_-_Intel_x64_or_AMD64/softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz && \
+              tar -xzf softether-vpnserver-v4.42-9798-rtm-2023.06.30-linux-x64-64bit.tar.gz && \
+              cd vpnserver && \
+              yes 1 | make
 
-  handlers:
-    - name: Reload systemd
-      command: systemctl daemon-reload
+          # Move the vpnserver to /usr/local and set proper permissions
+          RUN mv vpnserver /usr/local/ && \
+              chmod -R 600 /usr/local/vpnserver/* && \
+              chmod 700 /usr/local/vpnserver/vpnserver && \
+              chmod 700 /usr/local/vpnserver/vpncmd
 
-    - name: Enable and start SSTP service
-      service:
-        name: sstpd
-        enabled: yes
+          # Expose necessary ports
+          EXPOSE 443/tcp 992/tcp 1194/udp 5555/tcp
+
+          # Start SoftEther VPN server
+          CMD ["/usr/local/vpnserver/vpnserver", "execsvc"]
+
+    - name: Build Docker image
+      community.docker.docker_image:
+        name: softether-vpn-server
+        path: /tmp/softether_docker
+        state: present
+
+    - name: Run Docker container
+      community.docker.docker_container:
+        name: sst-server
+        image: softether-vpn-server
         state: started
+        restart_policy: always
+        ports:
+          - "443:443"
+          - "992:992"
+          - "1194:1194/udp"
+          - "5555:5555"
