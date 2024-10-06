@@ -18,7 +18,7 @@
     docker_network_name: docker-net
     docker_network_subnet: 172.20.0.0/16
     docker_network_range: 172.20.240.0/20
-    dns-propagation-seconds: 900
+    dns_propagation_seconds: 900
 
   tasks:
     - name: Include regru secrets
@@ -83,9 +83,37 @@
     - name: Run Certbot to obtain SSL certificates for {{ domain }} and *.{{ domain }}
       community.docker.docker_container_exec:
         container: certbot_container
-        command: certbot certonly --authenticator dns -d {{ domain }} -d "*.{{ domain }}" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds {{ dns-propagation-seconds }}
+        command: certbot certonly --authenticator dns -d {{ domain }} -d "*.{{ domain }}" --email {{ lets_encrypt_email }} --non-interactive --agree-tos --dns-propagation-seconds {{ dns_propagation_seconds }}
 
     - name: Stop and remove the Docker container
       community.docker.docker_container:
         name: certbot_container
         state: absent
+
+    - name: Start Certbot container for automatic certificate renewal
+      community.docker.docker_container:
+        name: certbot_renewal
+        image: certbot/certbot:latest
+        state: started
+        volumes:
+          - /etc/letsencrypt:/etc/letsencrypt
+        restart_policy: unless-stopped
+        entrypoint: sh
+        command: >
+          -c '
+          pip3 install certbot-regru;
+          while true; do
+            certbot renew --non-interactive --quiet;
+            CERT_PATH="/etc/letsencrypt/live/{{ domain }}/cert.pem";
+            if [ -f "$CERT_PATH" ]; then
+              END_DATE=$(openssl x509 -enddate -noout -in "$CERT_PATH" | cut -d= -f2);
+              START_DATE=$(openssl x509 -startdate -noout -in "$CERT_PATH" | cut -d= -f2);
+              echo "START_DATE=$START_DATE" > /etc/letsencrypt/cert_info.txt;
+              echo "END_DATE=$END_DATE"    >> /etc/letsencrypt/cert_info.txt;
+            else
+              echo "Certificate not found at $CERT_PATH" > /etc/letsencrypt/cert_info.txt;
+            fi;
+            sleep 12h;
+          done'
+        networks:
+          - name: "{{ docker_network_name }}"
