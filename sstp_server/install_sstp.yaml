@@ -49,7 +49,9 @@
     - name: Build Docker image
       docker_image:
         name: softether-vpn-server
-        path: /tmp/softether_docker
+        source: build
+        build:
+          path: /tmp/softether_docker
         state: present
 
     - name: Run Docker container
