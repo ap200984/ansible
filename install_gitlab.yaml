@@ -30,6 +30,7 @@
         volumes:
           - /gitlab/config:/etc/gitlab
           - /var/log/gitlab:/var/log/gitlab
+          - /dev/null:/var/log/gitlab/sidekiq/current
           - /gitlab/data:/var/opt/gitlab
         env:
           GITLAB_OMNIBUS_CONFIG: |
