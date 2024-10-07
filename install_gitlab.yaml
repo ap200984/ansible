@@ -29,7 +29,7 @@
           - 1022:22/tcp
         volumes:
           - /gitlab/config:/etc/gitlab
-          # - /var/log/gitlab:/var/log/gitlab
+          - /var/log/gitlab:/var/log/gitlab
           - /gitlab/data:/var/opt/gitlab
         env:
           GITLAB_OMNIBUS_CONFIG: |
@@ -58,6 +58,6 @@
 # Set root password for the first time
 # sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
 
-# ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/my_gitlab -C "my_gitlab"
+# ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/gitlab_vds6 -C "gitlab_vds6"
 
 
