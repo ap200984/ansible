@@ -1,16 +1,10 @@
-[staging:vars]
+[all:vars]
 ansible_user=ansible
+ansible_ssh_private_key_file=~/.ssh/priv/ansible
 
-[staging]
-10.9.0.156:19022
-10.9.0.157:19022
-#10.9.0.160:19022
-
-[prod:vars]
-ansible_user=ansible
-
-[prod]
-45.35.14.80:19022
-69.30.237.130:19022
+[all]
 45.141.102.72:19022
-
+108.181.172.80:19022
+69.30.237.130:19022
+217.144.189.206:19022
+195.245.239.82:19022

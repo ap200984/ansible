@@ -1,0 +1,64 @@
+---
+- name: Add SSH user to specified hosts
+  hosts: all
+  become: yes
+  vars:
+    user_name: "jenkins-ssh-robot_vds"
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHLUjyQs6uNnW6Yb6MHuabc7n3db+xeyMn0r3oQIP8eC jenkins-ssh-robot_vds"
+
+  tasks:
+    - name: Remove user if it exists
+      user:
+        name: "{{ user_name }}"
+        state: absent
+        remove: yes
+      ignore_errors: true
+
+    - name: Remove group if it exists
+      group:
+        name: "{{ user_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Delete user's home directory
+      file:
+        path: "/home/{{ user_name }}"
+        state: absent
+        recurse: yes
+      ignore_errors: true
+
+    - name: Create the group for the user
+      group:
+        name: "{{ user_name }}"
+        state: present
+
+    - name: Add the user with sudo privileges
+      user:
+        name: "{{ user_name }}"
+        group: "{{ user_name }}"
+        groups: sudo
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    - name: Create .ssh directory
+      file:
+        path: "/home/{{ user_name }}/.ssh"
+        state: directory
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: '0700'
+
+    - name: Add public key to authorized_keys
+      authorized_key:
+        user: "{{ user_name }}"
+        key: "{{ public_key }}"
+        state: present
+
+    - name: Set correct permissions for the user's home directory
+      file:
+        path: "/home/{{ user_name }}"
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: '0700'
+        recurse: yes
