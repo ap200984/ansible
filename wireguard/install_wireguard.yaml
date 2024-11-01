@@ -4,12 +4,12 @@
   become: true
   vars:
     listen_port: 56685
-    server_ip: "10.66.66.1"
-    subnet: "10.66.66.0/24"
+    server_ip: "10.250.0.6"
+    subnet: "10.250.0.0/24"
     interface_name: wg0
     server_private_key: "8DThCDSjwD15n6nApLUPD8cijXyeF28ImPXVmVoYY0M="
     peer_count: 10
-    peer_base_ip: "10.66.66."
+    peer_base_ip: "10.250.0."
 
   tasks:
     - name: Install WireGuard and required tools

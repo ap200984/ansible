@@ -1,11 +1,11 @@
 [wireguard_servers]
 vds ansible_host=45.141.102.72 ansible_port=19022 ansible_user=ansible
 vds2 ansible_host=108.181.172.80 ansible_port=19022 ansible_user=ansible
-vds3 ansible_host=86.110.170.70 ansible_port=19022 ansible_user=ansible
 vds4 ansible_host=69.30.237.130 ansible_port=19022 ansible_user=ansible
 vds5 ansible_host=217.144.189.206 ansible_port=19022 ansible_user=ansible
 vds6 ansible_host=195.245.239.82 ansible_port=19022 ansible_user=ansible
-vds7 ansible_host=62.60.216.73 ansible_port=19022 ansible_user=ansible
+#mikrotik_k16_k112 ansible_host=86.110.170.70 ansible_port=20022 ansible_user=ansible
+#mikrotik_vds7 ansible_host=62.60.216.73 ansible_port=20022 ansible_user=ansible
 
 [wireguard_servers:vars]
 ansible_ssh_private_key_file=/home/user/.ssh/priv/ansible
