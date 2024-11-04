@@ -128,7 +128,7 @@
           }
           output {
             elasticsearch {
-              hosts => ["elasticsearch:9200"]
+              hosts => ["elastic:9200"]
               index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
             }
           }
@@ -143,6 +143,6 @@
         networks:
           - name: "{{ docker_network_name }}"
         volumes:
-          - /elk/logstash:/usr/share/logstash/pipeline/
+          - /elk/logstash/pipeline:/usr/share/logstash/pipeline/
         state: "started"
         restart_policy: "unless-stopped"
