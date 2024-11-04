@@ -1,0 +1,91 @@
+---
+- hosts: all
+  become: true
+  vars:
+    elk_version: "8.15.3"
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    - name: Create a network for elk
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Create ELK directory
+      file:
+        path: /elk
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: install elasticsearch
+      community.docker.docker_container:
+        name: elastic
+        image: "docker.elastic.co/elasticsearch/elasticsearch:{{ elk_version }}"
+        memory: "1g"
+        memory_swap: "2g"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 9200:9200/tcp
+        volumes:
+          - /elk/elastic:/usr/share/elasticsearch/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: install kibana
+      community.docker.docker_container:
+        name: kibana
+        image: "docker.elastic.co/kibana/kibana:{{ elk_version }}"
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - 5601:5601/tcp
+        volumes:
+          - /elk/kibana/config:/usr/share/kibana/config
+          - /elk/kibana/data:/usr/share/kibana/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Create Logstash pipeline directory
+      file:
+        path: /elk/logstash/pipeline
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Copy Logstash pipeline configuration
+      copy:
+        dest: /elk/logstash/pipeline/logstash.conf
+        content: |
+          input {
+            beats {
+              port => 5044
+            }
+          }
+          output {
+            elasticsearch {
+              hosts => ["elasticsearch:9200"]
+              index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: install logstash
+      community.docker.docker_container:
+        name: logstash
+        image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
+        networks:
+          - name: "{{ docker_network_name }}"
+        volumes:
+          - /elk/logstash:/usr/share/logstash/pipeline/
+        state: "started"
+        restart_policy: "unless-stopped"
