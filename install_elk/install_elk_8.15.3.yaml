@@ -21,7 +21,15 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
+
+    - name: Create /elk/elastic directory
+      file:
+        path: /elk/elastic
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: "0755"
 
     - name: install elasticsearch
       community.docker.docker_container:
@@ -29,6 +37,8 @@
         image: "docker.elastic.co/elasticsearch/elasticsearch:{{ elk_version }}"
         memory: "1g"
         memory_swap: "2g"
+        env:
+          discovery.type: "single-node"
         networks:
           - name: "{{ docker_network_name }}"
         ports:
@@ -38,54 +48,94 @@
         state: "started"
         restart_policy: "unless-stopped"
 
-    - name: install kibana
-      community.docker.docker_container:
-        name: kibana
-        image: "docker.elastic.co/kibana/kibana:{{ elk_version }}"
-        networks:
-          - name: "{{ docker_network_name }}"
-        ports:
-          - 5601:5601/tcp
-        volumes:
-          - /elk/kibana/config:/usr/share/kibana/config
-          - /elk/kibana/data:/usr/share/kibana/data
-        state: "started"
-        restart_policy: "unless-stopped"
+    - name: Wait until elastic is up
+      ansible.builtin.wait_for:
+        host: localhost
+        port: 9200
+        timeout: 300
+        state: started
 
-    - name: Create Logstash pipeline directory
-      file:
-        path: /elk/logstash/pipeline
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
+    - name: Ensure python3-pexpect is installed
+      become: yes
+      apt:
+        name: python3-pexpect
+        state: present
+        update_cache: yes
 
-    - name: Copy Logstash pipeline configuration
-      copy:
-        dest: /elk/logstash/pipeline/logstash.conf
-        content: |
-          input {
-            beats {
-              port => 5044
-            }
-          }
-          output {
-            elasticsearch {
-              hosts => ["elasticsearch:9200"]
-              index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
-            }
-          }
-        owner: root
-        group: root
-        mode: '0644'
+    - name: Reset Elasticsearch password non-interactively
+      ansible.builtin.expect:
+        command: sudo docker exec -i elastic /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
+        responses:
+          'Please confirm that you would like to continue \[y/N\]': 'y'
+        timeout: 30
+        echo: yes
+      register: password_reset_result
 
-    - name: install logstash
-      community.docker.docker_container:
-        name: logstash
-        image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
-        networks:
-          - name: "{{ docker_network_name }}"
-        volumes:
-          - /elk/logstash:/usr/share/logstash/pipeline/
-        state: "started"
-        restart_policy: "unless-stopped"
+    - name: Extract the new password
+      set_fact:
+        new_elastic_password: "{{ password_reset_result.stdout | regex_search('New value: (.+)', '\\1') }}"
+
+    - name: Display new Elasticsearch password
+      debug:
+        msg: "The new Elasticsearch password is: {{ new_elastic_password }}"
+
+    # - name: install kibana
+    #   community.docker.docker_container:
+    #     name: kibana
+    #     image: "docker.elastic.co/kibana/kibana:{{ elk_version }}"
+    #     networks:
+    #       - name: "{{ docker_network_name }}"
+    #     ports:
+    #       - 5601:5601/tcp
+    #     volumes:
+    #       - /elk/kibana/config:/usr/share/kibana/config
+    #       - /elk/kibana/data:/usr/share/kibana/data
+    #     state: "started"
+    #     restart_policy: "unless-stopped"
+
+    # - name: Create Logstash pipeline directory
+    #   file:
+    #     path: /elk/logstash/pipeline
+    #     state: directory
+    #     owner: root
+    #     group: root
+    #     mode: '0755'
+
+    # - name: Copy Logstash pipeline configuration
+    #   copy:
+    #     dest: /elk/logstash/pipeline/logstash.conf
+    #     content: |
+    #       input {
+    #         beats {
+    #           port => 5044
+    #         }
+    #       }
+    #       output {
+    #         elasticsearch {
+    #           hosts => ["elasticsearch:9200"]
+    #           index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
+    #         }
+    #       }
+    #     owner: root
+    #     group: root
+    #     mode: '0644'
+
+    # - name: install logstash
+    #   community.docker.docker_container:
+    #     name: logstash
+    #     image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
+    #     networks:
+    #       - name: "{{ docker_network_name }}"
+    #     volumes:
+    #       - /elk/logstash:/usr/share/logstash/pipeline/
+    #     state: "started"
+    #     restart_policy: "unless-stopped"
+# sudo docker run -it --rm \
+#   --name elastic \
+#   --memory="1g" \
+#   --memory-swap="2g" \
+#   --network "docker-net" \
+#   -p 9200:9200 \
+#   docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+
+# sudo docker run --rm --name es01 -e discovery.type=single-node --net docker-net -p 9200:9200 -it -m 1GB docker.elastic.co/elasticsearch/elasticsearch:8.15.3

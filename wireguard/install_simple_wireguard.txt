@@ -1,5 +1,6 @@
 apt install wireguard
 sudo systemctl enable wg-quick@wg0
+
 priv_key=$(wg genkey)
 pub_key=$(echo $priv_key | wg pubkey)
 
@@ -18,4 +19,5 @@ Endpoint = 62.60.216.73:56685
 AllowedIPs = 10.250.0.7/32
 
 
+sudo systemctl enable wg-quick@wg0
 sudo systemctl restart wg-quick@wg0
