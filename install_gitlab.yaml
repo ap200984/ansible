@@ -22,6 +22,8 @@
       community.docker.docker_container:
         name: gitlab
         image: "gitlab/gitlab-ce"
+        memory: 4g
+        memory_swap: 4g
         networks:
           - name: "{{ docker_network_name }}"
         ports:
