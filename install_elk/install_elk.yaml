@@ -1,0 +1,112 @@
+---
+- name: Install ELK Stack on ELK Server
+  hosts: all
+  become: yes
+  vars:
+    elasticsearch_version: "7.17.9"
+    kibana_version: "7.17.9"
+    logstash_version: "7.17.9"
+    docker_compose_file: /opt/elk/docker-compose.yml
+  tasks:
+    - name: Include secrets
+      include_vars: secrets/common_secrets.yml
+
+    - name: Create ELK directory
+      file:
+        path: /opt/elk
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Copy docker-compose.yml file
+      copy:
+        dest: "{{ docker_compose_file }}"
+        content: |
+          version: '3'
+          services:
+            elasticsearch:
+              image: docker.elastic.co/elasticsearch/elasticsearch:{{ elasticsearch_version }}
+              container_name: elasticsearch
+              restart: unless-stopped
+              environment:
+                - discovery.type=single-node
+                - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+                - xpack.security.enabled=true
+                - ELASTIC_PASSWORD=T123456
+              ulimits:
+                memlock:
+                  soft: -1
+                  hard: -1
+              volumes:
+                - esdata:/usr/share/elasticsearch/data
+              ports:
+                - 9200:9200
+              networks:
+                - elk
+            logstash:
+              image: docker.elastic.co/logstash/logstash:{{ logstash_version }}
+              container_name: logstash
+              restart: unless-stopped
+              volumes:
+                - ./logstash/pipeline:/usr/share/logstash/pipeline
+              ports:
+                - 5044:5044
+              depends_on:
+                - elasticsearch
+              networks:
+                - elk
+            kibana:
+              image: docker.elastic.co/kibana/kibana:{{ kibana_version }}
+              container_name: kibana
+              restart: unless-stopped
+              environment:
+                - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+                - XPACK_SECURITY_ENABLED=true
+                # - ELASTICSEARCH_USERNAME=elastic/kibana
+                # - ELASTICSEARCH_PASSWORD=T123456
+              ports:
+                - 5601:5601
+              depends_on:
+                - elasticsearch
+              networks:
+                - elk
+          volumes:
+            esdata:
+          networks:
+            elk:
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Create Logstash pipeline directory
+      file:
+        path: /opt/elk/logstash/pipeline
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Copy Logstash pipeline configuration
+      copy:
+        dest: /opt/elk/logstash/pipeline/logstash.conf
+        content: |
+          input {
+            beats {
+              port => 5044
+            }
+          }
+          output {
+            elasticsearch {
+              hosts => ["elasticsearch:9200"]
+              index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Start ELK stack using Docker Compose
+      shell: docker-compose up -d
+      args:
+        chdir: /opt/elk
