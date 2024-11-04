@@ -109,40 +109,40 @@
         state: "started"
         restart_policy: "unless-stopped"
 
-    # - name: Create Logstash pipeline directory
-    #   file:
-    #     path: /elk/logstash/pipeline
-    #     state: directory
-    #     owner: root
-    #     group: root
-    #     mode: '0755'
+    - name: Create Logstash pipeline directory
+      file:
+        path: /elk/logstash/pipeline
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
 
-    # - name: Copy Logstash pipeline configuration
-    #   copy:
-    #     dest: /elk/logstash/pipeline/logstash.conf
-    #     content: |
-    #       input {
-    #         beats {
-    #           port => 5044
-    #         }
-    #       }
-    #       output {
-    #         elasticsearch {
-    #           hosts => ["elasticsearch:9200"]
-    #           index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
-    #         }
-    #       }
-    #     owner: root
-    #     group: root
-    #     mode: '0644'
+    - name: Copy Logstash pipeline configuration
+      copy:
+        dest: /elk/logstash/pipeline/logstash.conf
+        content: |
+          input {
+            beats {
+              port => 5044
+            }
+          }
+          output {
+            elasticsearch {
+              hosts => ["elasticsearch:9200"]
+              index => "%{[@metadata][beat]}-%{+YYYY.MM.dd}"
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
 
-    # - name: install logstash
-    #   community.docker.docker_container:
-    #     name: logstash
-    #     image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
-    #     networks:
-    #       - name: "{{ docker_network_name }}"
-    #     volumes:
-    #       - /elk/logstash:/usr/share/logstash/pipeline/
-    #     state: "started"
-    #     restart_policy: "unless-stopped"
+    - name: install logstash
+      community.docker.docker_container:
+        name: logstash
+        image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
+        networks:
+          - name: "{{ docker_network_name }}"
+        volumes:
+          - /elk/logstash:/usr/share/logstash/pipeline/
+        state: "started"
+        restart_policy: "unless-stopped"
