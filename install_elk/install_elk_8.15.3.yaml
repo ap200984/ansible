@@ -1,4 +1,24 @@
 ---
+# Внимание!
+# Для версии 8.15.3 при первичной инсталляции необходимо провести ряд ручных мероприятий для связывания kibana и elasticsearch
+# 1. Раскомментировать таски, начиная с "Reset Elasticsearch password non-interactively using yes command" и заканчивая "Display the new Kibana enrollment token"
+# 2. Закомментировать проброс волумов в кибану
+        # volumes:
+        #   - /elk/kibana/config:/usr/share/kibana/config
+        #   - /elk/kibana/data:/usr/share/kibana/data
+# 3. При прокатке запомнить выводимый пароль и энролл-токен для кибаны
+# 4. При первом запуске контейна кибаны в логах будет строка
+# Go to http://0.0.0.0:5601/?code=052615 to get started.
+# 5. Перейти по HTTP на хост на порт 5601 с добавлением /?code=052615
+# 6. Далее понадобятся токен и пароль (можно найти в выхлопе ансибла). Имя пользователя - elastic
+# 7. После инициализации будут созданы файлы в папках /usr/share/kibana/config и /usr/share/kibana/data
+# 8. Их можно скопировать на хост через
+#       sudo docker cp kibana:/usr/share/kibana/config /elk/kibana
+#       sudo docker cp kibana:/usr/share/kibana/data /elk/kibana
+# 9. Раскомментировать проброс волумов, закомментировать таски , начиная с "Reset Elasticsearch password non-interactively using yes command" и заканчивая "Display the new Kibana enrollment token"
+# 10. Теперь кибану можно рестртовать без потери связи с эластиком
+# 11. Пароль пользователя elastic можно изменить через WEB-интерфейс кибаны
+
 - hosts: all
   become: true
   vars:
@@ -136,13 +156,13 @@
         group: root
         mode: '0644'
 
-    - name: install logstash
-      community.docker.docker_container:
-        name: logstash
-        image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
-        networks:
-          - name: "{{ docker_network_name }}"
-        volumes:
-          - /elk/logstash/pipeline:/usr/share/logstash/pipeline/
-        state: "started"
-        restart_policy: "unless-stopped"
+    # - name: install logstash
+    #   community.docker.docker_container:
+    #     name: logstash
+    #     image: "docker.elastic.co/logstash/logstash:{{ elk_version }}"
+    #     networks:
+    #       - name: "{{ docker_network_name }}"
+    #     volumes:
+    #       - /elk/logstash/pipeline:/usr/share/logstash/pipeline/
+    #     state: "started"
+    #     restart_policy: "unless-stopped"
