@@ -60,40 +60,40 @@
     #     yes y | sudo docker exec -i elastic /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
     #   register: password_reset_result
 
-    - name: Ensure python3-pexpect is installed
-      become: yes
-      apt:
-        name: python3-pexpect
-        state: present
-        update_cache: yes
+    # - name: Ensure python3-pexpect is installed
+    #   become: yes
+    #   apt:
+    #     name: python3-pexpect
+    #     state: present
+    #     update_cache: yes
 
-    - name: Reset Elasticsearch password non-interactively
-      ansible.builtin.expect:
-        command: sudo docker exec -i elastic /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
-        responses:
-          'Please confirm that you would like to continue \[y/N\]': 'y'
-        timeout: 30
-        echo: yes
-      register: password_reset_result
+    # - name: Reset Elasticsearch password non-interactively
+    #   ansible.builtin.expect:
+    #     command: sudo docker exec -i elastic /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
+    #     responses:
+    #       'Please confirm that you would like to continue \[y/N\]': 'y'
+    #     timeout: 30
+    #     echo: yes
+    #   register: password_reset_result
 
-    - name: Extract the new password
-      set_fact:
-        new_elastic_password: "{{ password_reset_result.stdout | regex_search('New value: (.+)', '\\1') }}"
+    # - name: Extract the new password
+    #   set_fact:
+    #     new_elastic_password: "{{ password_reset_result.stdout | regex_search('New value: (.+)', '\\1') }}"
 
-    - name: Display new Elasticsearch password
-      debug:
-        msg: "The new Elasticsearch password is: {{ new_elastic_password }}"
+    # - name: Display new Elasticsearch password
+    #   debug:
+    #     msg: "The new Elasticsearch password is: {{ new_elastic_password }}"
 
-    - name: Reset enrollment token for Kibana
-      community.docker.docker_container_exec:
-        container: elastic
-        command: /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana
-      register: enrollment_token_result
-      failed_when: enrollment_token_result.rc != 0
+    # - name: Reset enrollment token for Kibana
+    #   community.docker.docker_container_exec:
+    #     container: elastic
+    #     command: /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana
+    #   register: enrollment_token_result
+    #   failed_when: enrollment_token_result.rc != 0
 
-    - name: Display the new Kibana enrollment token
-      debug:
-        msg: "{{ enrollment_token_result.stdout }}"
+    # - name: Display the new Kibana enrollment token
+    #   debug:
+    #     msg: "{{ enrollment_token_result.stdout }}"
 
     - name: install kibana
       community.docker.docker_container:
@@ -103,9 +103,9 @@
           - name: "{{ docker_network_name }}"
         ports:
           - 5601:5601/tcp
-        # volumes:
-        #   - /elk/kibana/config:/usr/share/kibana/config
-        #   - /elk/kibana/data:/usr/share/kibana/data
+        volumes:
+          - /elk/kibana/config:/usr/share/kibana/config
+          - /elk/kibana/data:/usr/share/kibana/data
         state: "started"
         restart_policy: "unless-stopped"
 
@@ -146,12 +146,3 @@
     #       - /elk/logstash:/usr/share/logstash/pipeline/
     #     state: "started"
     #     restart_policy: "unless-stopped"
-# sudo docker run -it --rm \
-#   --name elastic \
-#   --memory="1g" \
-#   --memory-swap="2g" \
-#   --network "docker-net" \
-#   -p 9200:9200 \
-#   docker.elastic.co/elasticsearch/elasticsearch:8.15.3
-
-# sudo docker run --rm --name es01 -e discovery.type=single-node --net docker-net -p 9200:9200 -it -m 1GB docker.elastic.co/elasticsearch/elasticsearch:8.15.3
