@@ -103,9 +103,9 @@
           - name: "{{ docker_network_name }}"
         ports:
           - 5601:5601/tcp
-        volumes:
-          - /elk/kibana/config:/usr/share/kibana/config
-          - /elk/kibana/data:/usr/share/kibana/data
+        # volumes:
+        #   - /elk/kibana/config:/usr/share/kibana/config
+        #   - /elk/kibana/data:/usr/share/kibana/data
         state: "started"
         restart_policy: "unless-stopped"
 
