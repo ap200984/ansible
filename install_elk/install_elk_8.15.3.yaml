@@ -55,20 +55,9 @@
         timeout: 300
         state: started
 
-    - name: Ensure python3-pexpect is installed
-      become: yes
-      apt:
-        name: python3-pexpect
-        state: present
-        update_cache: yes
-
-    - name: Reset Elasticsearch password non-interactively
-      ansible.builtin.expect:
-        command: sudo docker exec -i elastic /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
-        responses:
-          'Please confirm that you would like to continue \[y/N\]': 'y'
-        timeout: 30
-        echo: yes
+    - name: Reset Elasticsearch password non-interactively using yes command
+      shell: |
+        yes y | sudo docker exec -i elastic /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
       register: password_reset_result
 
     - name: Extract the new password
