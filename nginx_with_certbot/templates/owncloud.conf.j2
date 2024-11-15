@@ -8,7 +8,8 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
 
     location / {
-        proxy_pass http://owncloud:8080;
+        set $upstream_backend "http://owncloud:8080";
+        proxy_pass $upstream_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

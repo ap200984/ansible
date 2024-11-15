@@ -1,13 +1,14 @@
 server {
     listen 443 ssl;
-    server_name zabbix.{{ domain }};
+    server_name owncloud.{{ domain }};
+
+    client_max_body_size 1024M;
 
     ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
 
     location / {
-        set $upstream_backend "http://zabbix-web-nginx-pgsql:8080";
-        proxy_pass $upstream_backend;
+        proxy_pass http://owncloud:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
