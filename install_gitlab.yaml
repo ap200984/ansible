@@ -7,8 +7,8 @@
     docker_network_range: 172.20.240.0/20
 
   tasks:
-    - name: Include secrets
-      include_vars: secrets/common_secrets.yml
+    # - name: Include secrets
+    #   include_vars: secrets/common_secrets.yml
 
     - name: Create a network for gitlab
       become: true
@@ -17,6 +17,20 @@
         ipam_config:
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
+
+    - name: Ensure /tmp/devnull directory exists
+      file:
+        path: /tmp/devnull
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create null device at /tmp/devnull/null
+      command: mknod /tmp/devnull/null c 1 3
+      args:
+        creates: /tmp/devnull/null
+      become: true
 
     - name: Install gitlab
       community.docker.docker_container:
@@ -32,7 +46,7 @@
         volumes:
           - /gitlab/config:/etc/gitlab
           - /var/log/gitlab:/var/log/gitlab
-          - /dev/null:/var/log/gitlab/sidekiq/current
+          - /tmp/devnull/null:/var/log/gitlab/sidekiq/current
           - /gitlab/data:/var/opt/gitlab
         env:
           GITLAB_OMNIBUS_CONFIG: |
@@ -44,6 +58,7 @@
             nginx['proxy_set_headers'] = {
               "X-Forwarded-Proto" => "https"
             };
+            sidekiq['log_level'] = 'fatal';
         state: "started"
         restart_policy: "unless-stopped"
         log_driver: "none"
