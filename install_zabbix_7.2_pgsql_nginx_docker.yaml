@@ -1,0 +1,165 @@
+---
+- hosts: all
+  become: true
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+  tasks:
+    # - name: Include secrets
+    #   include_vars: secrets/common_secrets.yml
+
+    - name: Create a network for zabbix
+      become: true
+      docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Postgres container
+      become: true
+      community.docker.docker_container:
+        name: postgres-server
+        image: "postgres:16"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+        ports:
+          - 6432:5432/tcp
+        volumes:
+          - /postgres:/var/lib/postgresql/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    # - name: Zabbix snmp traps
+    #   community.docker.docker_container:
+    #     name: zabbix-snmptraps
+    #     image: "zabbix/zabbix-snmptraps:ubuntu-7.2-latest"
+    #     networks:
+    #       - name: "{{ docker_network_name }}"
+    #     ports:
+    #       - 162:1162/udp
+    #     volumes:
+    #       - /zbx_instance/snmptraps:/var/lib/zabbix/snmptraps:rw
+    #       - /var/lib/zabbix/mibs:/usr/share/snmp/mibs:ro
+    #     state: "started"
+    #     restart_policy: "unless-stopped"
+
+    - name: Zabbix backend
+      community.docker.docker_container:
+        name: zabbix-server-pgsql
+        image: "zabbix/zabbix-server-pgsql:ubuntu-trunk"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          DB_SERVER_HOST: "postgres-server"
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+          ZBX_ENABLE_SNMP_TRAPS: "true"
+        ports:
+          - 10051:10051
+        # volumes_from:
+        #   - zabbix-snmptraps
+        volumes:
+          - /postgres:/var/lib/postgresql/data
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Zabbix frontend
+      community.docker.docker_container:
+        name: zabbix-web-nginx-pgsql
+        image: "zabbix/zabbix-web-nginx-pgsql:ubuntu-trunk"
+        networks:
+          - name: "{{ docker_network_name }}"
+        env:
+          ZBX_SERVER_HOST: "zabbix-server-pgsql"
+          DB_SERVER_HOST: "postgres-server"
+          POSTGRES_USER: "zabbix"
+          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_DB: "zabbix"
+        ports:
+          # - 443:8443
+          # - 80:80
+          - 8080:8080
+        volumes:
+          - /etc/ssl/nginx:/etc/ssl/nginx:ro
+        state: "started"
+        restart_policy: "unless-stopped"
+
+    - name: Configure zabbix frontend. 1st stage (copying file)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql cp /usr/share/zabbix/include/defines.inc.php /tmp/defines.inc.php"
+      ignore_errors: true
+
+    - name: Configure zabbix frontend. 2nd stage (increasing DASHBOARD_MAX_ROWS)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql sed -i \"s|define('DASHBOARD_MAX_ROWS.*|define('DASHBOARD_MAX_ROWS',\t\t65536);|\" /tmp/defines.inc.php"
+      ignore_errors: true
+
+    - name: Configure zabbix frontend. 3rd stage (increasing DASHBOARD_WIDGET_MAX_ROWS)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql sed -i \"s|define('DASHBOARD_WIDGET_MAX_ROWS.*|define('DASHBOARD_WIDGET_MAX_ROWS',\t65536);|\" /tmp/defines.inc.php"
+      ignore_errors: true
+
+    - name: Configure zabbix frontend. 4th stage (copying file back)
+      shell: /bin/sh -c "sudo docker exec -it zabbix-web-nginx-pgsql cp /tmp/defines.inc.php /usr/share/zabbix/include/defines.inc.php"
+      ignore_errors: true
+
+    - name: Add zabbix-agent2 on debian
+      become: true
+      when: ansible_distribution|lower == "debian"
+      apt:
+        deb: "https://repo.zabbix.com/zabbix/7.2/release/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_7.2-1%2B{{ ansible_distribution|lower }}{{ ansible_distribution_major_version}}_all.deb"
+
+    - name: Add zabbix-agent2 on ubuntu
+      become: true
+      when: ansible_distribution|lower == "ubuntu"
+      apt:
+        deb: "https://repo.zabbix.com/zabbix/7.2/release/{{ ansible_distribution|lower }}/pool/main/z/zabbix-release/zabbix-release_7.2-1%2B{{ ansible_distribution|lower }}{{ ansible_distribution_version}}_all.deb"
+      ignore_errors: true
+
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+
+    - name: Install zabbix-agent2
+      become: true
+      apt:
+        name:
+          - zabbix-agent2
+        state: present
+
+    - name: add zabbix to docker group
+      user:
+        name: zabbix
+        groups: docker
+        append: yes
+
+    - name: Allow new incoming from docker_network_name
+      iptables:
+        chain: INPUT
+        source: "{{ docker_network_subnet }}"
+        jump: ACCEPT
+
+    - name: Configure zabbix-agent2 server section
+      lineinfile:
+        dest: /etc/zabbix/zabbix_agent2.conf
+        regexp: ^Server=
+        line: Server={{ docker_network_range }}
+
+    - name: Configure hostname
+      lineinfile:
+        dest: /etc/zabbix/zabbix_agent2.conf
+        regexp: ^Hostname=
+        line: Hostname={{ ansible_hostname }}
+
+    - name: Restart zabbix-agent2
+      become: true
+      service:
+        name: zabbix-agent2
+        state: restarted
