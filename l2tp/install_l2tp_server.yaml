@@ -61,6 +61,7 @@
         state: started
         restart_policy: always
         privileged: yes
+        network_mode: host
         published_ports:
           - "1701:1701/udp"
         volumes:
