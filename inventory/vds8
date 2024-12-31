@@ -1,0 +1,15 @@
+[prod:vars]
+ansible_user=ansible
+ip_address=194.113.106.136
+second_octet=23
+wg_octet=253
+gre_octet=254
+l2tp_octet=255
+domain=vds8.space
+host_name=vds8
+
+ansible_ssh_private_key_file=~/.ssh/priv/ansible
+
+[prod]
+194.113.106.136:19022
+

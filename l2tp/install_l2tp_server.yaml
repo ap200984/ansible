@@ -1,0 +1,51 @@
+---
+- name: Deploy L2TP/IPsec VPN Server
+  hosts: all
+  become: yes
+  vars:
+    vpn_ipsec_psk: "replace-with-your-psk"
+    vpn_user: "replace-with-user"
+    vpn_password: "replace-with-password"
+
+  tasks:
+    - name: Ensure Docker is installed (example for Debian/Ubuntu)
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Create /etc/l2tp-server directory
+      file:
+        path: /etc/l2tp-server
+        state: directory
+        mode: '0755'
+
+    - name: Create environment file for VPN
+      copy:
+        dest: /etc/l2tp-server/l2tp.env
+        mode: '0600'
+        content: |
+          VPN_IPSEC_PSK={{ vpn_ipsec_psk }}
+          VPN_USER={{ vpn_user }}
+          VPN_PASSWORD={{ vpn_password }}
+
+    - name: Create ipsec.d directory
+      file:
+        path: /etc/l2tp-server/ipsec.d
+        state: directory
+        mode: '0755'
+
+    - name: Pull and start L2TP container
+      docker_container:
+        name: l2tp-server
+        image: hwdsl2/ipsec-vpn-server:latest
+        env_file: /etc/l2tp-server/l2tp.env
+        volumes:
+          - /etc/l2tp-server/ipsec.d:/etc/ipsec.d
+        published_ports:
+          - "500:500/udp"
+          - "4500:4500/udp"
+          - "1701:1701/udp"
+        restart_policy: always
+        privileged: yes
+        state: started
