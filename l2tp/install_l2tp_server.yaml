@@ -1,7 +1,12 @@
 ---
-- name: Deploy L2TP-only Docker Container
+- name: Deploy Pure L2TP Docker Container
   hosts: all
   become: yes
+
+  # vars:
+    # Optionally set defaults if not defined in inventory
+    # second_octet: "{{ second_octet | default(20) }}"
+    # l2tp_octet: "{{ l2tp_octet | default(255) }}"
 
   tasks:
     - name: Ensure Docker is installed (Debian/Ubuntu example)
@@ -28,17 +33,17 @@
         dest: /etc/l2tp/entrypoint.sh
         mode: '0755'
 
-    - name: Copy chap-secrets
-      copy:
-        src: chap-secrets
-        dest: /etc/l2tp/chap-secrets
-        mode: '0600'
-
-    - name: Copy xl2tpd.conf
-      copy:
-        src: xl2tpd.conf
+    - name: Copy xl2tpd.conf from Jinja2 template
+      template:
+        src: xl2tpd.conf.j2
         dest: /etc/l2tp/xl2tpd.conf
         mode: '0644'
+
+    - name: Render chap-secrets with inventory variables
+      template:
+        src: chap-secrets.j2
+        dest: /etc/l2tp/chap-secrets
+        mode: '0600'
 
     - name: Build L2TP Docker image
       docker_image:
@@ -47,7 +52,7 @@
         state: present
         source: build
         build:
-          path: /etc/l2tp
+          path: /etc/l2tp   # Directory on remote host containing Dockerfile
 
     - name: Run L2TP container
       docker_container:
@@ -59,5 +64,8 @@
         published_ports:
           - "1701:1701/udp"
         volumes:
+          # Map host's chap-secrets -> container's /etc/ppp/chap-secrets
           - /etc/l2tp/chap-secrets:/etc/ppp/chap-secrets:ro
+
+          # Map host's xl2tpd.conf -> container's /etc/xl2tpd/xl2tpd.conf
           - /etc/l2tp/xl2tpd.conf:/etc/xl2tpd/xl2tpd.conf:ro

@@ -1,5 +1,5 @@
 [global]
-listen-addr = {$IP_ADDRESS}
+listen-addr = {{ ip_address }}
 port = 1701
 ipsec saref = no
 ;debug tunnel = yes
@@ -10,8 +10,8 @@ ipsec saref = no
 auth file = /etc/ppp/chap-secrets
 
 [lns default]
-ip range = 10.{$SECOND_OCTET}.{$L2TP_OCTET}.100-10.{$SECOND_OCTET}.{$L2TP_OCTET}.199
-local ip = 10.{$SECOND_OCTET}.{$L2TP_OCTET}.1
+ip range = 10.{{ second_octet }}.{{ l2tp_octet }}.100-10.{{ second_octet }}.{{ l2tp_octet }}.199
+local ip = 10.{{ second_octet }}.{{ l2tp_octet }}.1
 refuse chap = yes
 refuse pap = yes
 require authentication = yes
