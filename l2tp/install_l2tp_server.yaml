@@ -1,51 +1,60 @@
 ---
-- name: Deploy L2TP/IPsec VPN Server
+- name: Deploy L2TP-only Docker Container
   hosts: all
   become: yes
-  vars:
-    vpn_ipsec_psk: "replace-with-your-psk"
-    vpn_user: "replace-with-user"
-    vpn_password: "replace-with-password"
 
   tasks:
-    - name: Ensure Docker is installed
+    - name: Ensure Docker is installed (Debian/Ubuntu example)
       apt:
         name: docker.io
         state: present
         update_cache: yes
 
-    - name: Create /etc/l2tp-server directory
+    - name: Create /etc/l2tp directory on host
       file:
-        path: /etc/l2tp-server
+        path: /etc/l2tp
         state: directory
         mode: '0755'
 
-    - name: Create environment file for VPN
+    - name: Copy Dockerfile
       copy:
-        dest: /etc/l2tp-server/l2tp.env
-        mode: '0600'
-        content: |
-          VPN_IPSEC_PSK={{ vpn_ipsec_psk }}
-          VPN_USER={{ vpn_user }}
-          VPN_PASSWORD={{ vpn_password }}
+        src: Dockerfile
+        dest: /etc/l2tp/Dockerfile
+        mode: '0644'
 
-    - name: Create ipsec.d directory
-      file:
-        path: /etc/l2tp-server/ipsec.d
-        state: directory
+    - name: Copy entrypoint.sh
+      copy:
+        src: entrypoint.sh
+        dest: /etc/l2tp/entrypoint.sh
         mode: '0755'
 
-    - name: Pull and start L2TP container
+    - name: Copy chap-secrets
+      copy:
+        src: chap-secrets
+        dest: /etc/l2tp/chap-secrets
+        mode: '0600'
+
+    - name: Copy xl2tpd.conf
+      copy:
+        src: xl2tpd.conf
+        dest: /etc/l2tp/xl2tpd.conf
+        mode: '0644'
+
+    - name: Build L2TP Docker image
+      docker_image:
+        path: /etc/l2tp
+        name: l2tp:latest
+        state: present
+        force: true
+
+    - name: Run L2TP container
       docker_container:
-        name: l2tp-server
-        image: hwdsl2/ipsec-vpn-server:latest
-        env_file: /etc/l2tp-server/l2tp.env
-        volumes:
-          - /etc/l2tp-server/ipsec.d:/etc/ipsec.d
-        published_ports:
-          - "500:500/udp"
-          - "4500:4500/udp"
-          - "1701:1701/udp"
-        restart_policy: always
-        privileged: yes
+        name: l2tp
+        image: l2tp:latest
         state: started
+        restart_policy: always
+        volumes:
+          - /etc/l2tp:/etc/l2tp:ro   # read-only mount, adjust if you need to modify files inside container
+        published_ports:
+          - "1701:1701/udp"
+        privileged: yes
