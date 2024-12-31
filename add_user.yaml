@@ -1,0 +1,34 @@
+---
+- name: Create user "amnesia-wg" with sudo permissions
+  hosts: all
+  become: true
+  vars:
+    user_name: "amnesia-wg"
+    user_password: "amnesia_Taran#32"
+
+  tasks:
+    - name: Generate password hash
+      ansible.builtin.command:
+        cmd: "openssl passwd -6 '{{ user_password }}'"
+      register: hashed_password
+      no_log: true
+
+    - name: Create the user with sudo privileges
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        password: "{{ hashed_password.stdout }}"
+        shell: /bin/bash
+
+    - name: Add user to sudo group
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        groups: sudo
+        append: true
+
+    - name: Ensure user has passwordless sudo
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/{{ user_name }}
+        create: true
+        state: present
+        line: "{{ user_name }} ALL=(ALL) NOPASSWD:ALL"
+        mode: '0440'
