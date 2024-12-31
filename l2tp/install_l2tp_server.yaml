@@ -42,10 +42,12 @@
 
     - name: Build L2TP Docker image
       docker_image:
-        path: /etc/l2tp
-        name: l2tp:latest
+        name: l2tp
+        tag: latest
         state: present
-        force: true
+        source: build
+        build:
+          path: /etc/l2tp
 
     - name: Run L2TP container
       docker_container:
@@ -53,8 +55,9 @@
         image: l2tp:latest
         state: started
         restart_policy: always
-        volumes:
-          - /etc/l2tp:/etc/l2tp:ro   # read-only mount, adjust if you need to modify files inside container
+        privileged: yes
         published_ports:
           - "1701:1701/udp"
-        privileged: yes
+        volumes:
+          - /etc/l2tp/chap-secrets:/etc/ppp/chap-secrets:ro
+          - /etc/l2tp/xl2tpd.conf:/etc/xl2tpd/xl2tpd.conf:ro
