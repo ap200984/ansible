@@ -8,7 +8,7 @@
     vpn_password: "replace-with-password"
 
   tasks:
-    - name: Ensure Docker is installed (example for Debian/Ubuntu)
+    - name: Ensure Docker is installed
       apt:
         name: docker.io
         state: present
