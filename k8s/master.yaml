@@ -3,6 +3,29 @@
   hosts: master
   become: yes
 
+  vars:
+    # Easily change the Kubernetes version here
+    k8s_version: "1.32"
+
+  # Gather OS facts so we can detect which Debian version is in use
+  pre_tasks:
+    - name: Gather system information
+      ansible.builtin.setup:
+        gather_subset:
+          - distribution
+          - distribution_release
+
+    - name: Determine Docker repo based on Debian release
+      set_fact:
+        docker_repo_release: >-
+          {% if ansible_distribution_release == 'bullseye' %}
+          bullseye
+          {% elif ansible_distribution_release == 'bookworm' %}
+          bookworm
+          {% else %}
+          bullseye   # Fallback (adjust as needed)
+          {% endif %}
+
   tasks:
     - name: Update APT cache
       apt:
@@ -79,7 +102,7 @@
 
     - name: Download Kubernetes GPG key
       get_url:
-        url: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
+        url: https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key
         dest: /tmp/k8s-release.key
 
     - name: Remove old keyring file if it exists
@@ -92,7 +115,7 @@
 
     - name: Add Kubernetes repo
       apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/ /"
         state: present
 
     - name: Update APT cache after adding Kubernetes repo
@@ -116,19 +139,14 @@
         enabled: yes
         state: started
 
-    ########################################################################
-    # Docker/Containerd Repository Setup (Fix for "No package matching 'containerd.io'")
-    ########################################################################
-
     - name: Add Docker GPG key for Debian
       apt_key:
         url: https://download.docker.com/linux/debian/gpg
         state: present
 
-    # Replace 'buster' with your actual Debian codename (e.g. bullseye, bookworm) if needed
     - name: Add Docker repository for Debian
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/debian bookworm stable"
+        repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ docker_repo_release }} stable"
         state: present
 
     - name: Update APT cache after adding Docker repo
