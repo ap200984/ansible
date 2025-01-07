@@ -7,7 +7,6 @@
     # Easily change the Kubernetes version here
     k8s_version: "1.32"
 
-  # Gather OS facts so we can detect which Debian version is in use
   pre_tasks:
     - name: Gather system information
       ansible.builtin.setup:
@@ -199,3 +198,18 @@
         kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
       args:
         executable: /bin/bash
+
+    - name: Generate join command
+      command: kubeadm token create --print-join-command
+      register: kubeadm_join_cmd
+      vars:
+        ansible_stat_path: /etc/kubernetes/admin.conf
+      check_mode: no
+
+    - name: Save join command to /etc/kubernetes/join.txt
+      copy:
+        content: "{{ kubeadm_join_cmd.stdout }}"
+        dest: /etc/kubernetes/join.txt
+        mode: '0600'
+      when: kubeadm_join_cmd is defined
+
