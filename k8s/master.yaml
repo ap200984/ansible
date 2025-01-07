@@ -212,4 +212,3 @@
         dest: /etc/kubernetes/join.txt
         mode: '0600'
       when: kubeadm_join_cmd is defined
-
