@@ -8,7 +8,7 @@ l2tp_octet=255
 domain=vds4.space
 host_name=VDS4
 
-private_key_file=~/.ssh/ansible
+private_key_file=~/.ssh/priv/ansible
 
 [prod]
 69.30.237.130:19022

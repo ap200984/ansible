@@ -1,10 +1,10 @@
-[prod:vars]
+[master:vars]
 ansible_user=ansible
 ip_address=10.9.0.131
 host_name=test1
 
 ansible_ssh_private_key_file=~/.ssh/priv/ansible
 
-[prod]
+[master]
 10.9.0.131
 
