@@ -16,26 +16,36 @@
         sed -i '/ swap / s/^/#/' /etc/fstab
       tags: disable_swap
 
-    - name: Install required packages for Docker
+    - name: Install prereq
       apt:
         name:
           - ca-certificates
           - curl
           - gnupg
-          - software-properties-common
+          - lsb-release
         state: present
 
-    - name: Add Docker GPG key
-      apt_key:
+    - name: Add docker GPG key
+      ansible.builtin.apt_key:
         url: https://download.docker.com/linux/debian/gpg
         state: present
 
-    - name: Add Docker repository
+    - name: Download key
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Add docker repository
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/debian/dists/$(lsb_release -cs)/stable"
+        repo: "deb https://download.docker.com/linux/debian buster stable"
         state: present
 
-    - name: Install Docker
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        update_cache: yes
+
+    - name: Install docker
       apt:
         name:
           - docker-ce
@@ -55,9 +65,10 @@
         state: present
 
     - name: Add Kubernetes repository
-      apt_repository:
-        repo: "deb https://apt.kubernetes.io/ kubernetes-xenial main"
-        state: present
+      shell: |
+        echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+      args:
+        creates: /etc/apt/sources.list.d/kubernetes.list
 
     - name: Install Kubernetes components
       apt:
