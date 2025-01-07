@@ -4,12 +4,12 @@
   become: yes
 
   tasks:
-    - name: Update and upgrade system packages
-      shell: |
-        apt update
-        apt upgrade -y
-      args:
-        warn: false
+    - name: Update and upgrade apt packages
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400 #One day
 
     - name: Install required packages
       apt:
@@ -90,43 +90,24 @@
         state: present
         mark: hold
 
-    - name: Install Docker prerequisites
+    - name: Install containerd
       apt:
         name:
-          - ca-certificates
-          - curl
-          - gnupg
-          - lsb-release
-        state: present
-
-    - name: Add Docker GPG key
-      get_url:
-        url: https://download.docker.com/linux/debian/gpg
-        dest: /usr/share/keyrings/docker-archive-keyring.gpg
-
-    - name: Add Docker repository
-      shell: |
-        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list
-      args:
-        creates: /etc/apt/sources.list.d/docker.list
-
-    - name: Update apt cache for Docker
-      apt:
-        update_cache: yes
-
-    - name: Install Docker
-      apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
           - containerd.io
         state: present
 
-    - name: Enable and start Docker service
+    - name: Configure containerd
+      shell: |
+        mkdir -p /etc/containerd
+        containerd config default | tee /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+
+    - name: Restart containerd
       systemd:
-        name: docker
+        name: containerd
         enabled: yes
-        state: started
+        state: restarted
 
     - name: Initialize Kubernetes master node
       shell: |
@@ -135,10 +116,11 @@
         creates: /etc/kubernetes/admin.conf
 
     - name: Set up kubectl for the root user
-      shell: |
-        mkdir -p $HOME/.kube
-        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-        chown $(id -u):$(id -g) $HOME/.kube/config
+      copy:
+        dest: "{{ item.dest }}"
+        content: "{{ lookup('file', item.src) }}"
+      with_items:
+        - { src: '/etc/kubernetes/admin.conf', dest: '/root/.kube/config' }
 
     - name: Deploy Flannel pod network
       shell: |
