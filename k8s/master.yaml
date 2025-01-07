@@ -82,6 +82,11 @@
         url: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
         dest: /tmp/k8s-release.key
 
+    - name: Remove old keyring file if it exists
+      file:
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        state: absent
+
     - name: Dearmor and store the Kubernetes GPG key
       command: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/k8s-release.key
 
