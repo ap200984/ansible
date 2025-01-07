@@ -1,0 +1,10 @@
+[worker:vars]
+ansible_user=ansible
+ip_address=10.9.0.134
+host_name=test3
+
+ansible_ssh_private_key_file=~/.ssh/priv/ansible
+
+[worker]
+10.9.0.134
+
