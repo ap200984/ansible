@@ -4,12 +4,14 @@
   become: yes
 
   tasks:
-    - name: Update and upgrade apt packages
-      become: true
+    - name: Update APT cache
       apt:
-        upgrade: yes
         update_cache: yes
-        cache_valid_time: 86400 #One day
+
+    - name: Upgrade all packages (dist upgrade)
+      apt:
+        upgrade: dist
+        update_cache: yes
 
     - name: Install required packages
       apt:
@@ -20,41 +22,56 @@
           - gnupg2
           - gpg
           - sudo
+          - curl
         state: present
+        update_cache: yes
 
-    - name: Disable swap and comment out in /etc/fstab
-      shell: |
-        swapoff -a
-        sed -i '/ swap / s/^/#/' /etc/fstab
-      tags: disable_swap
+    - name: Disable swap
+      command: swapoff -a
+
+    - name: Comment out swap in /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^([^#].*swap.*)'
+        line: '#\1'
 
     - name: Remove swap file
       file:
         path: /swap.img
         state: absent
 
-    - name: Load necessary kernel modules
-      shell: |
-        modprobe overlay -v
-        modprobe br_netfilter -v
+    - name: Load overlay kernel module
+      modprobe:
+        name: overlay
+        state: present
 
-    - name: Add kernel modules to /etc/modules
+    - name: Load br_netfilter kernel module
+      modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Ensure overlay is configured to load at boot
       lineinfile:
         path: /etc/modules
-        line: "{{ item }}"
+        line: "overlay"
+        create: yes
         state: present
-      with_items:
-        - overlay
-        - br_netfilter
 
-    - name: Enable IP forwarding
+    - name: Ensure br_netfilter is configured to load at boot
+      lineinfile:
+        path: /etc/modules
+        line: "br_netfilter"
+        create: yes
+        state: present
+
+    - name: Enable IPv4 forwarding
       sysctl:
         name: net.ipv4.ip_forward
-        value: 1
+        value: "1"
         state: present
-        sysctl_set: yes
+        reload: yes
 
-    - name: Create keyrings directory
+    - name: Create /etc/apt/keyrings directory
       file:
         path: /etc/apt/keyrings
         state: directory
@@ -62,18 +79,22 @@
 
     - name: Download Kubernetes GPG key
       get_url:
-        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        dest: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+        url: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
+        dest: /tmp/k8s-release.key
 
-    - name: Add Kubernetes repository
-      shell: |
-        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+    - name: Dearmor and store the Kubernetes GPG key
+      command: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/k8s-release.key
 
-    - name: Update apt cache for Kubernetes
+    - name: Add Kubernetes repo
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
+        state: present
+
+    - name: Update APT cache after adding Kubernetes repo
       apt:
         update_cache: yes
 
-    - name: Install Kubernetes components
+    - name: Install kubelet, kubeadm, and kubectl
       apt:
         name:
           - kubelet
@@ -81,14 +102,19 @@
           - kubectl
         state: present
 
-    - name: Mark Kubernetes packages on hold
+    - name: Hold kubelet, kubeadm, and kubectl at current version
       apt:
         name:
           - kubelet
           - kubeadm
           - kubectl
-        state: present
-        mark: hold
+        state: hold
+
+    - name: Enable and start kubelet service
+      systemd:
+        name: kubelet
+        enabled: yes
+        state: started
 
     - name: Install containerd
       apt:
