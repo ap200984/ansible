@@ -4,7 +4,6 @@
   become: yes
 
   vars:
-    # Easily change the Kubernetes version here
     k8s_version: "1.32"
 
   pre_tasks:
