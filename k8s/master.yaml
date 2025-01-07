@@ -4,19 +4,93 @@
   become: yes
 
   tasks:
-    - name: Ensure system packages are up to date
-      apt:
-        update_cache: yes
-        upgrade: dist
-      tags: update
+    - name: Update and upgrade system packages
+      shell: |
+        apt update
+        apt upgrade -y
+      args:
+        warn: false
 
-    - name: Disable swap
+    - name: Install required packages
+      apt:
+        name:
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - gnupg2
+          - gpg
+          - sudo
+        state: present
+
+    - name: Disable swap and comment out in /etc/fstab
       shell: |
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
       tags: disable_swap
 
-    - name: Install prereq
+    - name: Remove swap file
+      file:
+        path: /swap.img
+        state: absent
+
+    - name: Load necessary kernel modules
+      shell: |
+        modprobe overlay -v
+        modprobe br_netfilter -v
+
+    - name: Add kernel modules to /etc/modules
+      lineinfile:
+        path: /etc/modules
+        line: "{{ item }}"
+        state: present
+      with_items:
+        - overlay
+        - br_netfilter
+
+    - name: Enable IP forwarding
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: 1
+        state: present
+        sysctl_set: yes
+
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Kubernetes GPG key
+      get_url:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        dest: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+
+    - name: Add Kubernetes repository
+      shell: |
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+
+    - name: Update apt cache for Kubernetes
+      apt:
+        update_cache: yes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+
+    - name: Mark Kubernetes packages on hold
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        mark: hold
+
+    - name: Install Docker prerequisites
       apt:
         name:
           - ca-certificates
@@ -26,11 +100,6 @@
         state: present
 
     - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/debian/gpg
-        state: present
-
-    - name: Download Docker keyring
       get_url:
         url: https://download.docker.com/linux/debian/gpg
         dest: /usr/share/keyrings/docker-archive-keyring.gpg
@@ -41,7 +110,7 @@
       args:
         creates: /etc/apt/sources.list.d/docker.list
 
-    - name: Update apt packages
+    - name: Update apt cache for Docker
       apt:
         update_cache: yes
 
@@ -59,58 +128,20 @@
         enabled: yes
         state: started
 
-    - name: Download Kubernetes keyring
-      get_url:
-        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        dest: /usr/share/keyrings/kubernetes-archive-keyring.gpg
-
-    - name: Add Kubernetes repository
-      shell: |
-        echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
-      args:
-        creates: /etc/apt/sources.list.d/kubernetes.list
-
-    - name: Update apt packages
-      apt:
-        update_cache: yes
-
-    - name: Install Kubernetes components
-      apt:
-        name:
-          - kubelet
-          - kubeadm
-          - kubectl
-        state: present
-      tags: install_k8s
-
-    - name: Hold Kubernetes packages at current version
-      apt:
-        name:
-          - kubelet
-          - kubeadm
-          - kubectl
-        state: present
-        allow_downgrade: yes
-        force: yes
-        mark: hold
-
     - name: Initialize Kubernetes master node
       shell: |
         kubeadm init --pod-network-cidr=10.244.0.0/16
       args:
         creates: /etc/kubernetes/admin.conf
-      tags: kubeadm_init
 
     - name: Set up kubectl for the root user
-      copy:
-        dest: "{{ item.dest }}"
-        content: "{{ lookup('file', item.src) }}"
-      with_items:
-        - { src: '/etc/kubernetes/admin.conf', dest: '/root/.kube/config' }
+      shell: |
+        mkdir -p $HOME/.kube
+        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        chown $(id -u):$(id -g) $HOME/.kube/config
 
     - name: Deploy Flannel pod network
       shell: |
         kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
       args:
         executable: /bin/bash
-      tags: deploy_network
