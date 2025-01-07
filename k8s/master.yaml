@@ -159,12 +159,22 @@
       args:
         creates: /etc/kubernetes/admin.conf
 
+    - name: Ensure /root/.kube directory exists
+      file:
+        path: /root/.kube
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
     - name: Set up kubectl for the root user
       copy:
-        dest: "{{ item.dest }}"
-        content: "{{ lookup('file', item.src) }}"
-      with_items:
-        - { src: "/etc/kubernetes/admin.conf", dest: "/root/.kube/config" }
+        src: /etc/kubernetes/admin.conf
+        dest: /root/.kube/config
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0600'
 
     - name: Deploy Flannel pod network
       shell: |
