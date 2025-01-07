@@ -102,13 +102,8 @@
           - kubectl
         state: present
 
-    - name: Hold kubelet, kubeadm, and kubectl at current version
-      apt:
-        name:
-          - kubelet
-          - kubeadm
-          - kubectl
-        state: hold
+    - name: Mark kubelet, kubeadm, kubectl as held
+      command: "apt-mark hold kubelet kubeadm kubectl"
 
     - name: Enable and start kubelet service
       systemd:
