@@ -171,9 +171,23 @@
 
     - name: Initialize Kubernetes master node
       shell: |
-        kubeadm init --pod-network-cidr=10.244.0.0/16
+        kubeadm init --pod-network-cidr=192.168.0.0/16
       args:
         creates: /etc/kubernetes/admin.conf
+
+    - name: Generate join command
+      command: kubeadm token create --print-join-command
+      register: kubeadm_join_cmd
+      vars:
+        ansible_stat_path: /etc/kubernetes/admin.conf
+      check_mode: no
+
+    - name: Save join command to /etc/kubernetes/join.txt
+      copy:
+        content: "{{ kubeadm_join_cmd.stdout }}"
+        dest: /etc/kubernetes/join.txt
+        mode: '0600'
+      when: kubeadm_join_cmd is defined
 
     - name: Ensure /root/.kube directory exists
       file:
@@ -192,22 +206,8 @@
         group: root
         mode: '0600'
 
-    - name: Deploy Flannel pod network
+    - name: Deploy Calico pod network
       shell: |
-        kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+        kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
       args:
         executable: /bin/bash
-
-    - name: Generate join command
-      command: kubeadm token create --print-join-command
-      register: kubeadm_join_cmd
-      vars:
-        ansible_stat_path: /etc/kubernetes/admin.conf
-      check_mode: no
-
-    - name: Save join command to /etc/kubernetes/join.txt
-      copy:
-        content: "{{ kubeadm_join_cmd.stdout }}"
-        dest: /etc/kubernetes/join.txt
-        mode: '0600'
-      when: kubeadm_join_cmd is defined
