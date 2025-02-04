@@ -22,7 +22,7 @@
       become: true
       community.docker.docker_container:
         name: postgres-server
-        image: "postgres:latest"
+        image: "postgres:16"
         networks:
           - name: "{{ docker_network_name }}"
         env:
