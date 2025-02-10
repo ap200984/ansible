@@ -53,7 +53,7 @@
     - name: Zabbix backend
       community.docker.docker_container:
         name: zabbix-server-pgsql
-        image: "zabbix/zabbix-server-pgsql:ubuntu-trunk"
+        image: "zabbix/zabbix-server-pgsql:ubuntu-7.2-latest"
         networks:
           - name: "{{ docker_network_name }}"
         env:
@@ -74,7 +74,7 @@
     - name: Zabbix frontend
       community.docker.docker_container:
         name: zabbix-web-nginx-pgsql
-        image: "zabbix/zabbix-web-nginx-pgsql:ubuntu-trunk"
+        image: "zabbix/zabbix-web-nginx-pgsql:ubuntu-7.2-latest"
         networks:
           - name: "{{ docker_network_name }}"
         env:
