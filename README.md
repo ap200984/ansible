@@ -190,3 +190,23 @@ sudo apt-add-repository ppa:ansible/ansible
 Купить любой домен 2го уровня за 200р. на год (напр., vds2.space)
 Зайти в ЛК -> Главная -> Домены -> Настройка домена -> DNS-серверы и управление зоной -> Добавить A-запись * тем же IP-адресом
 Выждать около получаса и проверить резлв любого поддемена (напр., abc.vds2.space)
+
+### mikroitik zabbix proxy 7.2
+У микротика есть известная проблема с пуллом образа из реджистри, поэтому пуллить пришлось отдельно на армовую машину, сохранять и импортировать в микротике из файла
+
+on arm64 machine:
+sudo docker pull zabbix/zabbix-proxy-sqlite3:alpine-7.2.1
+sudo docker save zabbix/zabbix-proxy-sqlite3:alpine-7.2.1 -o zabbix-proxy-7.2.1-alpine.tar
+sudo chown apopov: zabbix-proxy-7.2.1-alpine.tar
+scp staging-virginia-controller-1:/home/apopov/zabbix-proxy-7.2.1-alpine.tar .
+
+on local machine:
+scp zabbix-proxy-7.2.1-alpine.tar admin@10.9.0.1:/usb2/
+
+on mikrotik
+container -> new -> file: /usb2/zabbix-proxy-7.2.1-alpine.tar
+
+/container add envlist=zabbixproxy_envs hostname=mikrotik_k16_k112 interface=ZABBIX_PROXY logging=yes root-dir=usb1-part1/zabbixproxy start-on-boot=yes
+
+wait 2 minutes until files in /usb2/zabbix-proxy/* will be created
+
