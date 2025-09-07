@@ -5,7 +5,7 @@ second_octet=21
 wg_octet=253
 gre_octet=254
 l2tp_octet=255
-domain=vds5.space
+domain=vds5.ru
 host_name=vds5
 
 ansible_ssh_private_key_file=~/.ssh/priv/ansible
