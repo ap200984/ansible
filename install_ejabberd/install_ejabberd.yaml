@@ -41,7 +41,8 @@
     - name: install ejabberd
       community.docker.docker_container:
         name: ejabberd
-        image: "ejabberd/ecs"
+        #image: "ejabberd/ecs"
+        image: "ejabberd/ecs:24.10" # thia version allows to see status of delivery and set names for contacts in application
         networks:
           - name: "{{ docker_network_name }}"
         ports:
