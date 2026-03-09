@@ -11,7 +11,6 @@
     #   include_vars: secrets/common_secrets.yml
 
     - name: Create a network for gitlab
-      become: true
       docker_network:
         name: "{{ docker_network_name }}"
         ipam_config:
@@ -30,14 +29,14 @@
       command: mknod /tmp/devnull/null c 1 3
       args:
         creates: /tmp/devnull/null
-      become: true
 
     - name: Install gitlab
       community.docker.docker_container:
         name: gitlab
         image: "gitlab/gitlab-ce"
+        shm_size: 256m
         memory: 4g
-        memory_swap: 4g
+        memory_swap: 6g
         networks:
           - name: "{{ docker_network_name }}"
         ports:
@@ -46,36 +45,54 @@
         volumes:
           - /gitlab/config:/etc/gitlab
           - /var/log/gitlab:/var/log/gitlab
-          #- /tmp/devnull/null:/var/log/gitlab/sidekiq/current
+          # - /tmp/devnull/null:/var/log/gitlab/sidekiq/current
           - /gitlab/data:/var/opt/gitlab
         env:
           GITLAB_OMNIBUS_CONFIG: |
             external_url 'https://gitlab.{{ domain }}/';
             gitlab_rails['gitlab_shell_ssh_host'] = 'gitlab.{{ domain }}';
             gitlab_rails['gitlab_shell_ssh_port'] = 1022;
+
             nginx['listen_port'] = 80;
             nginx['listen_https'] = false;
             nginx['proxy_set_headers'] = {
-              "X-Forwarded-Proto" => "https"
+              'X-Forwarded-Proto' => 'https'
             };
+
+            puma['worker_processes'] = 0;
+            puma['per_worker_max_memory_mb'] = 700;
+            puma['min_threads'] = 1;
+            puma['max_threads'] = 4;
+
+            sidekiq['concurrency'] = 5;
             sidekiq['log_level'] = 'fatal';
-        state: "started"
-        restart_policy: "unless-stopped"
+
+            prometheus_monitoring['enable'] = false;
+            prometheus['enable'] = false;
+            alertmanager['enable'] = false;
+            node_exporter['enable'] = false;
+            redis_exporter['enable'] = false;
+            postgres_exporter['enable'] = false;
+            gitlab_exporter['enable'] = false;
+
+            gitlab_rails['env'] = {
+              'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000'
+            };
+
+            gitaly['env'] = {
+              'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000',
+              'GITALY_COMMAND_SPAWN_MAX_PARALLEL' => '2'
+            };
+        state: started
+        restart_policy: unless-stopped
         log_driver: "none"
 
     - name: Install GitLab Runner
       community.docker.docker_container:
-        name: "gitlab-runner"
+        name: gitlab-runner
         image: "gitlab/gitlab-runner:latest"
         volumes:
           - /gitlab/gitlab-runner:/etc/gitlab-runner
           - /var/run/docker.sock:/var/run/docker.sock
         state: started
         restart_policy: unless-stopped
-
-# Set root password for the first time
-# sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
-
-# ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/gitlab_vds6 -C "gitlab_vds6"
-
-
