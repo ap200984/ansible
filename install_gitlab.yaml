@@ -96,3 +96,8 @@
           - /var/run/docker.sock:/var/run/docker.sock
         state: started
         restart_policy: unless-stopped
+
+# Set root password for the first time
+# sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
+
+# ssh-keygen -a 100 -t ed25519 -N "" -f ~/.ssh/gitlab_vds6 -C "gitlab_vds6"
