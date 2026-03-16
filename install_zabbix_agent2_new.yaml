@@ -1,0 +1,83 @@
+---
+- hosts: all
+  become: true
+  vars:
+    zabbix_server_ip: "10.9.0.70"
+
+  tasks:
+    - name: Set Zabbix release package URL
+      set_fact:
+        zabbix_release_url: >-
+          {% if ansible_distribution | lower == 'debian' %}
+          https://repo.zabbix.com/zabbix/7.4/release/debian/pool/main/z/zabbix-release/zabbix-release_7.4-1%2Bdebian{{ ansible_distribution_major_version }}_all.deb
+          {% elif ansible_distribution | lower == 'ubuntu' %}
+          https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.4-1%2Bubuntu{{ ansible_distribution_version }}_all.deb
+          {% endif %}
+
+    - name: Download Zabbix release package
+      get_url:
+        url: "{{ zabbix_release_url | trim }}"
+        dest: /tmp/zabbix-release.deb
+        mode: "0644"
+
+    - name: Install Zabbix release package
+      apt:
+        deb: /tmp/zabbix-release.deb
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - zabbix-agent2
+          - acl
+        state: present
+
+    - name: Write zabbix-agent2 config
+      copy:
+        dest: /etc/zabbix/zabbix_agent2.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          PidFile=/var/run/zabbix/zabbix_agent2.pid
+          LogFile=/var/log/zabbix/zabbix_agent2.log
+          LogFileSize=0
+          Server=0.0.0.0/0
+          ServerActive={{ zabbix_server_ip }}
+          Hostname={{ ansible_hostname }}
+          Include=/etc/zabbix/zabbix_agent2.d/*.conf
+          PluginSocket=/run/zabbix/agent.plugin.sock
+          ControlSocket=/run/zabbix/agent.sock
+          AllowKey=system.run[*]
+          Include=/etc/zabbix/zabbix_agent2.d/plugins.d/*.conf
+      notify: Restart zabbix-agent2
+
+    - name: Add zabbix user to docker group
+      user:
+        name: zabbix
+        groups: docker
+        append: yes
+
+    - name: Set ACL on docker socket for zabbix user
+      ansible.posix.acl:
+        path: /var/run/docker.sock
+        entity: zabbix
+        etype: user
+        permissions: r
+        state: present
+      ignore_errors: true
+
+    - name: Ensure zabbix-agent2 is enabled and started
+      service:
+        name: zabbix-agent2
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart zabbix-agent2
+      service:
+        name: zabbix-agent2
+        state: restarted
