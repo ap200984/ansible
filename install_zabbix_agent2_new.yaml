@@ -61,14 +61,14 @@
         groups: docker
         append: yes
 
-    - name: Set ACL on docker socket for zabbix user
-      ansible.posix.acl:
-        path: /var/run/docker.sock
-        entity: zabbix
-        etype: user
-        permissions: r
-        state: present
-      ignore_errors: true
+    # - name: Set ACL on docker socket for zabbix user
+    #   ansible.posix.acl:
+    #     path: /var/run/docker.sock
+    #     entity: zabbix
+    #     etype: user
+    #     permissions: r
+    #     state: present
+    #   ignore_errors: true
 
     - name: Ensure zabbix-agent2 is enabled and started
       service:
