@@ -1,0 +1,9 @@
+---
+- name: Create etcd cluster
+  hosts: "{{ hosts | default('etcd') }}"
+  become: true
+  gather_facts: true
+
+  roles:
+    - create_etcd_cluster
+

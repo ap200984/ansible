@@ -6,7 +6,6 @@
 
   vars:
     vm_user: ansible
-    vm_console_password: ""
     vm_timezone: UTC
     vm_memory_mb: 2048
     vm_vcpus: 2
@@ -32,6 +31,26 @@
 
     ssh_public_keys_dir: "{{ playbook_dir }}/ssh_public_keys"
     ssh_public_key_files: "{{ lookup('ansible.builtin.fileglob', ssh_public_keys_dir ~ '/*.pub', wantlist=True) }}"
+    passwd_hashes_dir: "{{ playbook_dir }}/passwd_hashes"
+    vm_users:
+      - name: root
+        password_hash_file: "{{ passwd_hashes_dir }}/root"
+        shell: /bin/bash
+      - name: ansible
+        password_hash_file: "{{ passwd_hashes_dir }}/ansible"
+        groups: sudo
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /bin/bash
+      - name: user
+        password_hash_file: "{{ passwd_hashes_dir }}/user"
+        groups: sudo
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /bin/bash
+      - name: apopov
+        password_hash_file: "{{ passwd_hashes_dir }}/apopov"
+        groups: sudo
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /bin/bash
 
   pre_tasks:
     - name: Validate VM parameters
@@ -43,11 +62,25 @@
           - vm_ip_address is match('^([0-9]{1,3}\\.){3}[0-9]{1,3}$')
           - vm_network_source | length > 0
           - ssh_public_key_files | length > 0
-          - "'\n' not in vm_console_password"
-          - "'\r' not in vm_console_password"
+          - vm_users | length > 0
         fail_msg: >-
-          Pass vm_name, vm_ip_address, and a single-line vm_console_password.
-          Public keys must exist in {{ ssh_public_keys_dir }}.
+          Pass vm_name and vm_ip_address. Public keys must exist in
+          {{ ssh_public_keys_dir }} and vm_users must not be empty.
+
+    - name: Validate VM user password hashes
+      ansible.builtin.assert:
+        that:
+          - item.name is defined
+          - item.name | length > 0
+          - item.password_hash_file is defined
+          - lookup('ansible.builtin.file', item.password_hash_file, errors='ignore') | trim | length > 0
+          - "'\n' not in lookup('ansible.builtin.file', item.password_hash_file, errors='ignore') | trim"
+          - "'\r' not in lookup('ansible.builtin.file', item.password_hash_file, errors='ignore') | trim"
+        fail_msg: >-
+          Password hash file for VM user {{ item.name | default('unknown') }}
+          must exist, must be non-empty, and must contain one single-line hash:
+          {{ item.password_hash_file | default('undefined') }}
+      loop: "{{ vm_users }}"
 
     - name: Show selected VM network attachment
       ansible.builtin.debug:
@@ -119,28 +152,24 @@
               manage_etc_hosts: true
               users:
                 - default
-                - name: {{ vm_user | to_json }}
-                  groups: sudo
-                  shell: /bin/bash
-                  sudo: ALL=(ALL) NOPASSWD:ALL
-                  lock_passwd: {{ 'false' if vm_console_password | length > 0 else 'true' }}
-              {% if vm_console_password | length > 0 %}
-                  plain_text_passwd: {{ vm_console_password | to_json }}
+              {% for user in vm_users %}
+                - name: {{ user.name | to_json }}
+                  shell: {{ user.shell | default('/bin/bash') | to_json }}
+              {% if user.groups is defined %}
+                  groups: {{ user.groups | to_json }}
               {% endif %}
+              {% if user.sudo is defined %}
+                  sudo: {{ user.sudo | to_json }}
+              {% endif %}
+                  lock_passwd: false
+                  passwd: {{ lookup('ansible.builtin.file', user.password_hash_file) | trim | to_json }}
                   ssh_authorized_keys:
               {% for key_file in ssh_public_key_files %}
                     - {{ lookup('ansible.builtin.file', key_file) }}
               {% endfor %}
-              {% if vm_console_password | length > 0 %}
-              chpasswd:
-                expire: false
-                users:
-                  - name: {{ vm_user | to_json }}
-                    password: {{ vm_console_password | to_json }}
-                    type: text
-              {% endif %}
+              {% endfor %}
               ssh_pwauth: false
-              disable_root: true
+              disable_root: false
               package_update: true
               packages:
                 - qemu-guest-agent
@@ -222,17 +251,17 @@
         - "'уже активен' not in vm_start.stderr"
       when: vm_name not in running_vms.stdout_lines
 
-    - name: Wait for SSH to become available
-      ansible.builtin.wait_for:
-        host: "{{ vm_ip_address }}"
-        port: 22
-        delay: 10
-        timeout: "{{ vm_wait_for_ssh_timeout }}"
-        state: started
-      become: false
-      delegate_to: localhost
-      when: vm_wait_for_ssh | bool
+    # - name: Wait for SSH to become available
+    #   ansible.builtin.wait_for:
+    #     host: "{{ vm_ip_address }}"
+    #     port: 22
+    #     delay: 10
+    #     timeout: "{{ vm_wait_for_ssh_timeout }}"
+    #     state: started
+    #   become: false
+    #   delegate_to: localhost
+    #   when: vm_wait_for_ssh | bool
 
-    - name: Show SSH connection info
-      ansible.builtin.debug:
-        msg: "VM {{ vm_name }} is ready. Connect with: ssh {{ vm_user }}@{{ vm_ip_address }}"
+    # - name: Show SSH connection info
+    #   ansible.builtin.debug:
+    #     msg: "VM {{ vm_name }} is ready. Connect with: ssh {{ vm_user }}@{{ vm_ip_address }}"

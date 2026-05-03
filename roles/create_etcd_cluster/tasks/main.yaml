@@ -1,0 +1,168 @@
+---
+- name: Build etcd host list
+  ansible.builtin.set_fact:
+    etcd_cluster_hosts: "{{ etcd_selected_hosts.split(',') | map('trim') | reject('equalto', '') | list }}"
+
+- name: Validate etcd cluster host list
+  ansible.builtin.assert:
+    that:
+      - etcd_cluster_hosts | length > 0
+      - inventory_hostname in etcd_cluster_hosts
+    fail_msg: >-
+      Pass etcd hosts as a comma-separated list, for example:
+      -e hosts=etcd1,etcd2,etcd3. The current host {{ inventory_hostname }}
+      is not in {{ etcd_cluster_hosts }}.
+
+- name: Validate each etcd cluster host exists in inventory
+  ansible.builtin.assert:
+    that:
+      - item in hostvars
+    fail_msg: "Host {{ item }} is not present in inventory."
+  loop: "{{ etcd_cluster_hosts }}"
+  run_once: true
+
+- name: Set etcd architecture
+  ansible.builtin.set_fact:
+    etcd_arch: >-
+      {{ 'amd64' if ansible_architecture == 'x86_64'
+      else 'arm64' if ansible_architecture in ['aarch64', 'arm64']
+      else ansible_architecture }}
+
+- name: Set etcd release archive name
+  ansible.builtin.set_fact:
+    etcd_archive_name: "etcd-{{ etcd_version }}-linux-{{ etcd_arch }}"
+
+- name: Install etcd dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - tar
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+  when: ansible_os_family == "Debian"
+
+- name: Create etcd group
+  ansible.builtin.group:
+    name: "{{ etcd_group }}"
+    system: true
+    state: present
+
+- name: Create etcd user
+  ansible.builtin.user:
+    name: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+    home: "{{ etcd_data_dir }}"
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Create etcd directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ etcd_config_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+    - path: "{{ etcd_data_dir }}"
+      owner: "{{ etcd_user }}"
+      group: "{{ etcd_group }}"
+      mode: "0700"
+
+- name: Download etcd release
+  ansible.builtin.get_url:
+    url: "{{ etcd_download_base_url }}/{{ etcd_version }}/{{ etcd_archive_name }}.tar.gz"
+    dest: "/tmp/{{ etcd_archive_name }}.tar.gz"
+    mode: "0644"
+
+- name: Extract etcd release
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ etcd_archive_name }}.tar.gz"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/{{ etcd_archive_name }}/etcd"
+
+- name: Install etcd binaries
+  ansible.builtin.copy:
+    src: "/tmp/{{ etcd_archive_name }}/{{ item }}"
+    dest: "{{ etcd_install_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  loop:
+    - etcd
+    - etcdctl
+  notify: Restart etcd
+
+- name: Configure etcd environment
+  ansible.builtin.copy:
+    dest: "{{ etcd_config_dir }}/etcd.env"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      ETCD_NAME={{ inventory_hostname }}
+      ETCD_DATA_DIR={{ etcd_data_dir }}
+      ETCD_LISTEN_PEER_URLS=http://0.0.0.0:{{ etcd_peer_port }}
+      ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:{{ etcd_client_port }}
+      ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}:{{ etcd_peer_port }}
+      ETCD_ADVERTISE_CLIENT_URLS=http://{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}:{{ etcd_client_port }}
+      ETCD_INITIAL_CLUSTER={% for host in etcd_cluster_hosts %}{{ host }}=http://{{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}:{{ etcd_peer_port }}{% if not loop.last %},{% endif %}{% endfor %}
+      ETCD_INITIAL_CLUSTER_TOKEN={{ etcd_cluster_token }}
+      ETCD_INITIAL_CLUSTER_STATE={{ etcd_initial_cluster_state }}
+  notify: Restart etcd
+
+- name: Create etcd systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=etcd key-value store
+      Documentation=https://etcd.io/docs/
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=notify
+      User={{ etcd_user }}
+      Group={{ etcd_group }}
+      EnvironmentFile={{ etcd_config_dir }}/etcd.env
+      ExecStart={{ etcd_install_dir }}/etcd
+      Restart=always
+      RestartSec=5s
+      LimitNOFILE=40000
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart etcd
+
+- name: Start and enable etcd
+  ansible.builtin.systemd:
+    name: etcd
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Flush etcd restart handler
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for etcd client port
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ etcd_client_port }}"
+    timeout: 60
+    state: started
+
+- name: Show etcd endpoint
+  ansible.builtin.debug:
+    msg: "etcd endpoint: http://{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}:{{ etcd_client_port }}"
