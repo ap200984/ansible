@@ -32,6 +32,15 @@
   ansible.builtin.set_fact:
     etcd_archive_name: "etcd-{{ etcd_version }}-linux-{{ etcd_arch }}"
 
+- name: Set etcd advertise IP
+  ansible.builtin.set_fact:
+    etcd_advertise_ip: "{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}"
+
+- name: Build etcd initial cluster members
+  ansible.builtin.set_fact:
+    etcd_initial_cluster_members: "{{ etcd_initial_cluster_members | default([]) + [item ~ '=http://' ~ (hostvars[item].ip_address | default(hostvars[item].ansible_host) | default(item)) ~ ':' ~ etcd_peer_port] }}"
+  loop: "{{ etcd_cluster_hosts }}"
+
 - name: Install etcd dependencies
   ansible.builtin.apt:
     name:
@@ -112,9 +121,9 @@
       ETCD_DATA_DIR={{ etcd_data_dir }}
       ETCD_LISTEN_PEER_URLS=http://0.0.0.0:{{ etcd_peer_port }}
       ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:{{ etcd_client_port }}
-      ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}:{{ etcd_peer_port }}
-      ETCD_ADVERTISE_CLIENT_URLS=http://{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}:{{ etcd_client_port }}
-      ETCD_INITIAL_CLUSTER={% for host in etcd_cluster_hosts %}{{ host }}=http://{{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}:{{ etcd_peer_port }}{% if not loop.last %},{% endif %}{% endfor %}
+      ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ etcd_advertise_ip }}:{{ etcd_peer_port }}
+      ETCD_ADVERTISE_CLIENT_URLS=http://{{ etcd_advertise_ip }}:{{ etcd_client_port }}
+      ETCD_INITIAL_CLUSTER={{ etcd_initial_cluster_members | join(',') }}
       ETCD_INITIAL_CLUSTER_TOKEN={{ etcd_cluster_token }}
       ETCD_INITIAL_CLUSTER_STATE={{ etcd_initial_cluster_state }}
   notify: Restart etcd
@@ -165,4 +174,4 @@
 
 - name: Show etcd endpoint
   ansible.builtin.debug:
-    msg: "etcd endpoint: http://{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}:{{ etcd_client_port }}"
+    msg: "etcd endpoint: http://{{ etcd_advertise_ip }}:{{ etcd_client_port }}"
