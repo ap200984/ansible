@@ -1,0 +1,60 @@
+---
+- name: Get system hostname
+  command: hostname
+  register: zabbix_agent_system_hostname
+  changed_when: false
+  when: hostname is not defined or hostname | length == 0
+
+- name: Set Zabbix agent hostname
+  set_fact:
+    zabbix_agent_hostname: >-
+      {{ hostname if hostname is defined and hostname | length > 0 else zabbix_agent_system_hostname.stdout }}
+
+- name: Install Zabbix agent
+  apt:
+    name: zabbix-agent
+    state: present
+    update_cache: true
+
+- name: Configure Zabbix server
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "^Server="
+    line: "Server={{ server }}"
+  notify: Restart zabbix-agent
+
+- name: Configure Zabbix active server
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "^ServerActive="
+    line: "ServerActive={{ server_active }}"
+  notify: Restart zabbix-agent
+
+- name: Configure Zabbix hostname
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "^Hostname="
+    line: "Hostname={{ zabbix_agent_hostname }}"
+  notify: Restart zabbix-agent
+
+- name: Configure Zabbix host metadata
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "^HostMetadata="
+    line: "HostMetadata=Linux_machine"
+    insertafter: "^# HostMetadata="
+  notify: Restart zabbix-agent
+
+- name: Allow system.run keys
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "^AllowKey=system\\.run\\[\\*\\]"
+    line: "AllowKey=system.run[*]"
+    insertafter: "^# AllowKey="
+  notify: Restart zabbix-agent
+
+- name: Ensure Zabbix agent is enabled and started
+  service:
+    name: zabbix-agent
+    enabled: true
+    state: started

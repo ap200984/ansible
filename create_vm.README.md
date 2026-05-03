@@ -90,12 +90,6 @@ ansible-playbook -i inventory/kvm_server create_vm.yaml \
 - Password hashes for the default users are read from `passwd_hashes/root`,
   `passwd_hashes/ansible`, `passwd_hashes/user`, and `passwd_hashes/apopov`.
   These files must exist and contain one non-empty single-line hash each.
-- Generate a hash with:
-
-```bash
-openssl passwd -6 'my_password'
-```
-
 - All public keys from `ssh_public_keys/*.pub` are added to each VM user's
   `authorized_keys`.
 - VM images are stored in `/var/lib/libvirt/images` by default.
@@ -103,3 +97,19 @@ openssl passwd -6 'my_password'
   `/var/lib/libvirt/images/cloud-init/<vm_name>` by default.
 - The default cloud image is Debian 12:
   `https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2`.
+
+
+
+---
+ansible-playbook -i inventory/kvm_server create_vm.yaml \
+  -e vm_name=etcd1 \
+  -e vm_ip_address=10.9.1.11 \
+  -e vm_memory_mb=512 \
+  -e vm_vcpus=1 \
+  -e vm_disk_size_gb=10
+
+
+### ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=etcd2 -e vm_ip_address=10.9.1.12 -e vm_memory_mb=512 -e vm_vcpus=1 -e vm_disk_size_gb=10
+### ansible-playbook -i inventory/k8s_k112 create_etcd_cluster.yaml -e hosts=etcd1,etcd2,etcd3
+### ansible-playbook -i inventory/k16_k112_server ntp_server.yml
+### ansible-playbook -i inventory/k8s_k112 new_machine.yml

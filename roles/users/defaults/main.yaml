@@ -1,0 +1,12 @@
+---
+users_password_hashes_dir: "{{ playbook_dir }}/passwd_hashes"
+users_sudo_group: sudo
+users_accounts:
+  - name: user
+    home: /home/user
+  - name: ansible
+    home: /home/ansible
+  - name: root
+    home: /root
+  - name: apopov
+    home: /home/apopov

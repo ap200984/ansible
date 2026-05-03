@@ -1,0 +1,42 @@
+---
+- name: Ensure sudo group exists
+  group:
+    name: "{{ users_sudo_group }}"
+    state: present
+
+- name: Allow sudo group passwordless sudo
+  copy:
+    dest: "/etc/sudoers.d/{{ users_sudo_group }}-nopasswd"
+    owner: root
+    group: root
+    mode: "0440"
+    content: |
+      %{{ users_sudo_group }} ALL=(ALL) NOPASSWD:ALL
+    validate: "visudo -cf %s"
+
+- name: Validate user password hash files
+  assert:
+    that:
+      - item.name is defined
+      - item.name | length > 0
+      - lookup('ansible.builtin.file', users_password_hashes_dir ~ '/' ~ item.name, errors='ignore') | trim | length > 0
+      - "'\n' not in lookup('ansible.builtin.file', users_password_hashes_dir ~ '/' ~ item.name, errors='ignore') | trim"
+      - "'\r' not in lookup('ansible.builtin.file', users_password_hashes_dir ~ '/' ~ item.name, errors='ignore') | trim"
+    fail_msg: >-
+      Password hash file for user {{ item.name | default('unknown') }} must
+      exist, must be non-empty, and must contain one single-line hash:
+      {{ users_password_hashes_dir }}/{{ item.name | default('undefined') }}
+  loop: "{{ users_accounts }}"
+
+- name: Create sudo users
+  user:
+    name: "{{ item.name }}"
+    password: "{{ lookup('ansible.builtin.file', users_password_hashes_dir ~ '/' ~ item.name) | trim }}"
+    groups: "{{ users_sudo_group }}"
+    append: true
+    create_home: true
+    home: "{{ item.home }}"
+    shell: /bin/bash
+    state: present
+  loop: "{{ users_accounts }}"
+  no_log: true

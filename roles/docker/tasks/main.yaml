@@ -1,0 +1,49 @@
+---
+- name: Install Docker repository prerequisites
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Ensure apt keyring directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Add Docker apt repository key
+  get_url:
+    url: "{{ docker_apt_repo_url }}/gpg"
+    dest: "{{ docker_apt_key_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add Docker apt repository
+  apt_repository:
+    repo: "{{ docker_apt_repo }}"
+    filename: docker
+    state: present
+    update_cache: true
+
+- name: Install Docker and Docker Compose
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+      - python3-docker
+    state: present
+
+- name: Ensure Docker is enabled and started
+  service:
+    name: docker
+    enabled: true
+    state: started

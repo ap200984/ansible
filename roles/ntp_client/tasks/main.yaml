@@ -1,0 +1,38 @@
+---
+- name: Set NTP server list
+  set_fact:
+    ntp_client_servers: >-
+      {{ [ntp_server] if ntp_server is defined and ntp_server | length > 0 else ntp_client_default_servers }}
+    ntp_client_server_directive: >-
+      {{ 'server' if ntp_server is defined and ntp_server | length > 0 else 'pool' }}
+
+- name: Install chrony
+  apt:
+    name: chrony
+    state: present
+    update_cache: true
+
+- name: Configure chrony NTP servers
+  copy:
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for server in ntp_client_servers %}
+      {{ ntp_client_server_directive }} {{ server }} iburst
+      {% endfor %}
+
+      keyfile /etc/chrony/chrony.keys
+      driftfile /var/lib/chrony/chrony.drift
+      logdir /var/log/chrony
+      maxupdateskew 100.0
+      rtcsync
+      makestep 1 3
+  notify: Restart chrony
+
+- name: Ensure chrony is enabled and started
+  service:
+    name: chrony
+    enabled: true
+    state: started

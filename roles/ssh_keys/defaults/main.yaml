@@ -1,0 +1,5 @@
+---
+ssh_keys_dir: "{{ playbook_dir }}/ssh_public_keys"
+ssh_keys_users:
+  - user
+  - ansible

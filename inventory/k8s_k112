@@ -1,6 +1,8 @@
 [k8s:vars]
 ansible_user=ansible
 ansible_ssh_private_key_file=/home/user/.ssh/priv/ansible
+ntp_server=10.9.1.70
+zabbix_server=10.9.1.70
 
 [k8s:children]
 etcd
@@ -20,5 +22,4 @@ master2 ip_address=10.9.1.22
 worker1 ip_address=10.9.1.31
 worker2 ip_address=10.9.1.32
 worker3 ip_address=10.9.1.33
-
 

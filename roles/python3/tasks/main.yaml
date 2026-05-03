@@ -1,0 +1,9 @@
+---
+- name: Install Python 3 packages
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - ansible
+    state: present
+    update_cache: true

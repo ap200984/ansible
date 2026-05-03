@@ -1,0 +1,19 @@
+---
+- name: Validate SSH public key files
+  assert:
+    that:
+      - lookup('ansible.builtin.file', ssh_keys_dir ~ '/' ~ item ~ '.pub', errors='ignore') | trim | length > 0
+      - "'\n' not in lookup('ansible.builtin.file', ssh_keys_dir ~ '/' ~ item ~ '.pub', errors='ignore') | trim"
+      - "'\r' not in lookup('ansible.builtin.file', ssh_keys_dir ~ '/' ~ item ~ '.pub', errors='ignore') | trim"
+    fail_msg: >-
+      SSH public key file for user {{ item }} must exist, must be non-empty,
+      and must contain one single-line key: {{ ssh_keys_dir }}/{{ item }}.pub
+  loop: "{{ ssh_keys_users }}"
+
+- name: Install SSH authorized keys
+  authorized_key:
+    user: "{{ item }}"
+    key: "{{ lookup('ansible.builtin.file', ssh_keys_dir ~ '/' ~ item ~ '.pub') | trim }}"
+    state: present
+    manage_dir: true
+  loop: "{{ ssh_keys_users }}"

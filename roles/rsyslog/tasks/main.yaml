@@ -1,0 +1,37 @@
+---
+- name: Install rsyslog packages
+  apt:
+    name:
+      - rsyslog
+      - logrotate
+    state: present
+    update_cache: true
+
+- name: Configure rsyslog log rotation
+  copy:
+    dest: /etc/logrotate.d/rsyslog
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/syslog
+      /var/log/*.log
+      {
+          daily
+          rotate 7
+          missingok
+          notifempty
+          compress
+          delaycompress
+          create 0640 syslog adm
+          sharedscripts
+          postrotate
+              /usr/lib/rsyslog/rsyslog-rotate
+          endscript
+      }
+
+- name: Ensure rsyslog is enabled and started
+  service:
+    name: rsyslog
+    enabled: true
+    state: started

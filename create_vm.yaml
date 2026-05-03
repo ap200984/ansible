@@ -265,3 +265,8 @@
     # - name: Show SSH connection info
     #   ansible.builtin.debug:
     #     msg: "VM {{ vm_name }} is ready. Connect with: ssh {{ vm_user }}@{{ vm_ip_address }}"
+
+
+### ansible-playbook -i inventory/kvm_server create_vm.yaml   -e vm_name=etcd2   -e vm_ip_address=10.9.1.12   -e vm_memory_mb=512   -e vm_vcpus=1   -e vm_disk_size_gb=10
+### ansible-playbook -i inventory/k8s_k112 create_etcd_cluster.yaml -e hosts=etcd1,etcd2,etcd3
+### ansible-playbook -i inventory/k16_k112_server ntp_server.yml

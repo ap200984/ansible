@@ -1,0 +1,59 @@
+---
+- name: Configure NTP server
+  hosts: "{{ hosts | default('all') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    ntp_server_upstream_servers:
+      - 0.ubuntu.pool.ntp.org
+      - 1.ubuntu.pool.ntp.org
+      - 2.ubuntu.pool.ntp.org
+      - 3.ubuntu.pool.ntp.org
+    ntp_server_allow_networks:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+
+  tasks:
+    - name: Install chrony
+      apt:
+        name: chrony
+        state: present
+        update_cache: true
+
+    - name: Configure chrony as NTP server
+      copy:
+        dest: /etc/chrony/chrony.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          {% for server in ntp_server_upstream_servers %}
+          pool {{ server }} iburst
+          {% endfor %}
+
+          {% for network in ntp_server_allow_networks %}
+          allow {{ network }}
+          {% endfor %}
+
+          keyfile /etc/chrony/chrony.keys
+          driftfile /var/lib/chrony/chrony.drift
+          logdir /var/log/chrony
+          maxupdateskew 100.0
+          rtcsync
+          makestep 1 3
+          local stratum 10
+      notify: Restart chrony
+
+    - name: Ensure chrony is enabled and started
+      service:
+        name: chrony
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart chrony
+      service:
+        name: chrony
+        state: restarted
