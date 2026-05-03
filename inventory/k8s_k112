@@ -22,4 +22,5 @@ master2 ip_address=10.9.1.22
 worker1 ip_address=10.9.1.31
 worker2 ip_address=10.9.1.32
 worker3 ip_address=10.9.1.33
+worker4 ip_address=10.9.1.34
 
