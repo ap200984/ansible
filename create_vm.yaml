@@ -1,0 +1,238 @@
+---
+- name: Create a new KVM virtual machine
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    vm_user: ansible
+    vm_console_password: ""
+    vm_timezone: UTC
+    vm_memory_mb: 2048
+    vm_vcpus: 2
+    vm_disk_size_gb: 20
+    vm_wait_for_ssh: true
+    vm_wait_for_ssh_timeout: 300
+
+    vm_network_source: enp2s0
+    vm_network_source_mode: bridge
+    vm_network_arg: "type=direct,source={{ vm_network_source }},source_mode={{ vm_network_source_mode }},model=virtio"
+    vm_netmask_prefix: 24
+    vm_gateway: "{{ vm_ip_address.split('.')[:3] | join('.') }}.1"
+    vm_dns_servers:
+      - 1.1.1.1
+      - 8.8.8.8
+
+    vm_image_url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
+    vm_image_name: debian-12-genericcloud-amd64.qcow2
+    vm_libvirt_dir: /var/lib/libvirt/images
+    vm_seed_dir: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}"
+    vm_base_image: "{{ vm_libvirt_dir }}/{{ vm_image_name }}"
+    vm_disk_image: "{{ vm_libvirt_dir }}/{{ vm_name }}.qcow2"
+
+    ssh_public_keys_dir: "{{ playbook_dir }}/ssh_public_keys"
+    ssh_public_key_files: "{{ lookup('ansible.builtin.fileglob', ssh_public_keys_dir ~ '/*.pub', wantlist=True) }}"
+
+  pre_tasks:
+    - name: Validate VM parameters
+      ansible.builtin.assert:
+        that:
+          - vm_name is defined
+          - vm_name | length > 0
+          - vm_ip_address is defined
+          - vm_ip_address is match('^([0-9]{1,3}\\.){3}[0-9]{1,3}$')
+          - vm_network_source | length > 0
+          - ssh_public_key_files | length > 0
+          - "'\n' not in vm_console_password"
+          - "'\r' not in vm_console_password"
+        fail_msg: >-
+          Pass vm_name, vm_ip_address, and a single-line vm_console_password.
+          Public keys must exist in {{ ssh_public_keys_dir }}.
+
+    - name: Show selected VM network attachment
+      ansible.builtin.debug:
+        msg: "VM network attachment: {{ vm_network_arg }}"
+
+  tasks:
+    - name: Install VM creation dependencies
+      ansible.builtin.apt:
+        name:
+          - libguestfs-tools
+          - libvirt-clients
+          - qemu-utils
+          - virtinst
+        state: present
+        update_cache: true
+        cache_valid_time: 86400
+      when: ansible_os_family == "Debian"
+
+    - name: Check if VM already exists
+      ansible.builtin.command:
+        cmd: "virsh dominfo {{ vm_name }}"
+      register: vm_dominfo
+      changed_when: false
+      failed_when: false
+
+    - name: Create VM
+      when: vm_dominfo.rc != 0
+      block:
+        - name: Download base cloud image
+          ansible.builtin.get_url:
+            url: "{{ vm_image_url }}"
+            dest: "{{ vm_base_image }}"
+            mode: "0644"
+
+        - name: Create cloud-init directory
+          ansible.builtin.file:
+            path: "{{ vm_seed_dir }}"
+            state: directory
+            mode: "0755"
+
+        - name: Create cloud-init datasource override
+          ansible.builtin.copy:
+            dest: "{{ vm_seed_dir }}/ds-identify.cfg"
+            mode: "0644"
+            content: |
+              policy: enabled
+              datasource: NoCloud
+
+        - name: Create cloud-init NoCloud datasource list
+          ansible.builtin.copy:
+            dest: "{{ vm_seed_dir }}/99_nocloud.cfg"
+            mode: "0644"
+            content: |
+              datasource_list: [ NoCloud, None ]
+
+        - name: Create VM disk image
+          ansible.builtin.command:
+            cmd: "qemu-img create -f qcow2 -F qcow2 -b {{ vm_base_image }} {{ vm_disk_image }} {{ vm_disk_size_gb }}G"
+            creates: "{{ vm_disk_image }}"
+
+        - name: Create cloud-init user-data
+          ansible.builtin.copy:
+            dest: "{{ vm_seed_dir }}/user-data"
+            mode: "0644"
+            content: |
+              #cloud-config
+              timezone: {{ vm_timezone | to_json }}
+              hostname: {{ vm_name | to_json }}
+              manage_etc_hosts: true
+              users:
+                - default
+                - name: {{ vm_user | to_json }}
+                  groups: sudo
+                  shell: /bin/bash
+                  sudo: ALL=(ALL) NOPASSWD:ALL
+                  lock_passwd: {{ 'false' if vm_console_password | length > 0 else 'true' }}
+              {% if vm_console_password | length > 0 %}
+                  plain_text_passwd: {{ vm_console_password | to_json }}
+              {% endif %}
+                  ssh_authorized_keys:
+              {% for key_file in ssh_public_key_files %}
+                    - {{ lookup('ansible.builtin.file', key_file) }}
+              {% endfor %}
+              {% if vm_console_password | length > 0 %}
+              chpasswd:
+                expire: false
+                users:
+                  - name: {{ vm_user | to_json }}
+                    password: {{ vm_console_password | to_json }}
+                    type: text
+              {% endif %}
+              ssh_pwauth: false
+              disable_root: true
+              package_update: true
+              packages:
+                - qemu-guest-agent
+              runcmd:
+                - systemctl enable --now serial-getty@ttyS0.service
+                - systemctl start qemu-guest-agent
+
+        - name: Create cloud-init meta-data
+          ansible.builtin.copy:
+            dest: "{{ vm_seed_dir }}/meta-data"
+            mode: "0644"
+            content: |
+              instance-id: {{ vm_name | to_json }}
+              local-hostname: {{ vm_name | to_json }}
+
+        - name: Create cloud-init network-config
+          ansible.builtin.copy:
+            dest: "{{ vm_seed_dir }}/network-config"
+            mode: "0644"
+            content: |
+              version: 2
+              ethernets:
+                vmnic0:
+                  match:
+                    name: "e*"
+                  dhcp4: false
+                  addresses:
+                    - {{ vm_ip_address }}/{{ vm_netmask_prefix }}
+                  routes:
+                    - to: default
+                      via: {{ vm_gateway }}
+                  nameservers:
+                    addresses: {{ vm_dns_servers }}
+
+        - name: Seed NoCloud data into VM disk image
+          ansible.builtin.command:
+            cmd: >-
+              virt-customize
+              -a {{ vm_disk_image }}
+              --mkdir /var/lib/cloud/seed/nocloud
+              --copy-in {{ vm_seed_dir }}/ds-identify.cfg:/etc/cloud
+              --copy-in {{ vm_seed_dir }}/99_nocloud.cfg:/etc/cloud/cloud.cfg.d
+              --copy-in {{ vm_seed_dir }}/user-data:/var/lib/cloud/seed/nocloud
+              --copy-in {{ vm_seed_dir }}/meta-data:/var/lib/cloud/seed/nocloud
+              --copy-in {{ vm_seed_dir }}/network-config:/var/lib/cloud/seed/nocloud
+          environment:
+            LIBGUESTFS_BACKEND: direct
+
+        - name: Create and start VM
+          ansible.builtin.command:
+            cmd: >-
+              virt-install
+              --name {{ vm_name }}
+              --memory {{ vm_memory_mb }}
+              --vcpus {{ vm_vcpus }}
+              --disk path={{ vm_disk_image }},format=qcow2,bus=virtio
+              --os-variant debian12
+              --virt-type kvm
+              --graphics none
+              --console pty,target_type=serial
+              --network {{ vm_network_arg }}
+              --import
+              --noautoconsole
+
+    - name: Check running VMs
+      ansible.builtin.command:
+        cmd: "virsh list --state-running --name"
+      register: running_vms
+      changed_when: false
+
+    - name: Start VM when it is not running
+      ansible.builtin.command:
+        cmd: "virsh start {{ vm_name }}"
+      register: vm_start
+      changed_when: vm_start.rc == 0
+      failed_when:
+        - vm_start.rc != 0
+        - "'already active' not in vm_start.stderr"
+        - "'уже активен' not in vm_start.stderr"
+      when: vm_name not in running_vms.stdout_lines
+
+    - name: Wait for SSH to become available
+      ansible.builtin.wait_for:
+        host: "{{ vm_ip_address }}"
+        port: 22
+        delay: 10
+        timeout: "{{ vm_wait_for_ssh_timeout }}"
+        state: started
+      become: false
+      delegate_to: localhost
+      when: vm_wait_for_ssh | bool
+
+    - name: Show SSH connection info
+      ansible.builtin.debug:
+        msg: "VM {{ vm_name }} is ready. Connect with: ssh {{ vm_user }}@{{ vm_ip_address }}"
