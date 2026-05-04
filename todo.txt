@@ -1,0 +1,11 @@
+zabbix agwnr with psk
+rolllout all machines
+zabbix server disk space check bloating
+install k8s
+remove passwords
+add vault
+moce old unused plabooks
+create readme
+add domain for k112
+    figure out how cert works
+    add proxy to server_k112
