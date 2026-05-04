@@ -1,3 +1,6 @@
 ---
 server: 217.144.189.206
 server_active: 217.144.189.206
+zabbix_agent_release_version: "7.4-1"
+zabbix_agent_host_metadata_group: k112
+zabbix_agent_host_metadata_tag: k8s_k112

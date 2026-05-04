@@ -18,6 +18,7 @@
       - zutils
       - atop
       - htop
+      - ncdu
       - iftop
       - iotop
       - tcptraceroute

@@ -1,0 +1,34 @@
+---
+- name: Set DNS server list
+  set_fact:
+    dns_client_servers: >-
+      {{
+        dns_server
+        if dns_server is defined and dns_server is sequence and dns_server is not string
+        else ([dns_server] if dns_server is defined and dns_server | length > 0 else dns_client_default_servers)
+      }}
+
+- name: Create systemd-resolved config directory
+  file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure DNS servers
+  copy:
+    dest: /etc/systemd/resolved.conf.d/dns_servers.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Resolve]
+      DNS={{ dns_client_servers | join(' ') }}
+  notify: Restart systemd-resolved
+
+- name: Ensure systemd-resolved is enabled and started
+  service:
+    name: systemd-resolved
+    enabled: true
+    state: started
