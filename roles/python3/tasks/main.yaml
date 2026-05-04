@@ -7,3 +7,6 @@
       - ansible
     state: present
     update_cache: true
+  tags:
+    - python3
+    - "python3:packages"

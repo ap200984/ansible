@@ -7,6 +7,10 @@
         if dns_server is defined and dns_server is sequence and dns_server is not string
         else ([dns_server] if dns_server is defined and dns_server | length > 0 else dns_client_default_servers)
       }}
+  tags:
+    - dns_client
+    - "dns_client:vars"
+    - "dns_client:config"
 
 - name: Create systemd-resolved config directory
   file:
@@ -15,6 +19,9 @@
     owner: root
     group: root
     mode: "0755"
+  tags:
+    - dns_client
+    - "dns_client:config"
 
 - name: Configure DNS servers
   copy:
@@ -26,9 +33,15 @@
       [Resolve]
       DNS={{ dns_client_servers | join(' ') }}
   notify: Restart systemd-resolved
+  tags:
+    - dns_client
+    - "dns_client:config"
 
 - name: Ensure systemd-resolved is enabled and started
   service:
     name: systemd-resolved
     enabled: true
     state: started
+  tags:
+    - dns_client
+    - "dns_client:service"

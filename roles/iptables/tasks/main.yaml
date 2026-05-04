@@ -7,3 +7,6 @@
       - iptables-persistent
     state: present
     update_cache: true
+  tags:
+    - iptables
+    - "iptables:packages"

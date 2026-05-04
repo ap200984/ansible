@@ -25,6 +25,9 @@
       - oping
     state: present
     update_cache: true
+  tags:
+    - utils
+    - "utils:packages"
 
 - name: Ensure atop log directory exists
   file:
@@ -33,6 +36,9 @@
     owner: root
     group: root
     mode: "0755"
+  tags:
+    - utils
+    - "utils:atop"
 
 - name: Configure atop logging
   copy:
@@ -46,9 +52,15 @@
       LOGGENERATIONS=28
       LOGPATH=/var/log/atop
   notify: Restart atop
+  tags:
+    - utils
+    - "utils:atop"
 
 - name: Ensure atop service is enabled and started
   service:
     name: atop
     enabled: true
     state: started
+  tags:
+    - utils
+    - "utils:atop"

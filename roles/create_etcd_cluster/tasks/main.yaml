@@ -2,6 +2,10 @@
 - name: Build etcd host list
   ansible.builtin.set_fact:
     etcd_cluster_hosts: "{{ etcd_selected_hosts.split(',') | map('trim') | reject('equalto', '') | list }}"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:vars"
+    - "create_etcd_cluster:config"
 
 - name: Validate etcd cluster host list
   ansible.builtin.assert:
@@ -12,6 +16,9 @@
       Pass etcd hosts as a comma-separated list, for example:
       -e hosts=etcd1,etcd2,etcd3. The current host {{ inventory_hostname }}
       is not in {{ etcd_cluster_hosts }}.
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:validate"
 
 - name: Validate each etcd cluster host exists in inventory
   ansible.builtin.assert:
@@ -20,6 +27,9 @@
     fail_msg: "Host {{ item }} is not present in inventory."
   loop: "{{ etcd_cluster_hosts }}"
   run_once: true
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:validate"
 
 - name: Set etcd architecture
   ansible.builtin.set_fact:
@@ -27,19 +37,36 @@
       {{ 'amd64' if ansible_architecture == 'x86_64'
       else 'arm64' if ansible_architecture in ['aarch64', 'arm64']
       else ansible_architecture }}
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:vars"
+    - "create_etcd_cluster:install"
 
 - name: Set etcd release archive name
   ansible.builtin.set_fact:
     etcd_archive_name: "etcd-{{ etcd_version }}-linux-{{ etcd_arch }}"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:vars"
+    - "create_etcd_cluster:install"
 
 - name: Set etcd advertise IP
   ansible.builtin.set_fact:
     etcd_advertise_ip: "{{ hostvars[inventory_hostname].ip_address | default(ansible_host) | default(inventory_hostname) }}"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:vars"
+    - "create_etcd_cluster:config"
+    - "create_etcd_cluster:check"
 
 - name: Build etcd initial cluster members
   ansible.builtin.set_fact:
     etcd_initial_cluster_members: "{{ etcd_initial_cluster_members | default([]) + [item ~ '=http://' ~ (hostvars[item].ip_address | default(hostvars[item].ansible_host) | default(item)) ~ ':' ~ etcd_peer_port] }}"
   loop: "{{ etcd_cluster_hosts }}"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:vars"
+    - "create_etcd_cluster:config"
 
 - name: Install etcd dependencies
   ansible.builtin.apt:
@@ -50,12 +77,18 @@
     update_cache: true
     cache_valid_time: 86400
   when: ansible_os_family == "Debian"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:packages"
 
 - name: Create etcd group
   ansible.builtin.group:
     name: "{{ etcd_group }}"
     system: true
     state: present
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:user"
 
 - name: Create etcd user
   ansible.builtin.user:
@@ -66,6 +99,9 @@
     system: true
     create_home: false
     state: present
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:user"
 
 - name: Create etcd directories
   ansible.builtin.file:
@@ -83,12 +119,18 @@
       owner: "{{ etcd_user }}"
       group: "{{ etcd_group }}"
       mode: "0700"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:directories"
 
 - name: Download etcd release
   ansible.builtin.get_url:
     url: "{{ etcd_download_base_url }}/{{ etcd_version }}/{{ etcd_archive_name }}.tar.gz"
     dest: "/tmp/{{ etcd_archive_name }}.tar.gz"
     mode: "0644"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:install"
 
 - name: Extract etcd release
   ansible.builtin.unarchive:
@@ -96,6 +138,9 @@
     dest: /tmp
     remote_src: true
     creates: "/tmp/{{ etcd_archive_name }}/etcd"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:install"
 
 - name: Install etcd binaries
   ansible.builtin.copy:
@@ -109,6 +154,9 @@
     - etcd
     - etcdctl
   notify: Restart etcd
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:install"
 
 - name: Configure etcd environment
   ansible.builtin.copy:
@@ -127,6 +175,9 @@
       ETCD_INITIAL_CLUSTER_TOKEN={{ etcd_cluster_token }}
       ETCD_INITIAL_CLUSTER_STATE={{ etcd_initial_cluster_state }}
   notify: Restart etcd
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:config"
 
 - name: Create etcd systemd service
   ansible.builtin.copy:
@@ -154,6 +205,9 @@
       [Install]
       WantedBy=multi-user.target
   notify: Restart etcd
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:service"
 
 - name: Start and enable etcd
   ansible.builtin.systemd:
@@ -161,9 +215,15 @@
     state: started
     enabled: true
     daemon_reload: true
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:service"
 
 - name: Flush etcd restart handler
   ansible.builtin.meta: flush_handlers
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:service"
 
 - name: Wait for etcd client port
   ansible.builtin.wait_for:
@@ -171,7 +231,13 @@
     port: "{{ etcd_client_port }}"
     timeout: 60
     state: started
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:check"
 
 - name: Show etcd endpoint
   ansible.builtin.debug:
     msg: "etcd endpoint: http://{{ etcd_advertise_ip }}:{{ etcd_client_port }}"
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:check"

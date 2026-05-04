@@ -4,6 +4,8 @@ ansible_ssh_private_key_file=~/.ssh/priv/ansible
 ntp_server=10.9.1.70
 dns_server=10.9.1.1
 zabbix_server=10.9.1.70
+zabbix_agent_host_metadata_group=k112
+zabbix_agent_host_metadata_tag=k8s_k112
 
 [k8s:children]
 etcd

@@ -5,12 +5,19 @@
       {{ [ntp_server] if ntp_server is defined and ntp_server | length > 0 else ntp_client_default_servers }}
     ntp_client_server_directive: >-
       {{ 'server' if ntp_server is defined and ntp_server | length > 0 else 'pool' }}
+  tags:
+    - ntp_client
+    - "ntp_client:vars"
+    - "ntp_client:config"
 
 - name: Install chrony
   apt:
     name: chrony
     state: present
     update_cache: true
+  tags:
+    - ntp_client
+    - "ntp_client:packages"
 
 - name: Configure chrony NTP servers
   copy:
@@ -30,9 +37,15 @@
       rtcsync
       makestep 1 3
   notify: Restart chrony
+  tags:
+    - ntp_client
+    - "ntp_client:config"
 
 - name: Ensure chrony is enabled and started
   service:
     name: chrony
     enabled: true
     state: started
+  tags:
+    - ntp_client
+    - "ntp_client:service"

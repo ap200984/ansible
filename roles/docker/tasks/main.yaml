@@ -7,6 +7,9 @@
       - gnupg
     state: present
     update_cache: true
+  tags:
+    - docker
+    - "docker:packages"
 
 - name: Ensure apt keyring directory exists
   file:
@@ -15,6 +18,9 @@
     owner: root
     group: root
     mode: "0755"
+  tags:
+    - docker
+    - "docker:repo"
 
 - name: Add Docker apt repository key
   get_url:
@@ -23,6 +29,9 @@
     owner: root
     group: root
     mode: "0644"
+  tags:
+    - docker
+    - "docker:repo"
 
 - name: Add Docker apt repository
   apt_repository:
@@ -30,6 +39,9 @@
     filename: docker
     state: present
     update_cache: true
+  tags:
+    - docker
+    - "docker:repo"
 
 - name: Install Docker and Docker Compose
   apt:
@@ -41,9 +53,15 @@
       - docker-compose-plugin
       - python3-docker
     state: present
+  tags:
+    - docker
+    - "docker:packages"
 
 - name: Ensure Docker is enabled and started
   service:
     name: docker
     enabled: true
     state: started
+  tags:
+    - docker
+    - "docker:service"

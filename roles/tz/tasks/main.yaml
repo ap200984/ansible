@@ -2,3 +2,6 @@
 - name: Set timezone to UTC
   timezone:
     name: UTC
+  tags:
+    - tz
+    - "tz:config"

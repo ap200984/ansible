@@ -7,6 +7,7 @@ second_octet=19
 l2tp_octet=255
 gre_octet=254
 host_name=VDS
+hostname=vds1
 subdomains_ports=['speedtest:3005', 'grafana:3000']
 
 [prod]

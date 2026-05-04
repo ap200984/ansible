@@ -9,6 +9,9 @@
       SSH public key file for user {{ item }} must exist, must be non-empty,
       and must contain one single-line key: {{ ssh_keys_dir }}/{{ item }}.pub
   loop: "{{ ssh_keys_users }}"
+  tags:
+    - ssh_keys
+    - "ssh_keys:validate"
 
 - name: Install SSH authorized keys
   authorized_key:
@@ -17,3 +20,6 @@
     state: present
     manage_dir: true
   loop: "{{ ssh_keys_users }}"
+  tags:
+    - ssh_keys
+    - "ssh_keys:config"

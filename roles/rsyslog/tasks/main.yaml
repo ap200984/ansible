@@ -6,6 +6,9 @@
       - logrotate
     state: present
     update_cache: true
+  tags:
+    - rsyslog
+    - "rsyslog:packages"
 
 - name: Configure rsyslog log rotation
   copy:
@@ -29,9 +32,15 @@
               /usr/lib/rsyslog/rsyslog-rotate
           endscript
       }
+  tags:
+    - rsyslog
+    - "rsyslog:config"
 
 - name: Ensure rsyslog is enabled and started
   service:
     name: rsyslog
     enabled: true
     state: started
+  tags:
+    - rsyslog
+    - "rsyslog:service"

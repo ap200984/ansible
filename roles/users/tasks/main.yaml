@@ -3,6 +3,9 @@
   group:
     name: "{{ users_sudo_group }}"
     state: present
+  tags:
+    - users
+    - "users:groups"
 
 - name: Allow sudo group passwordless sudo
   copy:
@@ -13,6 +16,9 @@
     content: |
       %{{ users_sudo_group }} ALL=(ALL) NOPASSWD:ALL
     validate: "visudo -cf %s"
+  tags:
+    - users
+    - "users:sudo"
 
 - name: Validate user password hash files
   assert:
@@ -27,6 +33,9 @@
       exist, must be non-empty, and must contain one single-line hash:
       {{ users_password_hashes_dir }}/{{ item.name | default('undefined') }}
   loop: "{{ users_accounts }}"
+  tags:
+    - users
+    - "users:validate"
 
 - name: Create sudo users
   user:
@@ -40,3 +49,6 @@
     state: present
   loop: "{{ users_accounts }}"
   no_log: true
+  tags:
+    - users
+    - "users:accounts"

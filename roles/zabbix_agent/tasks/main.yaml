@@ -4,6 +4,10 @@
   register: zabbix_agent_system_hostname
   changed_when: false
   when: hostname is not defined or hostname | length == 0
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:vars"
+    - "zabbix_agent:config"
 
 - name: Set Zabbix agent hostname
   set_fact:
@@ -13,6 +17,10 @@
     zabbix_agent_server_active: "{{ zabbix_server | default(server_active) }}"
     zabbix_agent_host_metadata: >-
       os=linux,zabbix_proxy={{ zabbix_server | default(server) }},group={{ zabbix_agent_host_metadata_group }},tag={{ zabbix_agent_host_metadata_tag }}
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:vars"
+    - "zabbix_agent:config"
 
 - name: Set Zabbix release package URL
   set_fact:
@@ -24,12 +32,21 @@
         if ansible_distribution | lower == 'ubuntu'
         else ''
       }}
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
+    - "zabbix_agent:packages"
 
 - name: Validate Zabbix Agent 2 supported distribution
   assert:
     that:
       - zabbix_agent_release_url | length > 0
     fail_msg: "Zabbix Agent 2 role supports Debian and Ubuntu only."
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:validate"
+    - "zabbix_agent:repo"
+    - "zabbix_agent:packages"
 
 - name: Stop old Zabbix agent if present
   service:
@@ -37,6 +54,9 @@
     enabled: false
     state: stopped
   failed_when: false
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:remove_old"
 
 - name: Remove old Zabbix agent package
   apt:
@@ -44,26 +64,41 @@
     state: absent
     purge: true
     update_cache: true
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:remove_old"
 
 - name: Remove old Zabbix agent config
   file:
     path: /etc/zabbix/zabbix_agentd.conf
     state: absent
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:remove_old"
 
 - name: Install Zabbix 7.4 release repository
   apt:
     deb: "{{ zabbix_agent_release_url }}"
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
 
 - name: Install ACL package
   apt:
     name: acl
     state: present
     update_cache: true
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:packages"
 
 - name: Install Zabbix Agent 2
   apt:
     name: zabbix-agent2
     state: latest
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:packages"
 
 - name: Configure Zabbix Agent 2
   copy:
@@ -85,9 +120,15 @@
       AllowKey=system.run[*]
       Include=/etc/zabbix/zabbix_agent2.d/plugins.d/*.conf
   notify: Restart zabbix-agent2
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:config"
 
 - name: Ensure Zabbix Agent 2 is enabled and started
   service:
     name: zabbix-agent2
     enabled: true
     state: started
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:service"
