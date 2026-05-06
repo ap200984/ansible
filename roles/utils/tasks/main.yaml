@@ -23,6 +23,7 @@
       - iotop
       - tcptraceroute
       - oping
+      - tmux
     state: present
     update_cache: true
   tags:
