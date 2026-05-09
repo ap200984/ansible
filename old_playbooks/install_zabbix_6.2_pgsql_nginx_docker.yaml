@@ -27,7 +27,7 @@
           - name: "{{ docker_network_name }}"
         env:
           POSTGRES_USER: "zabbix"
-          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_PASSWORD: "{{ zabbix_postgres_password }}"
           POSTGRES_DB: "zabbix"
         ports:
           - 6432:5432/tcp
@@ -59,7 +59,7 @@
         env:
           DB_SERVER_HOST: "postgres-server"
           POSTGRES_USER: "zabbix"
-          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_PASSWORD: "{{ zabbix_postgres_password }}"
           POSTGRES_DB: "zabbix"
           ZBX_ENABLE_SNMP_TRAPS: "true"
         ports:
@@ -81,7 +81,7 @@
           ZBX_SERVER_HOST: "zabbix-server-pgsql"
           DB_SERVER_HOST: "postgres-server"
           POSTGRES_USER: "zabbix"
-          POSTGRES_PASSWORD: "zabbix2"
+          POSTGRES_PASSWORD: "{{ zabbix_postgres_password }}"
           POSTGRES_DB: "zabbix"
         ports:
           - 443:8443

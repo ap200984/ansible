@@ -5,12 +5,6 @@
     zabbix_server_ip: "{{ zabbix_server_ip }}"
 
   tasks:
-    - name: Include secrets
-      include_vars: secrets/common_secrets.yml
-
-    - name: Include secrets
-      include_vars: secrets/common_secrets.yml
-
     - name: Add zabbix-agent2 on debian
       become: true
       when: ansible_distribution|lower == "debian"
@@ -87,7 +81,7 @@
         ansible_network_os: "community.zabbix.zabbix"
         ansible_connection: "httpapi"
         ansible_user: "api_user"
-        ansible_httpapi_pass: "api_{{ common_passwd }}"
+        ansible_httpapi_pass: "{{ zabbix_httpapi_password }}"
       become: false
       community.zabbix.zabbix_host:
         host_name: "{{ ansible_hostname }}"

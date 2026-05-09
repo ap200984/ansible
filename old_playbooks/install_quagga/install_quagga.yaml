@@ -60,9 +60,9 @@
         group: root
         mode: "0644"
 
-    - name: copy chap-secrets
-      copy:
-        src: chap-secrets
+    - name: render chap-secrets
+      template:
+        src: chap-secrets.j2
         dest: /etc/ppp/chap-secrets
         owner: root
         group: root
@@ -89,18 +89,6 @@
     - name: set l2tp octet xl2tpd.conf
       replace:
         path: /etc/xl2tpd/xl2tpd.conf
-        regexp: '{\$L2TP_OCTET}'
-        replace: "{{ l2tp_octet }}"
-
-    - name: set second octet chap-secrets
-      replace:
-        path: /etc/ppp/chap-secrets
-        regexp: '{\$SECOND_OCTET}'
-        replace: "{{ second_octet }}"
-
-    - name: set l2tp octet chap-secrets
-      replace:
-        path: /etc/ppp/chap-secrets
         regexp: '{\$L2TP_OCTET}'
         replace: "{{ l2tp_octet }}"
 

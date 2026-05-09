@@ -33,7 +33,7 @@
     #       - name: "{{ docker_network_name }}"
     #     env:
     #       POSTGRES_USER: "zabbix"
-    #       POSTGRES_PASSWORD: "zabbix_proxy"
+    #       POSTGRES_PASSWORD: "{{ zabbix_proxy_mysql_password }}"
     #       POSTGRES_DB: "zabbix"
     #     ports:
     #       - 5432:5432/tcp
@@ -51,9 +51,9 @@
           - name: "{{ docker_network_name }}"
         env:
           MYSQL_USER: "zabbix"
-          MYSQL_PASSWORD: "zabbix_proxy"
+          MYSQL_PASSWORD: "{{ zabbix_proxy_mysql_password }}"
           MYSQL_DATABASE: "zabbix_proxy"
-          MYSQL_ROOT_PASSWORD: "zabbix_proxy"
+          MYSQL_ROOT_PASSWORD: "{{ zabbix_proxy_mysql_password }}"
         ports:
           - 3306:3306/tcp
         volumes:
@@ -72,6 +72,6 @@
           ZBX_HOSTNAME: "{{ host_name }}"
           ZBX_SERVER_HOST: "vds2.space"
           MYSQL_USER: "zabbix"
-          MYSQL_PASSWORD: "zabbix_proxy"
+          MYSQL_PASSWORD: "{{ zabbix_proxy_mysql_password }}"
         state: "started"
         restart_policy: "unless-stopped"

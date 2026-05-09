@@ -12,9 +12,7 @@
     dns_servers:
       - 8.8.8.8
       - 8.8.4.4
-    peer_users:
-      - { client: "client1", password: "password1", ip: "192.168.1.10" }
-      - { client: "client2", password: "password2", ip: "192.168.1.11" }
+    peer_users: "{{ sstp_peer_users }}"
 
   tasks:
     - name: Install required packages

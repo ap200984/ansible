@@ -3,12 +3,16 @@
 
 
 
+add vault
+setup workona in firefox
+
 zabbix agent with psk
 rolllout all machines
 install k8s
 remove passwords
-add vault
 create readme
+install_amnesiawg
+
 add domain for k112
     figure out how cert works
     add proxy to server_k112

@@ -26,7 +26,7 @@
           - name: "{{ docker_network_name }}"
         env:
           PROXY_USER: "proxy"
-          PROXY_PASSWORD: "proxyTaran2332"
+          PROXY_PASSWORD: "{{ socks5_pmikle_proxy_password }}"
         ports:
           - 2980:1080/tcp
         state: "started"

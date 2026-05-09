@@ -8,7 +8,7 @@ services:
         environment:
             - discovery.type=single-node
             - xpack.security.enabled=true
-            - ELASTIC_PASSWORD=T123456
+            - ELASTIC_PASSWORD={{ elastic_password }}
     kibana:
         image: kibana:7.4.0
         restart: always
@@ -20,6 +20,6 @@ services:
             - XPACK_MONITORING_COLLECTION_ENABLED=true
             - XPACK_SECURITY_ENABLED=true
             - ELASTICSEARCH_USERNAME=elastic
-            - ELASTICSEARCH_PASSWORD="T123456"
+            - ELASTICSEARCH_PASSWORD="{{ elastic_password }}"
         depends_on:
             - elasticsearch

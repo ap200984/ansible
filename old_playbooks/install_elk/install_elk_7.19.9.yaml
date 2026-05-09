@@ -33,7 +33,7 @@
                 - discovery.type=single-node
                 - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
                 - xpack.security.enabled=true
-                - ELASTIC_PASSWORD=T123456
+                - ELASTIC_PASSWORD={{ elastic_password }}
               ulimits:
                 memlock:
                   soft: -1
@@ -64,7 +64,7 @@
                 - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
                 - XPACK_SECURITY_ENABLED=true
                 # - ELASTICSEARCH_USERNAME=elastic/kibana
-                # - ELASTICSEARCH_PASSWORD=T123456
+                # - ELASTICSEARCH_PASSWORD={{ elastic_password }}
               ports:
                 - 5601:5601
               depends_on:

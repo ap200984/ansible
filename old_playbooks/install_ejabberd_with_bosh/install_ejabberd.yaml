@@ -7,9 +7,6 @@
     docker_network_range: 172.20.240.0/20
 
   tasks:
-    - name: Include secrets
-      include_vars: secrets/common_secrets.yml
-
     - name: Create a network for ejabberd
       docker_network:
         name: "{{ docker_network_name }}"
@@ -51,7 +48,7 @@
         restart_policy: "unless-stopped"
 
     - name: set admin password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin {{ item }} ejabberd_{{ common_passwd }}"
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register admin {{ item }} {{ ejabberd_password }}"
       ignore_errors: true
       loop:
         - localhost
@@ -59,7 +56,7 @@
         - "{{ domain }}"
 
     - name: set p7317 password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register p7317 {{ item }} ejabberd_{{ common_passwd }}"
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register p7317 {{ item }} {{ ejabberd_password }}"
       ignore_errors: true
       loop:
         - localhost
@@ -67,7 +64,7 @@
         - "{{ domain }}"
 
     - name: set n9194 password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register n9194 {{ item }} ejabberd_{{ common_passwd }}"
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register n9194 {{ item }} {{ ejabberd_password }}"
       ignore_errors: true
       loop:
         - localhost
@@ -75,7 +72,7 @@
         - "{{ domain }}"
 
     - name: set user1 password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user1 {{ item }} user1"
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user1 {{ item }} {{ ejabberd_user1_password }}"
       ignore_errors: true
       loop:
         - localhost
@@ -83,7 +80,7 @@
         - "{{ domain }}"
 
     - name: set user2 password
-      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user2 {{ item }} user2"
+      shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl register user2 {{ item }} {{ ejabberd_user2_password }}"
       ignore_errors: true
       loop:
         - localhost
@@ -95,4 +92,3 @@
       shell: /bin/sh -c "sudo docker exec -it ejabberd bin/ejabberdctl restart"
 
 # Добавить пользователей в новом домене через WEB-интерфейс (p3717 без указания @ и домена)
-

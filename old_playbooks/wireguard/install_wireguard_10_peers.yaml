@@ -7,7 +7,7 @@
     server_ip: "10.250.0.6"
     subnet: "10.250.0.0/24"
     interface_name: wg0
-    server_private_key: "8DThCDSjwD15n6nApLUPD8cijXyeF28ImPXVmVoYY0M="
+    server_private_key: "{{ wireguard_server_private_key }}"
     peer_count: 10
     peer_base_ip: "10.250.0."
 

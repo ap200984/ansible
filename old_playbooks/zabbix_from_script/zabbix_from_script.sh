@@ -2,6 +2,8 @@
 
 set -e
 
+: "${ZABBIX_POSTGRES_PASSWORD:?Set ZABBIX_POSTGRES_PASSWORD before running this script}"
+
 # Get OS details
 . /etc/os-release
 OS_ID=${ID}
@@ -30,7 +32,7 @@ sudo docker run -d \
   --name postgres-server \
   --network zabbix-network \
   -e POSTGRES_USER="zabbix" \
-  -e POSTGRES_PASSWORD="zabbix2" \
+  -e POSTGRES_PASSWORD="${ZABBIX_POSTGRES_PASSWORD}" \
   -e POSTGRES_DB="zabbix" \
   -p 6432:5432 \
   -v /postgres:/var/lib/postgresql/data \
@@ -47,7 +49,7 @@ sudo docker run -d \
   --network zabbix-network \
   -e DB_SERVER_HOST="postgres-server" \
   -e POSTGRES_USER="zabbix" \
-  -e POSTGRES_PASSWORD="zabbix2" \
+  -e POSTGRES_PASSWORD="${ZABBIX_POSTGRES_PASSWORD}" \
   -e POSTGRES_DB="zabbix" \
   -e ZBX_ENABLE_SNMP_TRAPS="true" \
   -p 10051:10051 \
@@ -61,7 +63,7 @@ sudo docker run -d \
   -e ZBX_SERVER_HOST="zabbix-server-pgsql" \
   -e DB_SERVER_HOST="postgres-server" \
   -e POSTGRES_USER="zabbix" \
-  -e POSTGRES_PASSWORD="zabbix2" \
+  -e POSTGRES_PASSWORD="${ZABBIX_POSTGRES_PASSWORD}" \
   -e POSTGRES_DB="zabbix" \
   -p 8080:8080 \
   -v /etc/ssl/nginx:/etc/ssl/nginx:ro \
@@ -99,4 +101,3 @@ sudo systemctl enable zabbix-agent2
 sudo systemctl restart zabbix-agent2
 
 echo "Installation completed successfully."
-

@@ -9,7 +9,7 @@
     postgres_container_name: "postgres-server"
     docker_network_name: "docker-net"
     postgres_user: "zabbix"
-    postgres_password: "zabbix2"
+    postgres_password: "{{ zabbix_postgres_password }}"
     postgres_db: "zabbix"
   tasks:
     - name: Stop the existing PostgreSQL container

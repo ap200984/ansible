@@ -4,7 +4,7 @@
   become: true
   vars:
     user_name: "amnesia-wg"
-    user_password: "amnesia_Taran#32"
+    user_password: "{{ amnesia_wg_user_password }}"
 
   tasks:
     - name: Generate password hash
