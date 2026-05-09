@@ -9,6 +9,7 @@
       - whois
       - bgpq3
       - net-tools
+      - netcat-openbsd
       - iputils-ping
       - iputils-tracepath
       - tar
