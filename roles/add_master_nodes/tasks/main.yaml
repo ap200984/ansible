@@ -6,6 +6,16 @@
     - add_master_nodes
     - "add_master_nodes:vars"
 
+- name: Set direct first master API endpoint for joining control-plane nodes
+  ansible.builtin.set_fact:
+    k8s_first_master_api_endpoint: >-
+      {{ hostvars[k8s_first_master].ip_address
+         | default(hostvars[k8s_first_master].ansible_host)
+         | default(k8s_first_master) }}:{{ k8s_api_port }}
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:vars"
+
 - name: Check whether this master already joined
   ansible.builtin.stat:
     path: "{{ k8s_kubelet_config_path }}"
@@ -40,27 +50,204 @@
 - name: Generate Kubernetes control-plane join command
   ansible.builtin.shell: |
     set -e
-    cert_key="$(kubeadm init phase upload-certs --upload-certs 2>/dev/null | tail -n 1)"
-    kubeadm token create --print-join-command --certificate-key "${cert_key}"
+    kubeadm token create --print-join-command \
+      | sed -E 's#^(kubeadm join) [^ ]+#\1 {{ k8s_first_master_api_endpoint }}#' \
+      | sed -E 's#$# --control-plane#'
   args:
     executable: /bin/bash
   register: k8s_master_join_command
   changed_when: false
   delegate_to: "{{ k8s_first_master }}"
   run_once: true
-  no_log: true
+  no_log: false
   when: groups[k8s_master_group] | length > 1
   tags:
     - add_master_nodes
     - "add_master_nodes:join"
 
-- name: Join additional Kubernetes master
-  ansible.builtin.command: "{{ k8s_master_join_command.stdout }}"
+- name: Create Kubernetes PKI directory on joining master
+  ansible.builtin.file:
+    path: /etc/kubernetes/pki
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
   when:
     - groups[k8s_master_group] | length > 1
     - inventory_hostname != k8s_first_master
     - not k8s_master_kubelet_conf.stat.exists
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:pki"
+
+- name: Check first master control-plane PKI files
+  ansible.builtin.stat:
+    path: "/etc/kubernetes/pki/{{ item }}"
+  register: k8s_first_master_pki_files
+  loop: "{{ k8s_master_join_pki_files }}"
+  delegate_to: "{{ k8s_first_master }}"
+  run_once: true
+  when: groups[k8s_master_group] | length > 1
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:pki"
+
+- name: Validate first master control-plane PKI files
+  ansible.builtin.assert:
+    that:
+      - k8s_first_master_pki_files.results | selectattr('stat.exists') | list | length == k8s_master_join_pki_files | length
+    fail_msg: >-
+      First master {{ k8s_first_master }} is missing one or more files
+      required for manual control-plane certificate distribution:
+      {{ k8s_first_master_pki_files.results | rejectattr('stat.exists') | map(attribute='item') | list }}
+  run_once: true
+  when: groups[k8s_master_group] | length > 1
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:pki"
+
+- name: Read first master control-plane PKI files
+  ansible.builtin.slurp:
+    src: "/etc/kubernetes/pki/{{ item }}"
+  register: k8s_first_master_pki_content
+  loop: "{{ k8s_master_join_pki_files }}"
+  delegate_to: "{{ k8s_first_master }}"
+  run_once: true
   no_log: true
+  when: groups[k8s_master_group] | length > 1
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:pki"
+
+- name: Copy control-plane PKI files to joining master
+  ansible.builtin.copy:
+    dest: "/etc/kubernetes/pki/{{ item.item }}"
+    content: "{{ item.content | b64decode }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ k8s_first_master_pki_content.results }}"
+  no_log: true
+  when:
+    - groups[k8s_master_group] | length > 1
+    - inventory_hostname != k8s_first_master
+    - not k8s_master_kubelet_conf.stat.exists
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:pki"
+
+- name: Check Kubernetes API reachability from joining master
+  ansible.builtin.command: "nc -zv {{ k8s_first_master_api_endpoint.split(':')[0] }} {{ k8s_first_master_api_endpoint.split(':')[1] }}"
+  register: k8s_master_api_reachability
+  changed_when: false
+  failed_when: k8s_master_api_reachability.rc != 0
+  when:
+    - groups[k8s_master_group] | length > 1
+    - inventory_hostname != k8s_first_master
+    - not k8s_master_kubelet_conf.stat.exists
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:join"
+
+- name: Show joining master API reachability
+  ansible.builtin.debug:
+    msg: |
+      Kubernetes API reachability from {{ inventory_hostname }}:
+      command: nc -zv {{ k8s_first_master_api_endpoint.split(':')[0] }} {{ k8s_first_master_api_endpoint.split(':')[1] }}
+      rc: {{ k8s_master_api_reachability.rc }}
+      stdout: {{ k8s_master_api_reachability.stdout | default('') }}
+      stderr: {{ k8s_master_api_reachability.stderr | default('') }}
+  when:
+    - groups[k8s_master_group] | length > 1
+    - inventory_hostname != k8s_first_master
+    - not k8s_master_kubelet_conf.stat.exists
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:join"
+
+- name: Join additional Kubernetes master
+  when:
+    - groups[k8s_master_group] | length > 1
+    - inventory_hostname != k8s_first_master
+    - not k8s_master_kubelet_conf.stat.exists
+  block:
+    - name: Run kubeadm control-plane join
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "Running: {{ k8s_master_join_command.stdout }} --v={{ k8s_master_join_verbosity }}"
+        {{ k8s_master_join_command.stdout }} --v={{ k8s_master_join_verbosity }} 2>&1 | tee {{ k8s_master_join_log_path }}
+      args:
+        executable: /bin/bash
+      async: "{{ k8s_master_join_timeout }}"
+      poll: "{{ k8s_master_join_poll }}"
+      register: k8s_master_join_result
+      no_log: false
+
+  rescue:
+    - name: Collect kubelet status after failed master join
+      ansible.builtin.command: systemctl status kubelet --no-pager
+      register: k8s_join_kubelet_status
+      changed_when: false
+      failed_when: false
+
+    - name: Collect recent kubelet logs after failed master join
+      ansible.builtin.command: journalctl -u kubelet -n 120 --no-pager
+      register: k8s_join_kubelet_logs
+      changed_when: false
+      failed_when: false
+
+    - name: List Kubernetes containers after failed master join
+      ansible.builtin.shell: "crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a | grep kube || true"
+      register: k8s_join_crictl_ps
+      changed_when: false
+      failed_when: false
+
+    - name: Check Kubernetes API health through the floating endpoint
+      ansible.builtin.command: "curl -kfsS --max-time 10 https://{{ master_float_ip }}:{{ k8s_load_balancer_port }}/healthz"
+      register: k8s_join_api_health
+      changed_when: false
+      failed_when: false
+
+    - name: Collect kubeadm join log
+      ansible.builtin.command: "cat {{ k8s_master_join_log_path }}"
+      register: k8s_join_log
+      changed_when: false
+      failed_when: false
+
+    - name: Show kubeadm master join diagnostics
+      ansible.builtin.debug:
+        msg: |
+          kubeadm control-plane join failed or timed out on {{ inventory_hostname }}.
+
+          === API reachability before join ===
+          rc: {{ k8s_master_api_reachability.rc | default('not checked') }}
+          stdout: {{ k8s_master_api_reachability.stdout | default('') }}
+          stderr: {{ k8s_master_api_reachability.stderr | default('') }}
+
+          === API health through floating endpoint ===
+          rc: {{ k8s_join_api_health.rc | default('') }}
+          stdout: {{ k8s_join_api_health.stdout | default('') }}
+          stderr: {{ k8s_join_api_health.stderr | default('') }}
+
+          === kubeadm join log ===
+          {{ k8s_join_log.stdout | default('') }}
+          {{ k8s_join_log.stderr | default('') }}
+
+          === kubelet status ===
+          {{ k8s_join_kubelet_status.stdout | default('') }}
+          {{ k8s_join_kubelet_status.stderr | default('') }}
+
+          === kubelet recent logs ===
+          {{ k8s_join_kubelet_logs.stdout | default('') }}
+          {{ k8s_join_kubelet_logs.stderr | default('') }}
+
+          === crictl ps ===
+          {{ k8s_join_crictl_ps.stdout | default('') }}
+          {{ k8s_join_crictl_ps.stderr | default('') }}
+
+    - name: Fail after kubeadm master join diagnostics
+      ansible.builtin.fail:
+        msg: "kubeadm control-plane join failed or timed out on {{ inventory_hostname }}. See diagnostics above."
   tags:
     - add_master_nodes
     - "add_master_nodes:join"

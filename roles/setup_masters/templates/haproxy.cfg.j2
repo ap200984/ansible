@@ -17,8 +17,10 @@ frontend kubernetes_api
 
 backend kubernetes_masters
     balance roundrobin
+    option httpchk GET /readyz
+    http-check expect status 200
 {% for host in groups[k8s_master_group] %}
-    server {{ host }} {{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}:{{ k8s_api_port }} check
+    server {{ host }} {{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}:{{ k8s_api_port }} check check-ssl verify none
 {% endfor %}
 
 listen stats

@@ -1,3 +1,4 @@
 ---
 k8s_kubeconfig_path: /etc/kubernetes/admin.conf
+k8s_super_admin_kubeconfig_path: /etc/kubernetes/super-admin.conf
 calico_manifest_url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml

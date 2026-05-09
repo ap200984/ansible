@@ -1,3 +1,16 @@
 ---
 k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
 k8s_kubelet_config_path: /etc/kubernetes/kubelet.conf
+k8s_master_join_timeout: 600
+k8s_master_join_poll: 10
+k8s_master_join_verbosity: 5
+k8s_master_join_log_path: /var/log/kubeadm-control-plane-join.log
+k8s_api_port: 6443
+k8s_load_balancer_port: 8443
+k8s_master_join_pki_files:
+  - ca.crt
+  - ca.key
+  - front-proxy-ca.crt
+  - front-proxy-ca.key
+  - sa.key
+  - sa.pub
