@@ -59,7 +59,7 @@
   changed_when: false
   delegate_to: "{{ k8s_first_master }}"
   run_once: true
-  no_log: false
+  no_log: true
   when: groups[k8s_master_group] | length > 1
   tags:
     - add_master_nodes
@@ -174,14 +174,13 @@
     - name: Run kubeadm control-plane join
       ansible.builtin.shell: |
         set -o pipefail
-        echo "Running: {{ k8s_master_join_command.stdout }} --v={{ k8s_master_join_verbosity }}"
         {{ k8s_master_join_command.stdout }} --v={{ k8s_master_join_verbosity }} 2>&1 | tee {{ k8s_master_join_log_path }}
       args:
         executable: /bin/bash
       async: "{{ k8s_master_join_timeout }}"
       poll: "{{ k8s_master_join_poll }}"
       register: k8s_master_join_result
-      no_log: false
+      no_log: true
 
   rescue:
     - name: Collect kubelet status after failed master join
