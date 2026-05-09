@@ -10,4 +10,6 @@ k8s_keepalived_router_id: 51
 k8s_keepalived_auth_pass: k8sHaPass
 k8s_keepalived_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
 k8s_haproxy_stats_port: 8404
+k8s_kubeadm_ignore_preflight_errors: ""
+k8s_kubeadm_pull_images_before_init: true
 etcd_nodes: "etcd1,etcd2,etcd3"

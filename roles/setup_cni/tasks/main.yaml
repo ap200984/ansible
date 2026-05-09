@@ -1,4 +1,24 @@
 ---
+- name: Check first master admin kubeconfig
+  ansible.builtin.stat:
+    path: "{{ k8s_kubeconfig_path }}"
+  register: k8s_cni_admin_conf
+  tags:
+    - setup_cni
+    - "setup_cni:validate"
+
+- name: Validate first master is initialized before installing CNI
+  ansible.builtin.assert:
+    that:
+      - k8s_cni_admin_conf.stat.exists
+    fail_msg: >-
+      Kubernetes control plane is not initialized
+      ({{ k8s_kubeconfig_path }} is missing). Fix kubeadm init before
+      installing Calico.
+  tags:
+    - setup_cni
+    - "setup_cni:validate"
+
 - name: Install Calico CNI
   ansible.builtin.command: "kubectl --kubeconfig {{ k8s_kubeconfig_path }} apply -f {{ calico_manifest_url }}"
   register: calico_apply

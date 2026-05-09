@@ -38,6 +38,7 @@
   gather_facts: true
   roles:
     - ../roles/prepare_k8s_hosts
+    - ../roles/local_apt_proxy
     - ../roles/containerd
     - ../roles/install_k8s_packages
 
@@ -54,6 +55,7 @@
   hosts: "{{ 'masters' if 'masters' in groups else 'master' }}"
   become: true
   gather_facts: true
+  any_errors_fatal: true
   roles:
     - ../roles/setup_masters
 
@@ -61,6 +63,7 @@
   hosts: "{{ ('masters' if 'masters' in groups else 'master') ~ '[0]' }}"
   become: true
   gather_facts: true
+  any_errors_fatal: true
   roles:
     - ../roles/setup_cni
 
@@ -68,6 +71,7 @@
   hosts: "{{ 'masters' if 'masters' in groups else 'master' }}"
   become: true
   gather_facts: true
+  any_errors_fatal: true
   roles:
     - ../roles/add_master_nodes
 
@@ -75,5 +79,6 @@
   hosts: workers
   become: true
   gather_facts: true
+  any_errors_fatal: true
   roles:
     - ../roles/add_worker_nodes

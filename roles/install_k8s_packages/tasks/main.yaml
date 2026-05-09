@@ -13,6 +13,17 @@
     - install_k8s_packages
     - "install_k8s_packages:repo"
 
+- name: Set Kubernetes apt proxy value
+  ansible.builtin.set_fact:
+    kubernetes_apt_proxy_effective: >-
+      {{
+        kubernetes_apt_proxy_effective
+        | default(kubernetes_apt_proxy | default(''))
+      }}
+  tags:
+    - install_k8s_packages
+    - "install_k8s_packages:repo"
+
 - name: Create apt keyring directory
   ansible.builtin.file:
     path: /etc/apt/keyrings
@@ -25,11 +36,44 @@
     - install_k8s_packages
     - "install_k8s_packages:repo"
 
-- name: Download Kubernetes apt repository key
-  ansible.builtin.get_url:
-    url: "{{ kubernetes_apt_key_url }}"
-    dest: /tmp/kubernetes-apt-release.key
+- name: Force apt to use IPv4
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99force-ipv4
+    owner: root
+    group: root
     mode: "0644"
+    content: |
+      Acquire::ForceIPv4 "true";
+  when:
+    - ansible_os_family == "Debian"
+    - kubernetes_force_ipv4 | bool
+  tags:
+    - install_k8s_packages
+    - "install_k8s_packages:repo"
+
+- name: Configure Kubernetes apt proxy
+  ansible.builtin.copy:
+    dest: "{{ kubernetes_apt_proxy_conf }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      Acquire::http::Proxy "{{ kubernetes_apt_proxy_effective }}";
+      Acquire::https::Proxy "{{ kubernetes_apt_proxy_effective }}";
+  when:
+    - ansible_os_family == "Debian"
+    - kubernetes_apt_proxy_effective | length > 0
+  tags:
+    - install_k8s_packages
+    - "install_k8s_packages:repo"
+
+- name: Download Kubernetes apt repository key
+  ansible.builtin.command:
+    cmd: >-
+      curl -fsSL -4
+      --proxy {{ kubernetes_apt_proxy_effective }}
+      {{ kubernetes_apt_key_url }} -o {{ kubernetes_apt_key_tmp }}
+    creates: "{{ kubernetes_apt_key_tmp }}"
   when: ansible_os_family == "Debian"
   tags:
     - install_k8s_packages
@@ -37,7 +81,7 @@
 
 - name: Install Kubernetes apt repository key
   ansible.builtin.command:
-    cmd: "gpg --dearmor -o {{ kubernetes_apt_keyring }} /tmp/kubernetes-apt-release.key"
+    cmd: "gpg --dearmor -o {{ kubernetes_apt_keyring }} {{ kubernetes_apt_key_tmp }}"
     creates: "{{ kubernetes_apt_keyring }}"
   when: ansible_os_family == "Debian"
   tags:

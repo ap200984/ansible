@@ -3,3 +3,11 @@ containerd_package: containerd
 containerd_config_dir: /etc/containerd
 containerd_config_file: /etc/containerd/config.toml
 containerd_systemd_cgroup: true
+containerd_proxy_enabled: "{{ kubernetes_use_controller_proxy | default(false) }}"
+containerd_proxy_url: "http://127.0.0.1:{{ kubernetes_target_proxy_port | default(18080) }}"
+containerd_proxy_no_proxy:
+  - 127.0.0.1
+  - localhost
+  - 10.96.0.0/12
+  - 192.168.0.0/16
+containerd_systemd_dropin_dir: /etc/systemd/system/containerd.service.d

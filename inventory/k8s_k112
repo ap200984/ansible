@@ -8,6 +8,7 @@ zabbix_server=10.9.1.70
 zabbix_agent_host_metadata_group=k112
 zabbix_agent_host_metadata_tag=k8s_k112
 master_float_ip=10.9.1.5
+k8s_kubeadm_ignore_preflight_errors=NumCPU,Mem
 
 [k8s:children]
 etcd

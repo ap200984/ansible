@@ -32,11 +32,57 @@
     - containerd
     - "containerd:config"
 
+- name: Create containerd systemd drop-in directory
+  ansible.builtin.file:
+    path: "{{ containerd_systemd_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: containerd_proxy_enabled | bool
+  tags:
+    - containerd
+    - "containerd:proxy"
+
+- name: Configure containerd proxy
+  ansible.builtin.copy:
+    dest: "{{ containerd_systemd_dropin_dir }}/10-proxy.conf"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Service]
+      Environment="HTTP_PROXY={{ containerd_proxy_url }}"
+      Environment="HTTPS_PROXY={{ containerd_proxy_url }}"
+      Environment="NO_PROXY={{ containerd_proxy_no_proxy | join(',') }}"
+  when: containerd_proxy_enabled | bool
+  notify: Restart containerd
+  tags:
+    - containerd
+    - "containerd:proxy"
+
+- name: Remove containerd proxy when disabled
+  ansible.builtin.file:
+    path: "{{ containerd_systemd_dropin_dir }}/10-proxy.conf"
+    state: absent
+  when: not (containerd_proxy_enabled | bool)
+  notify: Restart containerd
+  tags:
+    - containerd
+    - "containerd:proxy"
+
 - name: Ensure containerd is enabled and started
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: containerd
     enabled: true
     state: started
+    daemon_reload: true
+  tags:
+    - containerd
+    - "containerd:service"
+
+- name: Apply containerd configuration
+  ansible.builtin.meta: flush_handlers
   tags:
     - containerd
     - "containerd:service"

@@ -14,6 +14,29 @@
     - add_master_nodes
     - "add_master_nodes:join"
 
+- name: Check first master admin kubeconfig
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_first_master_admin_conf
+  delegate_to: "{{ k8s_first_master }}"
+  run_once: true
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:join"
+
+- name: Validate first master is initialized
+  ansible.builtin.assert:
+    that:
+      - k8s_first_master_admin_conf.stat.exists
+    fail_msg: >-
+      First master {{ k8s_first_master }} is not initialized
+      (/etc/kubernetes/admin.conf is missing). Fix kubeadm init before joining
+      additional masters.
+  run_once: true
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:join"
+
 - name: Generate Kubernetes control-plane join command
   ansible.builtin.shell: |
     set -e
