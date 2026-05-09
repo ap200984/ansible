@@ -1,0 +1,8 @@
+---
+- name: Install Calico CNI
+  ansible.builtin.command: "kubectl --kubeconfig {{ k8s_kubeconfig_path }} apply -f {{ calico_manifest_url }}"
+  register: calico_apply
+  changed_when: "'created' in calico_apply.stdout or 'configured' in calico_apply.stdout"
+  tags:
+    - setup_cni
+    - "setup_cni:calico"

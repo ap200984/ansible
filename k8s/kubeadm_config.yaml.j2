@@ -1,0 +1,29 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: {{ ip_address | default(ansible_default_ipv4.address) }}
+  bindPort: {{ k8s_api_port }}
+nodeRegistration:
+  name: {{ inventory_hostname }}
+  criSocket: unix:///run/containerd/containerd.sock
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: stable
+controlPlaneEndpoint: "{{ master_float_ip }}:{{ k8s_load_balancer_port }}"
+networking:
+  podSubnet: {{ k8s_pod_subnet }}
+  serviceSubnet: {{ k8s_service_subnet }}
+etcd:
+  external:
+    endpoints:
+{% for host in k8s_etcd_hosts %}
+      - http://{{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}:{{ etcd_client_port | default(2379) }}
+{% endfor %}
+apiServer:
+  certSANs:
+    - {{ master_float_ip }}
+{% for host in groups[k8s_master_group] %}
+    - {{ host }}
+    - {{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}
+{% endfor %}

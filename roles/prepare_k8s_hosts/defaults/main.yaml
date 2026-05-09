@@ -1,0 +1,9 @@
+---
+k8s_resolv_check_host: deb.debian.org
+k8s_kernel_modules:
+  - overlay
+  - br_netfilter
+k8s_sysctl_settings:
+  net.bridge.bridge-nf-call-iptables: 1
+  net.bridge.bridge-nf-call-ip6tables: 1
+  net.ipv4.ip_forward: 1

@@ -7,6 +7,7 @@ dns_server=10.9.1.1
 zabbix_server=10.9.1.70
 zabbix_agent_host_metadata_group=k112
 zabbix_agent_host_metadata_tag=k8s_k112
+master_float_ip=10.9.1.5
 
 [k8s:children]
 etcd
@@ -18,12 +19,21 @@ etcd1 ansible_host=10.9.1.11
 etcd2 ansible_host=10.9.1.12
 etcd3 ansible_host=10.9.1.13
 
+[etcd:vars]
+k8s_role=etcd
+
 [masters]
 master1 ansible_host=10.9.1.21
 master2 ansible_host=10.9.1.22
+
+[masters:vars]
+k8s_role=master
 
 [workers]
 worker1 ansible_host=10.9.1.31
 worker2 ansible_host=10.9.1.32
 worker3 ansible_host=10.9.1.33
 worker4 ansible_host=10.9.1.34
+
+[workers:vars]
+k8s_role=worker

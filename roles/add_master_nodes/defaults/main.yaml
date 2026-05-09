@@ -1,0 +1,3 @@
+---
+k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
+k8s_kubelet_config_path: /etc/kubernetes/kubelet.conf

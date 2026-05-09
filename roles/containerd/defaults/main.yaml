@@ -1,0 +1,5 @@
+---
+containerd_package: containerd
+containerd_config_dir: /etc/containerd
+containerd_config_file: /etc/containerd/config.toml
+containerd_systemd_cgroup: true

@@ -1,0 +1,79 @@
+---
+- name: Validate kubeadm inventory
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kubeadm_etcd_nodes: "{{ etcd_nodes | default('etcd1,etcd2,etcd3') }}"
+    k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
+    k8s_etcd_hosts: "{{ kubeadm_etcd_nodes.split(',') | map('trim') | reject('equalto', '') | list }}"
+  tasks:
+    - name: Check required inventory groups
+      ansible.builtin.assert:
+        that:
+          - "'etcd' in groups"
+          - "'workers' in groups"
+          - "'masters' in groups or 'master' in groups"
+          - groups['etcd'] | length > 0
+          - groups[k8s_master_group] | length > 0
+          - groups['workers'] | length > 0
+        fail_msg: "Inventory must contain etcd, masters (or master), and workers groups."
+
+    - name: Check etcd_nodes hosts exist in inventory etcd group
+      ansible.builtin.assert:
+        that:
+          - item in groups['etcd']
+        fail_msg: "{{ item }} from etcd_nodes is not present in the etcd inventory group."
+      loop: "{{ k8s_etcd_hosts }}"
+
+    - name: Check master_float_ip is provided by inventory
+      ansible.builtin.assert:
+        that:
+          - hostvars[groups[k8s_master_group][0]].master_float_ip is defined
+          - hostvars[groups[k8s_master_group][0]].master_float_ip | length > 0
+        fail_msg: "Set master_float_ip in inventory, for example under [k8s:vars]."
+
+- name: Prepare Kubernetes hosts
+  hosts: "etcd:{{ 'masters' if 'masters' in groups else 'master' }}:workers"
+  become: true
+  gather_facts: true
+  roles:
+    - ../roles/prepare_k8s_hosts
+    - ../roles/containerd
+    - ../roles/install_k8s_packages
+
+- name: Create external etcd cluster
+  hosts: "{{ etcd_nodes | default('etcd1,etcd2,etcd3') }}"
+  become: true
+  gather_facts: true
+  vars:
+    etcd_selected_hosts: "{{ etcd_nodes | default('etcd1,etcd2,etcd3') }}"
+  roles:
+    - ../roles/create_etcd_cluster
+
+- name: Configure Kubernetes control plane
+  hosts: "{{ 'masters' if 'masters' in groups else 'master' }}"
+  become: true
+  gather_facts: true
+  roles:
+    - ../roles/setup_masters
+
+- name: Install Kubernetes CNI
+  hosts: "{{ ('masters' if 'masters' in groups else 'master') ~ '[0]' }}"
+  become: true
+  gather_facts: true
+  roles:
+    - ../roles/setup_cni
+
+- name: Join additional Kubernetes masters
+  hosts: "{{ 'masters' if 'masters' in groups else 'master' }}"
+  become: true
+  gather_facts: true
+  roles:
+    - ../roles/add_master_nodes
+
+- name: Join Kubernetes workers
+  hosts: workers
+  become: true
+  gather_facts: true
+  roles:
+    - ../roles/add_worker_nodes

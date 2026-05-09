@@ -1,12 +1,15 @@
 + zabbix server disk space check bloating
 + move old unused plabooks
 + add vault
++ zabbix agent with psk
++ remove passwords
++ rolllout all machines
++ check ssh access by key
+
 setup workona in firefox
 
-zabbix agent with psk
-rolllout all machines
 install k8s
-remove passwords
+
 create readme
 install_amnesiawg
 

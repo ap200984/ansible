@@ -1,0 +1,28 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    timeout connect 10s
+    timeout client 1m
+    timeout server 1m
+
+frontend kubernetes_api
+    bind {{ master_float_ip }}:{{ k8s_load_balancer_port }}
+    default_backend kubernetes_masters
+
+backend kubernetes_masters
+    balance roundrobin
+{% for host in groups[k8s_master_group] %}
+    server {{ host }} {{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}:{{ k8s_api_port }} check
+{% endfor %}
+
+listen stats
+    bind 127.0.0.1:{{ k8s_haproxy_stats_port }}
+    mode http
+    stats enable
+    stats uri /

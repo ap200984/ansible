@@ -1,0 +1,42 @@
+---
+- name: Install containerd
+  ansible.builtin.apt:
+    name: "{{ containerd_package }}"
+    state: present
+    update_cache: false
+  when: ansible_os_family == "Debian"
+  tags:
+    - containerd
+    - "containerd:packages"
+
+- name: Create containerd config directory
+  ansible.builtin.file:
+    path: "{{ containerd_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - containerd
+    - "containerd:config"
+
+- name: Configure containerd
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: "{{ containerd_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart containerd
+  tags:
+    - containerd
+    - "containerd:config"
+
+- name: Ensure containerd is enabled and started
+  ansible.builtin.service:
+    name: containerd
+    enabled: true
+    state: started
+  tags:
+    - containerd
+    - "containerd:service"
