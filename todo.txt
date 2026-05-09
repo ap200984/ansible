@@ -6,11 +6,13 @@
 + rolllout all machines
 + check ssh access by key
 
-setup workona in firefox
 
 install k8s
 
+setup workona in firefox
+
 create readme
+
 install_amnesiawg
 
 add domain for k112

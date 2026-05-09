@@ -58,3 +58,14 @@
   tags:
     - add_worker_nodes
     - "add_worker_nodes:join"
+
+- name: Label Kubernetes worker node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    label node {{ inventory_hostname }} node-role.kubernetes.io/worker= --overwrite
+  register: k8s_label_worker_node
+  changed_when: "'not labeled' not in k8s_label_worker_node.stdout"
+  delegate_to: "{{ k8s_first_master }}"
+  tags:
+    - add_worker_nodes
+    - "add_worker_nodes:labels"
