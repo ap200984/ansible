@@ -5,6 +5,7 @@
   gather_facts: true
 
   roles:
+    - hostname
     - tz
     - dns_client
     - ntp_client

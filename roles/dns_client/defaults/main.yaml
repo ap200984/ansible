@@ -2,3 +2,10 @@
 dns_client_default_servers:
   - 1.1.1.1
   - 8.8.8.8
+dns_client_bootstrap_servers: "{{ dns_client_default_servers }}"
+dns_client_include_bootstrap_servers: true
+dns_client_resolution_check_host: deb.debian.org
+dns_client_resolved_package: systemd-resolved
+dns_client_manage_resolv_conf: true
+dns_client_resolv_conf_path: /etc/resolv.conf
+dns_client_resolved_stub_resolv_conf: /run/systemd/resolve/stub-resolv.conf

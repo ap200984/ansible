@@ -1,0 +1,48 @@
+---
+- name: Validate hostname is configured
+  assert:
+    that:
+      - hostname_name | length > 0
+    fail_msg: "Set hostname in inventory or override hostname_name for the hostname role."
+  tags:
+    - hostname
+    - "hostname:validate"
+    - "hostname:config"
+
+- name: Set runtime hostname
+  ansible.builtin.hostname:
+    name: "{{ hostname_name }}"
+  tags:
+    - hostname
+    - "hostname:config"
+
+- name: Configure /etc/hostname
+  copy:
+    dest: /etc/hostname
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ hostname_name }}\n"
+  tags:
+    - hostname
+    - "hostname:config"
+
+- name: Ensure localhost entry exists in /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+'
+    line: "127.0.0.1 localhost"
+    state: present
+  tags:
+    - hostname
+    - "hostname:config"
+
+- name: Configure hostname entry in /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ hostname_fqdn }} {{ hostname_name }}"
+    state: present
+  tags:
+    - hostname
+    - "hostname:config"

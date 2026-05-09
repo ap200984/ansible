@@ -7,7 +7,7 @@ wg_octet=253
 gre_octet=254
 l2tp_octet=255
 domain=vds06.space
-host_name=vds6
+hostname=vds6
 
 
 [prod]

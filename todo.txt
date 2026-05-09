@@ -1,9 +1,6 @@
 + zabbix server disk space check bloating
 + move old unused plabooks
-
-
-
-add vault
++ add vault
 setup workona in firefox
 
 zabbix agent with psk

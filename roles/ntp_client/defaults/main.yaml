@@ -4,3 +4,4 @@ ntp_client_default_servers:
   - 1.ubuntu.pool.ntp.org
   - 2.ubuntu.pool.ntp.org
   - 3.ubuntu.pool.ntp.org
+ntp_client_update_cache: false

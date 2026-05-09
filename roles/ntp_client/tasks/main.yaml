@@ -14,7 +14,7 @@
   apt:
     name: chrony
     state: present
-    update_cache: true
+    update_cache: "{{ ntp_client_update_cache }}"
   tags:
     - ntp_client
     - "ntp_client:packages"

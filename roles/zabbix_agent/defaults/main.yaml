@@ -4,3 +4,6 @@ server_active: 217.144.189.206
 zabbix_agent_release_version: "7.4-1"
 zabbix_agent_host_metadata_group: ""
 zabbix_agent_host_metadata_tag: ""
+psk_identity: zabbix_host
+psk: "{{ zabbix_agent_psk | default('') }}"
+zabbix_agent_psk_file: /etc/zabbix/zabbix_agent2.psk

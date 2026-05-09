@@ -7,8 +7,7 @@ wg_octet=253
 gre_octet=254
 l2tp_octet=255
 domain=vds08.space
-host_name=vds8
-
+hostname=vds8
 
 [prod]
 194.113.106.136:19022

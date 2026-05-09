@@ -102,7 +102,7 @@
       replace:
         path: /etc/quagga/bgpd.conf
         regexp: '{\$HOST_NAME}'
-        replace: "{{ host_name }}"
+        replace: "{{ hostname }}"
 
     - name: restart xl2tpd
       service:

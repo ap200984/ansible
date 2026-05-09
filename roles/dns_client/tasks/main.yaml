@@ -12,6 +12,84 @@
     - "dns_client:vars"
     - "dns_client:config"
 
+- name: Set systemd-resolved server list
+  set_fact:
+    dns_client_resolved_servers: >-
+      {{
+        (dns_client_servers + dns_client_bootstrap_servers)
+        | unique
+        if dns_client_include_bootstrap_servers | bool
+        else dns_client_servers
+      }}
+  tags:
+    - dns_client
+    - "dns_client:vars"
+    - "dns_client:config"
+
+- name: Check whether systemd-resolved is installed
+  command: "dpkg-query -W -f=${Status} {{ dns_client_resolved_package }}"
+  register: dns_client_resolved_package_status
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "Debian"
+  tags:
+    - dns_client
+    - "dns_client:packages"
+    - "dns_client:service"
+
+- name: Bootstrap resolver before installing systemd-resolved
+  copy:
+    dest: "{{ dns_client_resolv_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for nameserver in dns_client_bootstrap_servers %}
+      nameserver {{ nameserver }}
+      {% endfor %}
+  when:
+    - ansible_os_family == "Debian"
+    - dns_client_manage_resolv_conf | bool
+    - dns_client_resolved_package_status.stdout != "install ok installed"
+  tags:
+    - dns_client
+    - "dns_client:packages"
+    - "dns_client:service"
+
+- name: Install systemd-resolved
+  apt:
+    name: "{{ dns_client_resolved_package }}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == "Debian"
+    - dns_client_resolved_package_status.stdout != "install ok installed"
+  tags:
+    - dns_client
+    - "dns_client:packages"
+    - "dns_client:service"
+
+- name: Ensure systemd-resolved is enabled and started
+  service:
+    name: systemd-resolved
+    enabled: true
+    state: started
+  tags:
+    - dns_client
+    - "dns_client:service"
+
+- name: Configure systemd-resolved as system resolver
+  file:
+    path: "{{ dns_client_resolv_conf_path }}"
+    src: "{{ dns_client_resolved_stub_resolv_conf }}"
+    state: link
+    force: true
+  when: dns_client_manage_resolv_conf | bool
+  tags:
+    - dns_client
+    - "dns_client:config"
+    - "dns_client:service"
+
 - name: Create systemd-resolved config directory
   file:
     path: /etc/systemd/resolved.conf.d
@@ -31,17 +109,23 @@
     mode: "0644"
     content: |
       [Resolve]
-      DNS={{ dns_client_servers | join(' ') }}
+      DNS={{ dns_client_resolved_servers | join(' ') }}
   notify: Restart systemd-resolved
   tags:
     - dns_client
     - "dns_client:config"
 
-- name: Ensure systemd-resolved is enabled and started
-  service:
-    name: systemd-resolved
-    enabled: true
-    state: started
+- name: Apply DNS configuration before next roles
+  meta: flush_handlers
   tags:
     - dns_client
+    - "dns_client:config"
+    - "dns_client:service"
+
+- name: Check DNS resolution
+  command: "getent hosts {{ dns_client_resolution_check_host }}"
+  changed_when: false
+  tags:
+    - dns_client
+    - "dns_client:validate"
     - "dns_client:service"

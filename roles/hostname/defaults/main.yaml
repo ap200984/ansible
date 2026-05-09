@@ -1,0 +1,4 @@
+---
+hostname_name: "{{ hostname | default(inventory_hostname_short) }}"
+hostname_domain: "{{ domain | default('') }}"
+hostname_fqdn: "{{ hostname_name ~ '.' ~ hostname_domain if hostname_domain | length > 0 else hostname_name }}"

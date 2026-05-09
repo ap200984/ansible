@@ -4,6 +4,7 @@ ansible_ssh_private_key_file=~/.ssh/priv/ansible
 ntp_server=10.9.1.70
 dns_server=10.9.1.1
 zabbix_server=10.9.1.70
+hostname=vds3
 
 
 [staging]

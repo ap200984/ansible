@@ -48,6 +48,24 @@
     - "zabbix_agent:repo"
     - "zabbix_agent:packages"
 
+- name: Validate Zabbix Agent 2 PSK configuration
+  assert:
+    that:
+      - psk_identity | length > 0
+      - psk | length > 0
+      - psk is match('^[0-9a-fA-F]+$')
+      - psk | length >= 32
+      - psk | length <= 512
+      - psk | length is divisibleby 2
+    fail_msg: >-
+      zabbix_agent_psk must be defined in group_vars/all/passwords.yml as an
+      even-length hexadecimal PSK between 32 and 512 characters.
+  no_log: true
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:validate"
+    - "zabbix_agent:config"
+
 - name: Stop old Zabbix agent if present
   service:
     name: zabbix-agent
@@ -100,6 +118,19 @@
     - zabbix_agent
     - "zabbix_agent:packages"
 
+- name: Configure Zabbix Agent 2 PSK file
+  copy:
+    dest: "{{ zabbix_agent_psk_file }}"
+    owner: root
+    group: zabbix
+    mode: "0640"
+    content: "{{ psk }}\n"
+  no_log: true
+  notify: Restart zabbix-agent2
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:config"
+
 - name: Configure Zabbix Agent 2
   copy:
     dest: /etc/zabbix/zabbix_agent2.conf
@@ -114,6 +145,10 @@
       ServerActive={{ zabbix_agent_server_active }}
       Hostname={{ zabbix_agent_hostname }}
       HostMetadata={{ zabbix_agent_host_metadata }}
+      TLSConnect=psk
+      TLSAccept=psk
+      TLSPSKIdentity={{ psk_identity }}
+      TLSPSKFile={{ zabbix_agent_psk_file }}
       Include=/etc/zabbix/zabbix_agent2.d/*.conf
       PluginSocket=/run/zabbix/agent.plugin.sock
       ControlSocket=/run/zabbix/agent.sock
