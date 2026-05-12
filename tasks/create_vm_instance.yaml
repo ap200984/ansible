@@ -9,11 +9,17 @@
 - name: Create VM
   when: vm_dominfo.rc != 0
   block:
+    - name: Check base cloud image
+      ansible.builtin.stat:
+        path: "{{ vm_base_image }}"
+      register: vm_base_image_stat
+
     - name: Download base cloud image
       ansible.builtin.get_url:
         url: "{{ vm_image_url }}"
         dest: "{{ vm_base_image }}"
         mode: "0644"
+      when: not vm_base_image_stat.stat.exists
 
     - name: Create cloud-init directory
       ansible.builtin.file:
