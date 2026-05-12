@@ -1,0 +1,135 @@
+---
+- name: Check if VM already exists
+  ansible.builtin.command:
+    cmd: "virsh dominfo {{ vm.name }}"
+  register: vm_dominfo
+  changed_when: false
+  failed_when: false
+
+- name: Create VM
+  when: vm_dominfo.rc != 0
+  block:
+    - name: Download base cloud image
+      ansible.builtin.get_url:
+        url: "{{ vm_image_url }}"
+        dest: "{{ vm_base_image }}"
+        mode: "0644"
+
+    - name: Create cloud-init directory
+      ansible.builtin.file:
+        path: "{{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create cloud-init datasource override
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/ds-identify.cfg"
+        mode: "0644"
+        content: |
+          policy: enabled
+          datasource: NoCloud
+
+    - name: Create cloud-init NoCloud datasource list
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/99_nocloud.cfg"
+        mode: "0644"
+        content: |
+          datasource_list: [ NoCloud, None ]
+
+    - name: Create VM disk image
+      ansible.builtin.command:
+        cmd: "qemu-img create -f qcow2 -F qcow2 -b {{ vm_base_image }} {{ vm_libvirt_dir }}/{{ vm.name }}.qcow2 {{ vm.disk_size_gb | default(vm_disk_size_gb) }}G"
+        creates: "{{ vm_libvirt_dir }}/{{ vm.name }}.qcow2"
+
+    - name: Create cloud-init user-data
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/user-data"
+        mode: "0644"
+        content: |
+          #cloud-config
+          timezone: {{ vm.timezone | default(vm_timezone) | to_json }}
+          hostname: {{ vm.name | to_json }}
+          manage_etc_hosts: true
+          users:
+            - default
+          {% for user in vm_users %}
+            - name: {{ user.name | to_json }}
+              shell: {{ user.shell | default('/bin/bash') | to_json }}
+          {% if user.groups is defined %}
+              groups: {{ user.groups | to_json }}
+          {% endif %}
+          {% if user.sudo is defined %}
+              sudo: {{ user.sudo | to_json }}
+          {% endif %}
+              lock_passwd: false
+              passwd: {{ lookup('ansible.builtin.file', user.password_hash_file) | trim | to_json }}
+              ssh_authorized_keys:
+          {% for key_file in ssh_public_key_files %}
+                - {{ lookup('ansible.builtin.file', key_file) }}
+          {% endfor %}
+          {% endfor %}
+          ssh_pwauth: false
+          disable_root: false
+          package_update: true
+          packages:
+            - qemu-guest-agent
+          runcmd:
+            - systemctl enable --now serial-getty@ttyS0.service
+            - systemctl start qemu-guest-agent
+
+    - name: Create cloud-init meta-data
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/meta-data"
+        mode: "0644"
+        content: |
+          instance-id: {{ vm.name | to_json }}
+          local-hostname: {{ vm.name | to_json }}
+
+    - name: Create cloud-init network-config
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/network-config"
+        mode: "0644"
+        content: |
+          version: 2
+          ethernets:
+            vmnic0:
+              match:
+                name: "e*"
+              dhcp4: false
+              addresses:
+                - {{ vm.ip_address }}/{{ vm.netmask_prefix | default(vm_netmask_prefix) }}
+              routes:
+                - to: default
+                  via: {{ vm.gateway | default(vm.ip_address.split('.')[:3] | join('.') ~ '.1') }}
+              nameservers:
+                addresses: {{ vm.dns_servers | default(vm_dns_servers) }}
+
+    - name: Seed NoCloud data into VM disk image
+      ansible.builtin.command:
+        cmd: >-
+          virt-customize
+          -a {{ vm_libvirt_dir }}/{{ vm.name }}.qcow2
+          --mkdir /var/lib/cloud/seed/nocloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/ds-identify.cfg:/etc/cloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/99_nocloud.cfg:/etc/cloud/cloud.cfg.d
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/user-data:/var/lib/cloud/seed/nocloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/meta-data:/var/lib/cloud/seed/nocloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm.name }}/network-config:/var/lib/cloud/seed/nocloud
+      environment:
+        LIBGUESTFS_BACKEND: direct
+
+    - name: Create and start VM
+      ansible.builtin.command:
+        cmd: >-
+          virt-install
+          --name {{ vm.name }}
+          --memory {{ vm.memory_mb | default(vm_memory_mb) }}
+          --vcpus {{ vm.vcpus | default(vm_vcpus) }}
+          --disk path={{ vm_libvirt_dir }}/{{ vm.name }}.qcow2,format=qcow2,bus=virtio
+          --os-variant debian12
+          --virt-type kvm
+          --graphics none
+          --console pty,target_type=serial
+          --network type=direct,source={{ vm.network_source | default(vm_network_source) }},source_mode={{ vm.network_source_mode | default(vm_network_source_mode) }},model=virtio
+          --import
+          --noautoconsole
