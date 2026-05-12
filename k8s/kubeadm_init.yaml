@@ -2,6 +2,8 @@
 - name: Validate kubeadm inventory
   hosts: localhost
   gather_facts: false
+  vars_files:
+    - ../group_vars/all/k8s.yml
   vars:
     kubeadm_etcd_nodes: "{{ etcd_nodes | default('etcd1,etcd2,etcd3') }}"
     k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
@@ -36,6 +38,8 @@
   hosts: "etcd:{{ 'masters' if 'masters' in groups else 'master' }}:workers"
   become: true
   gather_facts: true
+  vars_files:
+    - ../group_vars/all/k8s.yml
   roles:
     - ../roles/prepare_k8s_hosts
     - ../roles/local_apt_proxy
@@ -46,6 +50,8 @@
   hosts: "{{ etcd_nodes | default('etcd1,etcd2,etcd3') }}"
   become: true
   gather_facts: true
+  vars_files:
+    - ../group_vars/all/k8s.yml
   vars:
     etcd_selected_hosts: "{{ etcd_nodes | default('etcd1,etcd2,etcd3') }}"
   roles:
@@ -56,6 +62,8 @@
   become: true
   gather_facts: true
   any_errors_fatal: true
+  vars_files:
+    - ../group_vars/all/k8s.yml
   roles:
     - ../roles/setup_masters
 
@@ -64,6 +72,8 @@
   become: true
   gather_facts: true
   any_errors_fatal: true
+  vars_files:
+    - ../group_vars/all/k8s.yml
   roles:
     - ../roles/setup_cni
 
@@ -72,6 +82,8 @@
   become: true
   gather_facts: true
   any_errors_fatal: true
+  vars_files:
+    - ../group_vars/all/k8s.yml
   roles:
     - ../roles/add_master_nodes
 
@@ -80,5 +92,7 @@
   become: true
   gather_facts: true
   any_errors_fatal: true
+  vars_files:
+    - ../group_vars/all/k8s.yml
   roles:
     - ../roles/add_worker_nodes
