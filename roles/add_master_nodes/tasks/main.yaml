@@ -52,7 +52,7 @@
     set -e
     kubeadm token create --print-join-command \
       | sed -E 's#^(kubeadm join) [^ ]+#\1 {{ k8s_first_master_api_endpoint }}#' \
-      | sed -E 's#$# --control-plane#'
+      | sed -E 's#$# --control-plane{% if k8s_kubeadm_ignore_preflight_errors | length > 0 %} --ignore-preflight-errors={{ k8s_kubeadm_ignore_preflight_errors }}{% endif %}#'
   args:
     executable: /bin/bash
   register: k8s_master_join_command
@@ -250,3 +250,34 @@
   tags:
     - add_master_nodes
     - "add_master_nodes:join"
+
+- name: Wait for additional Kubernetes master node registration
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    get node {{ inventory_hostname }}
+  register: k8s_additional_master_node
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: k8s_additional_master_node.rc == 0
+  delegate_to: "{{ k8s_first_master }}"
+  when:
+    - groups[k8s_master_group] | length > 1
+    - inventory_hostname != k8s_first_master
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:labels"
+
+- name: Label additional Kubernetes control-plane node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane= --overwrite
+  register: k8s_label_additional_control_plane_node
+  changed_when: "'not labeled' not in k8s_label_additional_control_plane_node.stdout"
+  delegate_to: "{{ k8s_first_master }}"
+  when:
+    - groups[k8s_master_group] | length > 1
+    - inventory_hostname != k8s_first_master
+  tags:
+    - add_master_nodes
+    - "add_master_nodes:labels"

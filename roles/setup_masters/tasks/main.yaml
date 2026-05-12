@@ -270,13 +270,12 @@
     - setup_masters
     - "setup_masters:kubeconfig"
 
-- name: Label Kubernetes control-plane nodes
+- name: Label first Kubernetes control-plane node
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ k8s_kubeconfig_path }}
-    label node {{ item }} node-role.kubernetes.io/control-plane= --overwrite
-  loop: "{{ groups[k8s_master_group] }}"
-  register: k8s_label_control_plane_nodes
-  changed_when: "'not labeled' not in k8s_label_control_plane_nodes.stdout"
+    label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane= --overwrite
+  register: k8s_label_first_control_plane_node
+  changed_when: "'not labeled' not in k8s_label_first_control_plane_node.stdout"
   when: inventory_hostname == k8s_first_master
   tags:
     - setup_masters

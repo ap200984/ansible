@@ -1,6 +1,8 @@
 ---
 k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
+k8s_kubeconfig_path: /etc/kubernetes/admin.conf
 k8s_kubelet_config_path: /etc/kubernetes/kubelet.conf
+k8s_kubeadm_ignore_preflight_errors: ""
 k8s_master_join_timeout: 600
 k8s_master_join_poll: 10
 k8s_master_join_verbosity: 5
