@@ -3,11 +3,10 @@ k8s_kubeconfig_path: /etc/kubernetes/admin.conf
 k8s_super_admin_kubeconfig_path: /etc/kubernetes/super-admin.conf
 k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
 k8s_api_port: 6443
-k8s_pod_subnet: 10.9.16.0/20
 calico_manifest_url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
 calico_force_apply: false
 calico_manifest_path: /tmp/calico.yaml
-calico_pod_cidr: "{{ k8s_pod_subnet | default('192.168.0.0/16') }}"
+calico_pod_cidr: "{{ k8s_pod_subnet }}"
 calico_kubernetes_service_host: >-
   {{ hostvars[groups[k8s_master_group][0]].ip_address
      | default(hostvars[groups[k8s_master_group][0]].ansible_host)
