@@ -9,5 +9,5 @@ containerd_proxy_no_proxy:
   - 127.0.0.1
   - localhost
   - "{{ k8s_service_subnet | default('10.9.2.0/24') }}"
-  - "{{ k8s_pod_subnet | default('10.9.4.0/22') }}"
+  - "{{ k8s_pod_subnet | default('10.9.16.0/20') }}"
 containerd_systemd_dropin_dir: /etc/systemd/system/containerd.service.d

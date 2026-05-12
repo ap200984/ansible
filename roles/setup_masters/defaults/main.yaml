@@ -2,7 +2,7 @@
 k8s_master_group: "{{ 'masters' if 'masters' in groups else 'master' }}"
 k8s_api_port: 6443
 k8s_load_balancer_port: 8443
-k8s_pod_subnet: 10.9.4.0/22
+k8s_pod_subnet: 10.9.16.0/20
 k8s_service_subnet: 10.9.2.0/24
 k8s_kubeadm_config_path: /root/kubeadm_config.yaml
 k8s_kubeconfig_path: /etc/kubernetes/admin.conf
