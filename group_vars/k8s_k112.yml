@@ -1,0 +1,44 @@
+---
+# VM definitions for inventory k8s_k112.
+# Use k8s_cluster.yaml to create one or more cluster VMs on the KVM host.
+k8s_cluster_machines:
+  etcd1:
+    ip_address: 10.9.1.11
+    memory_mb: 512
+    vcpus: 1
+    disk_size_gb: 10
+  etcd2:
+    ip_address: 10.9.1.12
+    memory_mb: 512
+    vcpus: 1
+    disk_size_gb: 10
+  etcd3:
+    ip_address: 10.9.1.13
+    memory_mb: 512
+    vcpus: 1
+    disk_size_gb: 10
+  master1:
+    ip_address: 10.9.1.21
+    memory_mb: 2048
+    vcpus: 1
+    disk_size_gb: 10
+  master2:
+    ip_address: 10.9.1.22
+    memory_mb: 2048
+    vcpus: 1
+    disk_size_gb: 10
+  worker1:
+    ip_address: 10.9.1.31
+    memory_mb: 2048
+    vcpus: 1
+    disk_size_gb: 10
+  worker2:
+    ip_address: 10.9.1.32
+    memory_mb: 2048
+    vcpus: 1
+    disk_size_gb: 10
+  worker3:
+    ip_address: 10.9.1.33
+    memory_mb: 2048
+    vcpus: 1
+    disk_size_gb: 10

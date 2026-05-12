@@ -1,0 +1,24 @@
+---
+- name: Build VM list from inventory k8s_k112
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - group_vars/k8s_k112.yml
+  vars:
+    k8s_cluster_vm_hosts: >-
+      {% set raw = vm_hosts if vm_hosts is iterable and vm_hosts is not string else (vm_hosts | default('all') | regex_replace('\\s','') | split(',')) %}
+      {{ raw | map('trim') | reject('equalto', '') | list }}
+    k8s_cluster_selected_hosts: >-
+      {{ groups['k8s'] if k8s_cluster_vm_hosts == ['all'] else k8s_cluster_vm_hosts }}
+    vm_list: >-
+      {{ k8s_cluster_selected_hosts | map('extract', k8s_cluster_machines) | list }}
+  tasks:
+    - name: Validate selected K8s VM definitions
+      ansible.builtin.assert:
+        that:
+          - vm_list | length > 0
+        fail_msg: >-
+          No VM definitions found for {{ k8s_cluster_selected_hosts }}.
+          Check vm_hosts or group_vars/k8s_k112.yml.
+
+- import_playbook: create_vm.yaml

@@ -113,3 +113,37 @@ ansible-playbook -i inventory/kvm_server create_vm.yaml \
 ### ansible-playbook -i inventory/k8s_k112 create_etcd_cluster.yaml -e hosts=etcd1,etcd2,etcd3
 ### ansible-playbook -i inventory/k16_k112_server ntp_server.yml
 ### ansible-playbook -i inventory/k8s_k112 new_machine.yml
+
+
+sudo virsh destroy etcd1   && sudo virsh undefine etcd1   --remove-all-storage
+sudo virsh destroy etcd2   && sudo virsh undefine etcd2   --remove-all-storage
+sudo virsh destroy etcd3   && sudo virsh undefine etcd3   --remove-all-storage
+sudo virsh destroy master1 && sudo virsh undefine master1 --remove-all-storage
+sudo virsh destroy master2 && sudo virsh undefine master2 --remove-all-storage
+sudo virsh destroy worker1 && sudo virsh undefine worker1 --remove-all-storage
+sudo virsh destroy worker2 && sudo virsh undefine worker2 --remove-all-storage
+sudo virsh destroy worker3 && sudo virsh undefine worker3 --remove-all-storage
+
+
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=etcd1 -e vm_ip_address=10.9.1.11 -e vm_memory_mb=512 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=etcd2 -e vm_ip_address=10.9.1.12 -e vm_memory_mb=512 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=etcd3 -e vm_ip_address=10.9.1.13 -e vm_memory_mb=512 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=master1 -e vm_ip_address=10.9.1.21 -e vm_memory_mb=2048 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=master2 -e vm_ip_address=10.9.1.22 -e vm_memory_mb=2048 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=worker1 -e vm_ip_address=10.9.1.31 -e vm_memory_mb=2048 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=worker2 -e vm_ip_address=10.9.1.32 -e vm_memory_mb=2048 -e vm_vcpus=1 -e vm_disk_size_gb=10
+ansible-playbook -i inventory/kvm_server create_vm.yaml  -e vm_name=worker3 -e vm_ip_address=10.9.1.33 -e vm_memory_mb=2048 -e vm_vcpus=1 -e vm_disk_size_gb=10
+
+## Launch K8s cluster VMs from inventory k8s_k112
+
+Use the inventory file `inventory/k8s_k112` together with `inventory/kvm_server` and the new `k8s_cluster.yaml` wrapper.
+
+```bash
+ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s_cluster.yaml -e vm_hosts=etcd1,etcd2,etcd3
+```
+
+To create all defined cluster VMs:
+
+```bash
+ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s_cluster.yaml
+```
