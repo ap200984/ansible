@@ -28,6 +28,12 @@ ansible all -i inventory -m ping
 # run single command 
 ansible all -i inventory -a "sudo iptables -S"
 
+# run playbook with vault password from file
+ansible-playbook -i inventory/v install_gitlab.yaml --vault-password-file ~/.ansible/vault_pass.txt
+
+# run playbook with vault password prompt
+ansible-playbook -i inventory/v install_gitlab.yaml --ask-vault-pass
+
 # zabbix-proxy
 sudo docker run --name zabbix-proxy-sqlite3 -e ZBX_HOSTNAME=RuVDS -e ZBX_SERVER_HOST=45.35.14.80 -e ZBX_CONFIGFREQUENCY=30 -d --restart unless-stopped zabbix/zabbix-proxy-sqlite3:alpine-5.4.11
 sudo docker logs zabbix-proxy-sqlite3
@@ -209,4 +215,3 @@ container -> new -> file: /usb2/zabbix-proxy-7.2.1-alpine.tar
 /container add envlist=zabbixproxy_envs hostname=mikrotik_k16_k112 interface=ZABBIX_PROXY logging=yes root-dir=usb1-part1/zabbixproxy start-on-boot=yes
 
 wait 2 minutes until files in /usb2/zabbix-proxy/* will be created
-
