@@ -17,11 +17,11 @@
     group: root
     mode: "0644"
     content: |
-      /var/log/syslog
-      /var/log/*.log
+      /var/log/*log
       {
-          daily
-          rotate 7
+          weekly
+          maxsize 500M
+          rotate 6
           missingok
           notifempty
           compress

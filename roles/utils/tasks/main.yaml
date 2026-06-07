@@ -18,6 +18,7 @@
       - wget
       - zutils
       - atop
+      - logrotate
       - htop
       - ncdu
       - iftop
@@ -51,9 +52,31 @@
     content: |
       LOGOPTS=""
       LOGINTERVAL=10
-      LOGGENERATIONS=28
+      LOGGENERATIONS=7
       LOGPATH=/var/log/atop
   notify: Restart atop
+  tags:
+    - utils
+    - "utils:atop"
+
+- name: Configure atop log rotation
+  copy:
+    dest: /etc/logrotate.d/atop
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/atop/atop_*
+      {
+          weekly
+          maxsize 500M
+          rotate 6
+          missingok
+          notifempty
+          compress
+          delaycompress
+          copytruncate
+      }
   tags:
     - utils
     - "utils:atop"
