@@ -1,6 +1,7 @@
 ---
 - hosts: all
   become: true
+
   vars:
     docker_network_name: docker-net
     docker_network_subnet: 172.20.0.0/16
@@ -10,67 +11,139 @@
     # - name: Include secrets
     #   include_vars: secrets/common_secrets.yml
 
-    - name: Create a network for gitlab
-      docker_network:
+    - name: Create a network for GitLab
+      community.docker.docker_network:
         name: "{{ docker_network_name }}"
         ipam_config:
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
     - name: Ensure /tmp/devnull directory exists
-      file:
+      ansible.builtin.file:
         path: /tmp/devnull
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Create null device at /tmp/devnull/null
-      command: mknod /tmp/devnull/null c 1 3
+      ansible.builtin.command:
+        cmd: mknod /tmp/devnull/null c 1 3
       args:
         creates: /tmp/devnull/null
 
-# https://gitlab-com.gitlab.io/support/toolbox/upgrade-path/
-    - name: Install gitlab
+    # Upgrade-path checker:
+    # https://gitlab-com.gitlab.io/support/toolbox/upgrade-path/
+    - name: Install GitLab
       community.docker.docker_container:
         name: gitlab
-        #image: "gitlab/gitlab-ce:18.3.0-ce.0"
-        #image: "gitlab/gitlab-ce:18.5.5-ce.0"
-        #image: "gitlab/gitlab-ce:18.8.6-ce.0"
-        image: "gitlab/gitlab-ce:18.9.2-ce.0"        
+
+        # Previous versions:
+        # image: "gitlab/gitlab-ce:18.3.0-ce.0"
+        # image: "gitlab/gitlab-ce:18.5.5-ce.0"
+        # image: "gitlab/gitlab-ce:18.8.6-ce.0"
+        # image: "gitlab/gitlab-ce:18.9.2-ce.0"
+
+        image: "gitlab/gitlab-ce:18.9.8-ce.0"
+        pull: true
+
         shm_size: 256m
+
+        # Hard RAM limit.
         memory: 4g
+
+        # Total RAM + swap limit.
+        # GitLab may use up to 4 GB RAM plus up to 2 GB swap.
         memory_swap: 6g
+
         networks:
           - name: "{{ docker_network_name }}"
+
         ports:
-          - 1080:80/tcp
-          - 1022:22/tcp
+          - "1080:80/tcp"
+          - "1022:22/tcp"
+
         volumes:
           - /gitlab/config:/etc/gitlab
           - /var/log/gitlab:/var/log/gitlab
-          # - /tmp/devnull/null:/var/log/gitlab/sidekiq/current
           - /gitlab/data:/var/opt/gitlab
+
+          # Do not redirect Sidekiq logs to /dev/null while diagnosing 502s.
+          # - /tmp/devnull/null:/var/log/gitlab/sidekiq/current
+
         env:
           GITLAB_OMNIBUS_CONFIG: |
             external_url 'https://gitlab.{{ domain }}/';
+
             gitlab_rails['gitlab_shell_ssh_host'] = 'gitlab.{{ domain }}';
             gitlab_rails['gitlab_shell_ssh_port'] = 1022;
 
+            #
+            # Internal GitLab NGINX
+            #
             nginx['listen_port'] = 80;
             nginx['listen_https'] = false;
+
             nginx['proxy_set_headers'] = {
-              'X-Forwarded-Proto' => 'https'
+              'Host' => '$http_host',
+              'X-Real-IP' => '$remote_addr',
+              'X-Forwarded-For' => '$proxy_add_x_forwarded_for',
+              'X-Forwarded-Proto' => 'https',
+              'X-Forwarded-Ssl' => 'on'
             };
 
+            #
+            # Puma
+            #
+            # Disable clustered mode to save several hundred MB.
+            # One Puma process is enough for this very small installation.
+            #
             puma['worker_processes'] = 0;
-            puma['per_worker_max_memory_mb'] = 700;
             puma['min_threads'] = 1;
-            puma['max_threads'] = 4;
+            puma['max_threads'] = 2;
 
+            #
+            # Sidekiq
+            #
+            # Five threads are sufficient for a lightly used installation.
+            #
             sidekiq['concurrency'] = 5;
-            sidekiq['log_level'] = 'fatal';
 
+            # Keep useful logs while investigating intermittent 502 errors.
+            sidekiq['log_level'] = 'info';
+
+            #
+            # Gracefully restart Sidekiq if its RSS remains too high.
+            #
+            # Values are in KB:
+            #   900000  ~= 879 MiB
+            #   1200000 ~= 1.14 GiB
+            #
+            sidekiq['env'] = {
+              'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000',
+              'SIDEKIQ_MEMORY_KILLER_MAX_RSS' => '900000',
+              'SIDEKIQ_MEMORY_KILLER_HARD_LIMIT_RSS' => '1200000',
+              'SIDEKIQ_MEMORY_KILLER_GRACE_TIME' => '300',
+              'SIDEKIQ_MEMORY_KILLER_SHUTDOWN_WAIT' => '30'
+            };
+
+            #
+            # PostgreSQL
+            #
+            # Conservative settings for one small repository.
+            #
+            postgresql['shared_buffers'] = '256MB';
+            postgresql['work_mem'] = '8MB';
+            postgresql['maintenance_work_mem'] = '64MB';
+            postgresql['effective_cache_size'] = '1GB';
+
+            postgresql['max_worker_processes'] = 4;
+            postgresql['max_parallel_workers'] = 2;
+            postgresql['max_parallel_workers_per_gather'] = 1;
+
+            #
+            # Disable optional monitoring services
+            #
             prometheus_monitoring['enable'] = false;
             prometheus['enable'] = false;
             alertmanager['enable'] = false;
@@ -79,16 +152,20 @@
             postgres_exporter['enable'] = false;
             gitlab_exporter['enable'] = false;
 
+            #
+            # Reduce memory retained by jemalloc
+            #
             gitlab_rails['env'] = {
               'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000'
             };
 
             gitaly['env'] = {
-              'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000',
-              'GITALY_COMMAND_SPAWN_MAX_PARALLEL' => '2'
+              'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000'
             };
+
         state: started
         restart_policy: unless-stopped
+
         log_driver: json-file
         log_options:
           max-size: "50m"
@@ -97,12 +174,24 @@
     - name: Install GitLab Runner
       community.docker.docker_container:
         name: gitlab-runner
-        image: "gitlab/gitlab-runner:latest"
+
+        image: "gitlab/gitlab-runner:v18.9.0"
+        pull: true
+
+        memory: 256m
+        memory_swap: 384m
+
         volumes:
           - /gitlab/gitlab-runner:/etc/gitlab-runner
           - /var/run/docker.sock:/var/run/docker.sock
+
         state: started
         restart_policy: unless-stopped
+
+        log_driver: json-file
+        log_options:
+          max-size: "20m"
+          max-file: "3"
 
 # Set root password for the first time
 # sudo docker exec -it gitlab gitlab-rake "gitlab:password:reset[root]"
