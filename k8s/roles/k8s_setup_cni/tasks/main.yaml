@@ -1,0 +1,139 @@
+---
+- name: Check admin kubeconfig
+  ansible.builtin.stat:
+    path: "{{ k8s_kubeconfig_path }}"
+  register: k8s_cni_admin_conf
+
+- name: Check super-admin kubeconfig
+  ansible.builtin.stat:
+    path: "{{ k8s_super_admin_kubeconfig_path }}"
+  register: k8s_cni_super_admin_conf
+
+- name: Validate control plane is initialized before installing CNI
+  ansible.builtin.assert:
+    that:
+      - k8s_cni_admin_conf.stat.exists or k8s_cni_super_admin_conf.stat.exists
+    fail_msg: >-
+      Kubernetes control plane is not initialized
+      ({{ k8s_kubeconfig_path }} and {{ k8s_super_admin_kubeconfig_path }}
+      are missing). Run 04_setup_k8s_master.yaml first.
+
+- name: Select kubeconfig for installing CNI
+  ansible.builtin.set_fact:
+    k8s_cni_kubeconfig_path: >-
+      {{
+        k8s_super_admin_kubeconfig_path
+        if k8s_cni_super_admin_conf.stat.exists
+        else k8s_kubeconfig_path
+      }}
+
+- name: Check whether Calico is already installed
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system get daemonset calico-node
+  register: k8s_cni_calico_node
+  changed_when: false
+  failed_when: false
+
+- name: Configure direct Kubernetes API endpoint for Calico
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system create configmap kubernetes-services-endpoint
+    --from-literal=KUBERNETES_SERVICE_HOST={{ k8s_cni_kubernetes_service_host }}
+    --from-literal=KUBERNETES_SERVICE_PORT={{ k8s_cni_kubernetes_service_port }}
+    --dry-run=client -o yaml
+  register: k8s_cni_services_endpoint_manifest
+  changed_when: false
+  when: k8s_cni_use_direct_api_endpoint | bool
+
+- name: Apply direct Kubernetes API endpoint for Calico
+  ansible.builtin.command:
+    cmd: "kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }} apply -f -"
+    stdin: "{{ k8s_cni_services_endpoint_manifest.stdout }}"
+  register: k8s_cni_services_endpoint_apply
+  changed_when: "'created' in k8s_cni_services_endpoint_apply.stdout or 'configured' in k8s_cni_services_endpoint_apply.stdout"
+  when: k8s_cni_use_direct_api_endpoint | bool
+
+- name: Remove direct Kubernetes API endpoint override for Calico
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system delete configmap kubernetes-services-endpoint --ignore-not-found
+  register: k8s_cni_services_endpoint_delete
+  changed_when: "'deleted' in k8s_cni_services_endpoint_delete.stdout"
+  when: not (k8s_cni_use_direct_api_endpoint | bool)
+
+- name: Download Calico manifest
+  ansible.builtin.get_url:
+    url: "{{ k8s_cni_manifest_url }}"
+    dest: "{{ k8s_cni_manifest_path }}"
+    mode: "0644"
+  environment:
+    http_proxy: "{{ k8s_cni_proxy_url }}"
+    https_proxy: "{{ k8s_cni_proxy_url }}"
+  when: k8s_cni_force_apply | bool or k8s_cni_calico_node.rc != 0
+
+- name: Render Calico manifest with Kubernetes pod CIDR
+  ansible.builtin.replace:
+    path: "{{ k8s_cni_manifest_path }}"
+    regexp: '(^\s*)#?\s*- name: CALICO_IPV4POOL_CIDR\n\s*#?\s*value: "192\.168\.0\.0/16"'
+    replace: |-
+      \1- name: CALICO_IPV4POOL_CIDR
+      \1  value: "{{ k8s_cni_pod_cidr }}"
+  when: k8s_cni_force_apply | bool or k8s_cni_calico_node.rc != 0
+
+- name: Install Calico CNI
+  ansible.builtin.command: "kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }} apply -f {{ k8s_cni_manifest_path }}"
+  register: k8s_cni_calico_apply
+  changed_when: "'created' in k8s_cni_calico_apply.stdout or 'configured' in k8s_cni_calico_apply.stdout"
+  when: k8s_cni_force_apply | bool or k8s_cni_calico_node.rc != 0
+
+- name: Ensure Calico DaemonSet uses Kubernetes pod CIDR
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system set env daemonset/calico-node
+    CALICO_IPV4POOL_CIDR={{ k8s_cni_pod_cidr }}
+  register: k8s_cni_pool_cidr_env
+  changed_when: "'updated' in k8s_cni_pool_cidr_env.stdout"
+  failed_when:
+    - k8s_cni_pool_cidr_env.rc != 0
+    - "'not found' not in k8s_cni_pool_cidr_env.stderr"
+  when: k8s_cni_force_apply | bool or k8s_cni_calico_node.rc != 0
+
+- name: Wait for Calico DaemonSet
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system rollout status daemonset/calico-node --timeout=300s
+  changed_when: false
+  when: k8s_cni_force_apply | bool or k8s_cni_calico_node.rc != 0
+
+- name: Restart Calico after Kubernetes API endpoint change
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system rollout restart daemonset/calico-node
+  register: k8s_cni_endpoint_restart
+  changed_when: "'restarted' in k8s_cni_endpoint_restart.stdout"
+  when:
+    - k8s_cni_calico_node.rc == 0
+    - >-
+      (k8s_cni_services_endpoint_apply is defined and k8s_cni_services_endpoint_apply.changed)
+      or
+      (k8s_cni_services_endpoint_delete is defined and k8s_cni_services_endpoint_delete.changed)
+
+- name: Wait for Calico after Kubernetes API endpoint change
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system rollout status daemonset/calico-node --timeout=300s
+  changed_when: false
+  when:
+    - k8s_cni_calico_node.rc == 0
+    - >-
+      (k8s_cni_services_endpoint_apply is defined and k8s_cni_services_endpoint_apply.changed)
+      or
+      (k8s_cni_services_endpoint_delete is defined and k8s_cni_services_endpoint_delete.changed)
+
+- name: Wait for CoreDNS deployment
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_cni_kubeconfig_path }}
+    -n kube-system rollout status deployment/coredns --timeout=300s
+  changed_when: false
+  when: k8s_cni_wait_for_coredns | bool

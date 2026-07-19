@@ -1,12 +1,239 @@
 ---
 - name: Install iptables packages
-  apt:
+  ansible.builtin.apt:
     name:
       - ipset
       - iptables
       - iptables-persistent
     state: present
     update_cache: true
+    cache_valid_time: 86400
   tags:
     - iptables
     - "iptables:packages"
+
+- name: Initialize trusted host IP list
+  ansible.builtin.set_fact:
+    iptables_trusted_host_candidate_ips: []
+    iptables_trusted_host_public_ips: []
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Add loaded inventory host IPs to trusted host candidates
+  ansible.builtin.set_fact:
+    iptables_trusted_host_candidate_ips: "{{ iptables_trusted_host_candidate_ips + [iptables_trusted_host_candidate_ip] }}"
+  vars:
+    iptables_trusted_host_candidate_ip: >-
+      {{
+        (
+          item
+          if item is match('^([0-9]{1,3}\.){3}[0-9]{1,3}(:\d+)?$')
+          else hostvars[item].ansible_host | default(hostvars[item].ip_address) | default(item)
+        ) | string
+        | regex_replace(':\d+$', '')
+      }}
+  when:
+    - iptables_trusted_hosts_enabled | bool
+  loop: "{{ groups['all'] }}"
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Find inventory files for trusted host candidates
+  ansible.builtin.set_fact:
+    iptables_trusted_hosts_inventory_files: "{{ lookup('ansible.builtin.fileglob', iptables_trusted_hosts_inventory_dir ~ '/*', wantlist=True) }}"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Add IPs from inventory files to trusted host candidates
+  ansible.builtin.set_fact:
+    iptables_trusted_host_candidate_ips: "{{ iptables_trusted_host_candidate_ips + iptables_trusted_host_file_ips }}"
+  vars:
+    iptables_trusted_host_file_ips: >-
+      {{
+        lookup('ansible.builtin.file', item)
+        | regex_findall('(?<![0-9.])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?(?![0-9.])')
+        | map('regex_replace', ':\d+$', '')
+        | list
+      }}
+  loop: "{{ iptables_trusted_hosts_inventory_files }}"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Add public inventory IPs to trusted host list
+  ansible.builtin.set_fact:
+    iptables_trusted_host_public_ips: "{{ iptables_trusted_host_public_ips + [item] }}"
+  when:
+    - iptables_trusted_hosts_enabled | bool
+    - item is match('^([0-9]{1,3}\.){3}[0-9]{1,3}$')
+    - item is not match('^10\.')
+    - item is not match('^192\.168\.')
+    - item is not match('^172\.(1[6-9]|2[0-9]|3[0-1])\.')
+    - item is not match('^127\.')
+    - item is not match('^169\.254\.')
+  loop: "{{ iptables_trusted_host_candidate_ips }}"
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Remove duplicate trusted host IPs
+  ansible.builtin.set_fact:
+    iptables_trusted_host_public_ips: "{{ iptables_trusted_host_public_ips | unique | list }}"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Ensure iptables persistence directory exists
+  ansible.builtin.file:
+    path: "{{ iptables_ipset_restore_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Save trusted_hosts ipset restore file
+  ansible.builtin.template:
+    src: ipsets.j2
+    dest: "{{ iptables_ipset_restore_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Install ipset restore systemd unit
+  ansible.builtin.template:
+    src: ipset-persistent-restore.service.j2
+    dest: "/etc/systemd/system/{{ iptables_ipset_restore_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Apply systemd unit changes
+  ansible.builtin.meta: flush_handlers
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Create trusted_hosts ipset
+  ansible.builtin.command:
+    argv:
+      - ipset
+      - create
+      - "{{ iptables_trusted_hosts_ipset_name }}"
+      - hash:ip
+      - -exist
+  changed_when: false
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Clear stale trusted_hosts ipset entries
+  ansible.builtin.command:
+    argv:
+      - ipset
+      - flush
+      - "{{ iptables_trusted_hosts_ipset_name }}"
+  changed_when: false
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Add public inventory IPs to trusted_hosts ipset
+  ansible.builtin.command:
+    argv:
+      - ipset
+      - add
+      - "{{ iptables_trusted_hosts_ipset_name }}"
+      - "{{ item }}"
+      - -exist
+  changed_when: false
+  loop: "{{ iptables_trusted_host_public_ips }}"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Check trusted_hosts iptables rules
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -C
+      - "{{ item }}"
+      - -m
+      - set
+      - --match-set
+      - "{{ iptables_trusted_hosts_ipset_name }}"
+      - src
+      - -j
+      - ACCEPT
+  register: iptables_trusted_hosts_rule_checks
+  changed_when: false
+  failed_when: false
+  loop: "{{ iptables_trusted_hosts_chains }}"
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Insert trusted_hosts iptables rules
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -I
+      - "{{ item.item }}"
+      - "1"
+      - -m
+      - set
+      - --match-set
+      - "{{ iptables_trusted_hosts_ipset_name }}"
+      - src
+      - -j
+      - ACCEPT
+  loop: "{{ iptables_trusted_hosts_rule_checks.results }}"
+  when:
+    - iptables_trusted_hosts_enabled | bool
+    - item.rc != 0
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Save persistent IPv4 iptables rules
+  ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"
+
+- name: Enable ipset restore at boot
+  ansible.builtin.systemd:
+    name: "{{ iptables_ipset_restore_service }}"
+    enabled: true
+  when: iptables_trusted_hosts_enabled | bool
+  tags:
+    - iptables
+    - "iptables:trusted_hosts"

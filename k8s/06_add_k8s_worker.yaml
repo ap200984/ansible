@@ -1,0 +1,58 @@
+---
+- name: Select Kubernetes worker to add
+  hosts: localhost
+  gather_facts: false
+  vars:
+    k8s_add_worker_host: "{{ host | default(k8s_worker_host | default(worker_host | default('worker1'))) }}"
+    k8s_join_source_master: "{{ source_master | default(groups['masters'][0]) }}"
+  tasks:
+    - name: Validate selected Kubernetes worker
+      ansible.builtin.assert:
+        that:
+          - "'workers' in groups"
+          - "'masters' in groups"
+          - groups['masters'] | length > 0
+          - k8s_add_worker_host in groups['workers']
+          - k8s_join_source_master in groups['masters']
+        fail_msg: >-
+          host must be a worker from the workers inventory group and
+          source_master must be an initialized master. Defaults:
+          host=worker1, source_master={{ groups['masters'][0] | default('master1') }}.
+
+    - name: Create selected add-worker inventory group
+      ansible.builtin.add_host:
+        name: "{{ k8s_add_worker_host }}"
+        groups: selected_k8s_add_worker
+        k8s_join_source_master: "{{ k8s_join_source_master }}"
+
+- name: Install packages and add Kubernetes worker
+  hosts: selected_k8s_add_worker
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  vars_files:
+    - ../group_vars/k8s_k112.yml
+  vars:
+    k8s_master_group: masters
+    k8s_join_source_master: "{{ hostvars[inventory_hostname].k8s_join_source_master }}"
+    k8s_squid_port: "{{ squid_port | default(3128) }}"
+    k8s_squid_proxy_url: >-
+      {{
+        'http://' ~ squid_ip ~ ':' ~ k8s_squid_port
+        if squid_ip is defined and squid_ip | string | length > 0
+        else ''
+      }}
+    kubernetes_apt_proxy_effective: "{{ k8s_squid_proxy_url }}"
+    k8s_containerd_proxy_enabled: "{{ k8s_squid_proxy_url | length > 0 or k8s_local_apt_proxy_enabled | default(false) | bool }}"
+    k8s_containerd_proxy_url: >-
+      {{
+        k8s_squid_proxy_url
+        if k8s_squid_proxy_url | length > 0
+        else 'http://127.0.0.1:' ~ (k8s_local_apt_proxy_target_port | default(18080))
+      }}
+  roles:
+    - k8s_prepare_hosts
+    - k8s_local_apt_proxy
+    - k8s_containerd
+    - k8s_install_packages
+    - k8s_add_worker

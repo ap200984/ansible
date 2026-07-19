@@ -1,0 +1,22 @@
+vrrp_instance VI_1 {
+    state {{ 'MASTER' if inventory_hostname == groups[k8s_master_group][0] else 'BACKUP' }}
+    interface {{ k8s_keepalived_interface }}
+    virtual_router_id {{ k8s_keepalived_router_id }}
+    priority {{ 100 - groups[k8s_master_group].index(inventory_hostname) }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{ k8s_keepalived_auth_pass }}
+    }
+    unicast_src_ip {{ ip_address | default(ansible_default_ipv4.address) }}
+{% if groups[k8s_master_group] | length > 1 %}
+    unicast_peer {
+{% for host in groups[k8s_master_group] if host != inventory_hostname %}
+        {{ hostvars[host].ip_address | default(hostvars[host].ansible_host) | default(host) }}
+{% endfor %}
+    }
+{% endif %}
+    virtual_ipaddress {
+        {{ master_float_ip }}
+    }
+}

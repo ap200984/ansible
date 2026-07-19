@@ -1,0 +1,71 @@
+---
+- name: Select Kubernetes master and etcd hosts
+  hosts: localhost
+  gather_facts: false
+  vars:
+    k8s_selected_master_host: "{{ k8s_master_host | default(master_host | default(hosts | default('master1'))) }}"
+    k8s_selected_etcd_raw: "{{ etcd_cluster_hosts | default(groups['etcd'] | default([])) }}"
+  tasks:
+    - name: Parse selected etcd hosts
+      ansible.builtin.set_fact:
+        k8s_selected_etcd_hosts: >-
+          {{
+            (
+              k8s_selected_etcd_raw
+              if k8s_selected_etcd_raw is iterable and k8s_selected_etcd_raw is not string
+              else k8s_selected_etcd_raw | string | regex_replace('\s', '') | split(',')
+            )
+            | map('trim')
+            | reject('equalto', '')
+            | list
+          }}
+
+    - name: Validate selected Kubernetes master and etcd hosts
+      ansible.builtin.assert:
+        that:
+          - k8s_selected_master_host in groups['masters']
+          - k8s_selected_etcd_hosts | length > 0
+          - k8s_selected_etcd_hosts | difference(groups['etcd'] | default([])) | length == 0
+        fail_msg: >-
+          k8s_master_host/master_host/hosts must be present in the masters
+          inventory group, and etcd_cluster_hosts must be present in the etcd
+          inventory group.
+
+    - name: Create selected master inventory group
+      ansible.builtin.add_host:
+        name: "{{ k8s_selected_master_host }}"
+        groups: selected_k8s_master
+        etcd_nodes: "{{ k8s_selected_etcd_hosts | join(',') }}"
+
+- name: Install packages and initialize Kubernetes master
+  hosts: selected_k8s_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  vars_files:
+    - ../group_vars/k8s_k112.yml
+  vars:
+    k8s_master_group: selected_k8s_master
+    etcd_nodes: "{{ hostvars[inventory_hostname].etcd_nodes }}"
+    k8s_squid_port: "{{ squid_port | default(3128) }}"
+    k8s_squid_proxy_url: >-
+      {{
+        'http://' ~ squid_ip ~ ':' ~ k8s_squid_port
+        if squid_ip is defined and squid_ip | string | length > 0
+        else ''
+      }}
+    kubernetes_apt_proxy_effective: "{{ k8s_squid_proxy_url }}"
+    k8s_containerd_proxy_enabled: "{{ k8s_squid_proxy_url | length > 0 or k8s_local_apt_proxy_enabled | default(false) | bool }}"
+    k8s_containerd_proxy_url: >-
+      {{
+        k8s_squid_proxy_url
+        if k8s_squid_proxy_url | length > 0
+        else 'http://127.0.0.1:' ~ (k8s_local_apt_proxy_target_port | default(18080))
+      }}
+  roles:
+    - k8s_prepare_hosts
+    - k8s_local_apt_proxy
+    - k8s_containerd
+    - k8s_install_packages
+    - k8s_setup_master
+    - k8s_setup_cni

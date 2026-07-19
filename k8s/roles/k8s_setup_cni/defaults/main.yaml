@@ -1,0 +1,22 @@
+---
+k8s_kubeconfig_path: /etc/kubernetes/admin.conf
+k8s_super_admin_kubeconfig_path: /etc/kubernetes/super-admin.conf
+k8s_master_group: masters
+k8s_api_port: 6443
+k8s_load_balancer_port: 8443
+k8s_cni_manifest_url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
+k8s_cni_manifest_path: /tmp/calico.yaml
+k8s_cni_pod_cidr: "{{ k8s_pod_subnet }}"
+k8s_cni_force_apply: false
+k8s_cni_wait_for_coredns: false
+k8s_cni_default_ippool_name: default-ipv4-ippool
+k8s_cni_recreate_default_ippool: false
+k8s_cni_use_direct_api_endpoint: false
+k8s_cni_kubernetes_service_host: "{{ hostvars[groups[k8s_master_group][0]].ip_address | default(hostvars[groups[k8s_master_group][0]].ansible_host) | default(groups[k8s_master_group][0]) }}"
+k8s_cni_kubernetes_service_port: "{{ k8s_api_port }}"
+k8s_cni_proxy_url: >-
+  {{
+    'http://' ~ squid_ip ~ ':' ~ (squid_port | default(3128))
+    if squid_ip is defined and squid_ip | string | length > 0
+    else ''
+  }}

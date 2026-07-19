@@ -1,0 +1,9 @@
+---
+k8s_local_apt_proxy_enabled: false
+k8s_local_apt_proxy_controller_host: 127.0.0.1
+k8s_local_apt_proxy_controller_port: 18080
+k8s_local_apt_proxy_target_port: 18080
+k8s_local_apt_proxy_dir: /tmp/ansible-kubernetes-apt-proxy
+k8s_local_apt_proxy_script: "{{ k8s_local_apt_proxy_dir }}/simple_http_proxy.py"
+k8s_local_apt_proxy_log: "{{ k8s_local_apt_proxy_dir }}/proxy.log"
+k8s_local_apt_proxy_url: "http://127.0.0.1:{{ k8s_local_apt_proxy_target_port }}"

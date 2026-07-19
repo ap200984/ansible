@@ -1,0 +1,14 @@
+[Unit]
+Description=Restore persistent ipsets
+DefaultDependencies=no
+Before=network-pre.target netfilter-persistent.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/ipset restore -exist -file {{ iptables_ipset_restore_file }}
+ExecReload=/sbin/ipset restore -exist -file {{ iptables_ipset_restore_file }}
+
+[Install]
+WantedBy=multi-user.target

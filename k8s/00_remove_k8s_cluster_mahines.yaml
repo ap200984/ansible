@@ -1,0 +1,52 @@
+---
+- name: Remove Mahones K8s VMs
+  hosts: kvm-server
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/k8s_k112.yml
+  vars:
+    mahones_k8s_vm_names: "{{ k8s_cluster_machines.keys() | list }}"
+
+  pre_tasks:
+    - name: Validate Mahones K8s VM definitions
+      ansible.builtin.assert:
+        that:
+          - k8s_cluster_machines is defined
+          - k8s_cluster_machines | length > 0
+        fail_msg: >-
+          Define k8s_cluster_machines in ../group_vars/k8s_k112.yml before removing
+          Mahones K8s VMs.
+
+  tasks:
+    - name: Check VM domains
+      ansible.builtin.command:
+        cmd: "virsh dominfo {{ item }}"
+      register: mahones_k8s_vm_dominfo
+      changed_when: false
+      failed_when: false
+      loop: "{{ mahones_k8s_vm_names }}"
+
+    - name: Build existing VM list
+      ansible.builtin.set_fact:
+        mahones_k8s_existing_vms: "{{ mahones_k8s_vm_dominfo.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | list }}"
+
+    - name: Check running VMs
+      ansible.builtin.command:
+        cmd: "virsh list --state-running --name"
+      register: mahones_k8s_running_vms
+      changed_when: false
+
+    - name: Destroy running VMs
+      ansible.builtin.command:
+        cmd: "virsh destroy {{ item }}"
+      loop: "{{ mahones_k8s_existing_vms | intersect(mahones_k8s_running_vms.stdout_lines) }}"
+
+    - name: Undefine VMs and remove all storage
+      ansible.builtin.command:
+        cmd: "virsh undefine {{ item }} --remove-all-storage"
+      loop: "{{ mahones_k8s_existing_vms }}"
+
+    - name: Show removed VMs
+      ansible.builtin.debug:
+        msg: "Removed VMs: {{ mahones_k8s_existing_vms | join(', ') if mahones_k8s_existing_vms | length > 0 else 'none' }}"

@@ -1,0 +1,6 @@
+---
+k8s_master_group: masters
+k8s_join_source_master: "{{ groups[k8s_master_group][0] }}"
+k8s_kubeconfig_path: /etc/kubernetes/admin.conf
+k8s_kubeadm_ignore_preflight_errors: ""
+k8s_kubeadm_join_token_ttl: 2h

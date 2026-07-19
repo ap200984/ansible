@@ -1,0 +1,250 @@
+---
+- name: Validate master_float_ip is configured
+  ansible.builtin.assert:
+    that:
+      - master_float_ip is defined
+      - master_float_ip | length > 0
+    fail_msg: "master_float_ip is required, usually under [k8s:vars]."
+
+- name: Set control-plane variables
+  ansible.builtin.set_fact:
+    k8s_etcd_hosts: "{{ etcd_nodes.split(',') | map('trim') | reject('equalto', '') | list }}"
+    k8s_first_master: "{{ groups[k8s_master_group][0] }}"
+
+- name: Validate etcd hosts for kubeadm
+  ansible.builtin.assert:
+    that:
+      - k8s_etcd_hosts | length > 0
+      - k8s_etcd_hosts | difference(groups['etcd'] | default([])) | length == 0
+    fail_msg: "etcd_nodes must contain one or more hosts from the etcd inventory group."
+
+- name: Install HAProxy and Keepalived
+  ansible.builtin.apt:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+    update_cache: false
+  when: ansible_os_family == "Debian"
+
+- name: Allow HAProxy to bind the floating API address
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: "1"
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-kubernetes-ha.conf
+
+- name: Configure HAProxy for Kubernetes API
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart haproxy
+
+- name: Configure Keepalived floating IP
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart keepalived
+
+- name: Ensure HA services are enabled and started
+  ansible.builtin.service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - haproxy
+    - keepalived
+
+- name: Apply HA service configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Render kubeadm init configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/kubeadm_config.yaml.j2"
+    dest: "{{ k8s_kubeadm_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Check whether Kubernetes API is already healthy
+  ansible.builtin.command: "kubectl --kubeconfig {{ k8s_kubeconfig_path }} get --raw=/healthz"
+  register: k8s_api_health
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == k8s_first_master
+
+- name: Pre-pull Kubernetes control plane images
+  ansible.builtin.command: >-
+    kubeadm config images pull
+    --config {{ k8s_kubeadm_config_path }}
+  when:
+    - inventory_hostname == k8s_first_master
+    - k8s_api_health.rc != 0
+    - k8s_kubeadm_pull_images_before_init | bool
+
+- name: Initialize first Kubernetes master
+  when:
+    - inventory_hostname == k8s_first_master
+    - k8s_api_health.rc != 0
+  block:
+    - name: Run kubeadm init
+      ansible.builtin.command: >-
+        kubeadm init
+        --config {{ k8s_kubeadm_config_path }}
+        --upload-certs
+        {% if k8s_kubeadm_ignore_preflight_errors | length > 0 %}
+        --ignore-preflight-errors={{ k8s_kubeadm_ignore_preflight_errors }}
+        {% endif %}
+  rescue:
+    - name: Collect kubelet status after failed init
+      ansible.builtin.command: systemctl status kubelet --no-pager
+      register: k8s_kubelet_status
+      changed_when: false
+      failed_when: false
+
+    - name: Collect recent kubelet logs after failed init
+      ansible.builtin.command: journalctl -u kubelet -n 120 --no-pager
+      register: k8s_kubelet_logs
+      changed_when: false
+      failed_when: false
+
+    - name: List Kubernetes containers after failed init
+      ansible.builtin.shell: "crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a | grep kube || true"
+      register: k8s_crictl_ps
+      changed_when: false
+      failed_when: false
+
+    - name: Show kubeadm init diagnostics
+      ansible.builtin.debug:
+        msg: |
+          kubeadm init failed. Useful diagnostics:
+
+          === kubelet status ===
+          {{ k8s_kubelet_status.stdout | default('') }}
+          {{ k8s_kubelet_status.stderr | default('') }}
+
+          === kubelet recent logs ===
+          {{ k8s_kubelet_logs.stdout | default('') }}
+          {{ k8s_kubelet_logs.stderr | default('') }}
+
+          === crictl ps ===
+          {{ k8s_crictl_ps.stdout | default('') }}
+          {{ k8s_crictl_ps.stderr | default('') }}
+
+    - name: Fail after kubeadm init diagnostics
+      ansible.builtin.fail:
+        msg: "kubeadm init failed. See diagnostics above."
+
+- name: Create root kubeconfig directory
+  ansible.builtin.file:
+    path: /root/.kube
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: inventory_hostname == k8s_first_master
+
+- name: Configure root kubeconfig
+  ansible.builtin.copy:
+    src: "{{ k8s_kubeconfig_path }}"
+    dest: /root/.kube/config
+    owner: root
+    group: root
+    mode: "0600"
+    remote_src: true
+  when: inventory_hostname == k8s_first_master
+
+- name: Check whether admin kubeconfig has cluster-admin permissions
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    auth can-i get customresourcedefinitions.apiextensions.k8s.io --all-namespaces
+  register: k8s_admin_can_get_crds
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == k8s_first_master
+
+- name: Check super-admin kubeconfig
+  ansible.builtin.stat:
+    path: "{{ k8s_super_admin_kubeconfig_path }}"
+  register: k8s_super_admin_conf
+  when:
+    - inventory_hostname == k8s_first_master
+    - k8s_admin_can_get_crds.rc != 0
+
+- name: Repair kubeadm admin cluster role binding
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_super_admin_kubeconfig_path }}
+    create clusterrolebinding kubeadm:cluster-admins
+    --clusterrole=cluster-admin
+    --group=kubeadm:cluster-admins
+  register: k8s_repair_admin_binding
+  changed_when: k8s_repair_admin_binding.rc == 0
+  failed_when:
+    - k8s_repair_admin_binding.rc != 0
+    - "'AlreadyExists' not in k8s_repair_admin_binding.stderr"
+  when:
+    - inventory_hostname == k8s_first_master
+    - k8s_admin_can_get_crds.rc != 0
+    - k8s_super_admin_conf.stat.exists
+
+- name: Verify admin kubeconfig permissions after repair
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    auth can-i get customresourcedefinitions.apiextensions.k8s.io --all-namespaces
+  register: k8s_admin_can_get_crds_after_repair
+  changed_when: false
+  failed_when: k8s_admin_can_get_crds_after_repair.stdout != "yes"
+  when:
+    - inventory_hostname == k8s_first_master
+    - k8s_admin_can_get_crds.rc != 0
+
+- name: Label first Kubernetes control-plane node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane= --overwrite
+  register: k8s_label_first_control_plane_node
+  changed_when: "'not labeled' not in k8s_label_first_control_plane_node.stdout"
+  when: inventory_hostname == k8s_first_master
+
+- name: Allow kubeadm token discovery to read public cluster info
+  ansible.builtin.command:
+    cmd: "kubectl --kubeconfig {{ k8s_kubeconfig_path }} apply -f -"
+    stdin: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: kubeadm:bootstrap-cluster-info-reader
+        namespace: kube-public
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+          resourceNames:
+            - cluster-info
+          verbs:
+            - get
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: kubeadm:bootstrap-cluster-info-reader
+        namespace: kube-public
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: kubeadm:bootstrap-cluster-info-reader
+      subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: Group
+          name: system:unauthenticated
+  register: k8s_bootstrap_discovery_rbac
+  changed_when: "'created' in k8s_bootstrap_discovery_rbac.stdout or 'configured' in k8s_bootstrap_discovery_rbac.stdout"
+  when: inventory_hostname == k8s_first_master

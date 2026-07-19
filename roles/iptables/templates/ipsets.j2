@@ -1,0 +1,4 @@
+create {{ iptables_trusted_hosts_ipset_name }} hash:ip family inet hashsize 1024 maxelem 65536
+{% for ip in iptables_trusted_host_public_ips %}
+add {{ iptables_trusted_hosts_ipset_name }} {{ ip }}
+{% endfor %}

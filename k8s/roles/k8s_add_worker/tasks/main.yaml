@@ -1,0 +1,43 @@
+---
+- name: Validate add-worker variables
+  ansible.builtin.assert:
+    that:
+      - "'workers' in groups"
+      - k8s_master_group in groups
+      - inventory_hostname in groups['workers']
+      - k8s_join_source_master in groups[k8s_master_group]
+    fail_msg: >-
+      Add-worker needs a valid workers group, a valid masters group, and
+      source_master must point to an initialized master.
+
+- name: Check whether target worker is already a cluster node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    get node {{ inventory_hostname }}
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_join_target_node
+  changed_when: false
+  failed_when: false
+
+- name: Create Kubernetes worker join command
+  ansible.builtin.command: "kubeadm token create --print-join-command --ttl {{ k8s_kubeadm_join_token_ttl }}"
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_join_command
+  changed_when: false
+  when: k8s_join_target_node.rc != 0
+
+- name: Join target worker to Kubernetes cluster
+  ansible.builtin.command: >-
+    {{ k8s_join_command.stdout }}
+    {% if k8s_kubeadm_ignore_preflight_errors | length > 0 %}
+    --ignore-preflight-errors={{ k8s_kubeadm_ignore_preflight_errors }}
+    {% endif %}
+  when: k8s_join_target_node.rc != 0
+
+- name: Label joined worker node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    label node {{ inventory_hostname }} node-role.kubernetes.io/worker= --overwrite
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_label_joined_worker_node
+  changed_when: "'not labeled' not in k8s_label_joined_worker_node.stdout"

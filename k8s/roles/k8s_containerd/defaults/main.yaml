@@ -1,0 +1,15 @@
+---
+k8s_containerd_package: containerd
+k8s_containerd_config_dir: /etc/containerd
+k8s_containerd_config_file: /etc/containerd/config.toml
+k8s_containerd_systemd_cgroup: true
+k8s_containerd_sandbox_image: registry.k8s.io/pause:3.9
+k8s_containerd_proxy_enabled: "{{ k8s_local_apt_proxy_enabled | default(false) }}"
+k8s_containerd_proxy_url: "http://127.0.0.1:{{ k8s_local_apt_proxy_target_port | default(18080) }}"
+k8s_containerd_apt_proxy_conf: /etc/apt/apt.conf.d/90kubernetes-proxy
+k8s_containerd_proxy_no_proxy:
+  - 127.0.0.1
+  - localhost
+  - "{{ k8s_service_subnet }}"
+  - "{{ k8s_pod_subnet }}"
+k8s_containerd_systemd_dropin_dir: /etc/systemd/system/containerd.service.d

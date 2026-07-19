@@ -1,0 +1,9 @@
+---
+iptables_trusted_hosts_enabled: true
+iptables_trusted_hosts_ipset_name: trusted_hosts
+iptables_trusted_hosts_chains:
+  - INPUT
+  - FORWARD
+iptables_trusted_hosts_inventory_dir: "{{ inventory_dir | default(playbook_dir ~ '/inventory') }}"
+iptables_ipset_restore_file: /etc/iptables/ipsets
+iptables_ipset_restore_service: ipset-persistent-restore.service

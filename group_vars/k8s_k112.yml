@@ -42,3 +42,6 @@ k8s_cluster_machines:
     memory_mb: 2048
     vcpus: 1
     disk_size_gb: 10
+
+k8s_pod_subnet: 10.9.16.0/20
+k8s_service_subnet: 10.9.2.0/24

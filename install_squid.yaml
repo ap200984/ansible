@@ -1,0 +1,83 @@
+---
+- name: Install Squid proxy in Docker
+  hosts: all
+  become: true
+
+  vars:
+    docker_network_name: docker-net
+    docker_network_subnet: 172.20.0.0/16
+    docker_network_range: 172.20.240.0/20
+
+    squid_container_name: squid
+    squid_image: ubuntu/squid:latest
+    squid_host_port: 3128
+    squid_container_port: 3128
+    squid_config_dir: /opt/squid
+    squid_cache_dir: /opt/squid/cache
+    squid_log_dir: /opt/squid/logs
+
+  roles:
+    - docker
+
+  tasks:
+    - name: Create Docker network for Squid
+      community.docker.docker_network:
+        name: "{{ docker_network_name }}"
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+            iprange: "{{ docker_network_range }}"
+
+    - name: Create Squid directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "{{ item.mode }}"
+      loop:
+        - path: "{{ squid_config_dir }}"
+          mode: "0755"
+        - path: "{{ squid_cache_dir }}"
+          mode: "0777"
+        - path: "{{ squid_log_dir }}"
+          mode: "0777"
+
+    - name: Configure Squid
+      ansible.builtin.copy:
+        dest: "{{ squid_config_dir }}/squid.conf"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          http_port {{ squid_container_port }}
+
+          http_access allow all
+          http_access deny all
+
+          cache_dir ufs /var/spool/squid 256 16 256
+          access_log stdio:/var/log/squid/access.log
+          cache_log /var/log/squid/cache.log
+
+          coredump_dir /var/spool/squid
+          refresh_pattern ^ftp: 1440 20% 10080
+          refresh_pattern ^gopher: 1440 0% 1440
+          refresh_pattern -i (/cgi-bin/|\?) 0 0% 0
+          refresh_pattern . 0 20% 4320
+      register: squid_config
+
+    - name: Start Squid container
+      community.docker.docker_container:
+        name: "{{ squid_container_name }}"
+        image: "{{ squid_image }}"
+        pull: true
+        networks:
+          - name: "{{ docker_network_name }}"
+        ports:
+          - "{{ squid_host_port }}:{{ squid_container_port }}/tcp"
+        volumes:
+          - "{{ squid_config_dir }}/squid.conf:/etc/squid/squid.conf:ro"
+          - "{{ squid_cache_dir }}:/var/spool/squid:rw"
+          - "{{ squid_log_dir }}:/var/log/squid:rw"
+        state: started
+        restart_policy: unless-stopped
+        recreate: "{{ squid_config.changed }}"

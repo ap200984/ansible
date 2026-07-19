@@ -1,0 +1,58 @@
+---
+- name: Create controller proxy directory
+  ansible.builtin.file:
+    path: "{{ k8s_local_apt_proxy_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: k8s_local_apt_proxy_enabled | bool
+
+- name: Install controller HTTP proxy script
+  ansible.builtin.copy:
+    src: simple_http_proxy.py
+    dest: "{{ k8s_local_apt_proxy_script }}"
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: k8s_local_apt_proxy_enabled | bool
+
+- name: Start reverse SSH tunnel for target proxy
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -fN
+      - -M
+      - -S
+      - "{{ k8s_local_apt_proxy_dir }}/{{ inventory_hostname }}.ctl"
+      - -o
+      - ExitOnForwardFailure=yes
+      - -o
+      - ServerAliveInterval=30
+      - -o
+      - ServerAliveCountMax=3
+      - -R
+      - "127.0.0.1:{{ k8s_local_apt_proxy_target_port }}:{{ k8s_local_apt_proxy_controller_host }}:{{ k8s_local_apt_proxy_controller_port }}"
+      - -i
+      - "{{ ansible_ssh_private_key_file | default('~/.ssh/id_rsa') }}"
+      - -l
+      - "{{ ansible_user | default('root') }}"
+      - "{{ ansible_host | default(inventory_hostname) }}"
+  delegate_to: localhost
+  become: false
+  register: k8s_local_apt_proxy_tunnel
+  changed_when: false
+  failed_when:
+    - k8s_local_apt_proxy_tunnel.rc != 0
+    - "'Address already in use' not in k8s_local_apt_proxy_tunnel.stderr"
+  when: k8s_local_apt_proxy_enabled | bool
+
+- name: Set proxy URL for package roles
+  ansible.builtin.set_fact:
+    kubernetes_apt_proxy_effective: "{{ k8s_local_apt_proxy_url }}"
+    k8s_containerd_proxy_url: "{{ k8s_local_apt_proxy_url }}"
+  when:
+    - k8s_local_apt_proxy_enabled | bool
+    - k8s_squid_proxy_url | default('') | length == 0

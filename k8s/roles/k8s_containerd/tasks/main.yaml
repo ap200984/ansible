@@ -1,0 +1,87 @@
+---
+- name: Configure apt proxy for containerd install
+  ansible.builtin.copy:
+    dest: "{{ k8s_containerd_apt_proxy_conf }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      Acquire::http::Proxy "{{ k8s_containerd_proxy_url }}";
+      Acquire::https::Proxy "{{ k8s_containerd_proxy_url }}";
+  when:
+    - ansible_os_family == "Debian"
+    - k8s_containerd_proxy_enabled | bool
+    - k8s_containerd_proxy_url | length > 0
+
+- name: Remove apt proxy for containerd install when disabled
+  ansible.builtin.file:
+    path: "{{ k8s_containerd_apt_proxy_conf }}"
+    state: absent
+  when:
+    - ansible_os_family == "Debian"
+    - not (k8s_containerd_proxy_enabled | bool)
+
+- name: Install containerd
+  ansible.builtin.apt:
+    name: "{{ k8s_containerd_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+  when: ansible_os_family == "Debian"
+
+- name: Create containerd config directory
+  ansible.builtin.file:
+    path: "{{ k8s_containerd_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure containerd
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: "{{ k8s_containerd_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart containerd
+
+- name: Create containerd systemd drop-in directory
+  ansible.builtin.file:
+    path: "{{ k8s_containerd_systemd_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: k8s_containerd_proxy_enabled | bool
+
+- name: Configure containerd proxy
+  ansible.builtin.copy:
+    dest: "{{ k8s_containerd_systemd_dropin_dir }}/10-proxy.conf"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Service]
+      Environment="HTTP_PROXY={{ k8s_containerd_proxy_url }}"
+      Environment="HTTPS_PROXY={{ k8s_containerd_proxy_url }}"
+      Environment="NO_PROXY={{ k8s_containerd_proxy_no_proxy | join(',') }}"
+  when: k8s_containerd_proxy_enabled | bool
+  notify: Restart containerd
+
+- name: Remove containerd proxy when disabled
+  ansible.builtin.file:
+    path: "{{ k8s_containerd_systemd_dropin_dir }}/10-proxy.conf"
+    state: absent
+  when: not (k8s_containerd_proxy_enabled | bool)
+  notify: Restart containerd
+
+- name: Ensure containerd is enabled and started
+  ansible.builtin.systemd:
+    name: containerd
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply containerd configuration
+  ansible.builtin.meta: flush_handlers

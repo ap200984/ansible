@@ -1,0 +1,14 @@
+---
+k8s_master_group: selected_k8s_master
+k8s_api_port: 6443
+k8s_load_balancer_port: 8443
+k8s_kubeadm_config_path: /root/kubeadm_config.yaml
+k8s_kubeconfig_path: /etc/kubernetes/admin.conf
+k8s_super_admin_kubeconfig_path: /etc/kubernetes/super-admin.conf
+k8s_keepalived_router_id: 51
+k8s_keepalived_auth_pass: k8sHaPass
+k8s_keepalived_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
+k8s_haproxy_stats_port: 8404
+k8s_kubeadm_ignore_preflight_errors: ""
+k8s_kubeadm_pull_images_before_init: true
+etcd_nodes: "{{ groups['etcd'] | default([]) | join(',') }}"

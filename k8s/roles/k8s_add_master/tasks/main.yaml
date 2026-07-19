@@ -1,0 +1,198 @@
+---
+- name: Validate add-master variables
+  ansible.builtin.assert:
+    that:
+      - master_float_ip is defined
+      - master_float_ip | length > 0
+      - k8s_master_group in groups
+      - inventory_hostname in groups[k8s_master_group]
+      - k8s_join_source_master in groups[k8s_master_group]
+      - inventory_hostname != k8s_join_source_master
+    fail_msg: >-
+      Add-master needs master_float_ip, a valid masters group, and a target
+      master different from the source master.
+
+- name: Install HAProxy and Keepalived
+  ansible.builtin.apt:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+    update_cache: false
+  when: ansible_os_family == "Debian"
+
+- name: Allow HAProxy to bind the floating API address
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: "1"
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-kubernetes-ha.conf
+
+- name: Configure HAProxy for Kubernetes API
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart haproxy
+
+- name: Configure Keepalived floating IP
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart keepalived
+
+- name: Ensure HA services are enabled and started
+  ansible.builtin.service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - haproxy
+    - keepalived
+
+- name: Apply HA service configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Check whether target master is already a cluster node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    get node {{ inventory_hostname }}
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_join_target_node
+  changed_when: false
+  failed_when: false
+
+- name: Ensure target Kubernetes PKI directory exists
+  ansible.builtin.file:
+    path: "{{ k8s_pki_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - k8s_join_target_node.rc != 0
+    - k8s_add_master_copy_certs_manually | bool
+
+- name: Read required control-plane certificates from source master
+  ansible.builtin.slurp:
+    src: "{{ k8s_pki_dir }}/{{ item }}"
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_required_control_plane_certs
+  loop: "{{ k8s_control_plane_cert_files }}"
+  no_log: true
+  when:
+    - k8s_join_target_node.rc != 0
+    - k8s_add_master_copy_certs_manually | bool
+
+- name: Copy required control-plane certificates to target master
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "{{ k8s_pki_dir }}/{{ item.item }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ k8s_required_control_plane_certs.results }}"
+  no_log: true
+  when:
+    - k8s_join_target_node.rc != 0
+    - k8s_add_master_copy_certs_manually | bool
+
+- name: Check optional control-plane certificates on source master
+  ansible.builtin.stat:
+    path: "{{ k8s_pki_dir }}/{{ item }}"
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_optional_control_plane_cert_stats
+  loop: "{{ k8s_optional_control_plane_cert_files }}"
+  when:
+    - k8s_join_target_node.rc != 0
+    - k8s_add_master_copy_certs_manually | bool
+
+- name: Read optional control-plane certificates from source master
+  ansible.builtin.slurp:
+    src: "{{ k8s_pki_dir }}/{{ item.item }}"
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_optional_control_plane_certs
+  loop: "{{ k8s_optional_control_plane_cert_stats.results | selectattr('stat.exists') | list }}"
+  no_log: true
+  when:
+    - k8s_join_target_node.rc != 0
+    - k8s_add_master_copy_certs_manually | bool
+
+- name: Copy optional control-plane certificates to target master
+  ansible.builtin.copy:
+    content: "{{ item.content | b64decode }}"
+    dest: "{{ k8s_pki_dir }}/{{ item.item.item }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ k8s_optional_control_plane_certs.results | default([]) }}"
+  no_log: true
+  when:
+    - k8s_join_target_node.rc != 0
+    - k8s_add_master_copy_certs_manually | bool
+
+- name: Upload Kubernetes control-plane certificates
+  ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_upload_certs
+  changed_when: false
+  when:
+    - k8s_join_target_node.rc != 0
+    - not (k8s_add_master_copy_certs_manually | bool)
+
+- name: Extract Kubernetes certificate key
+  ansible.builtin.set_fact:
+    k8s_certificate_key: "{{ (k8s_upload_certs.stdout | regex_findall('[a-f0-9]{64}'))[-1] }}"
+  when:
+    - k8s_join_target_node.rc != 0
+    - not (k8s_add_master_copy_certs_manually | bool)
+
+- name: Create Kubernetes control-plane join command
+  ansible.builtin.command: "kubeadm token create --print-join-command --ttl {{ k8s_kubeadm_join_token_ttl }}"
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_join_command
+  changed_when: false
+  when: k8s_join_target_node.rc != 0
+
+- name: Join target master to Kubernetes control plane
+  ansible.builtin.command: >-
+    {{ k8s_join_command.stdout }}
+    --control-plane
+    {% if not (k8s_add_master_copy_certs_manually | bool) %}
+    --certificate-key {{ k8s_certificate_key }}
+    {% endif %}
+    {% if k8s_kubeadm_ignore_preflight_errors | length > 0 %}
+    --ignore-preflight-errors={{ k8s_kubeadm_ignore_preflight_errors }}
+    {% endif %}
+  when: k8s_join_target_node.rc != 0
+
+- name: Create root kubeconfig directory
+  ansible.builtin.file:
+    path: /root/.kube
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Configure root kubeconfig
+  ansible.builtin.copy:
+    src: "{{ k8s_kubeconfig_path }}"
+    dest: /root/.kube/config
+    owner: root
+    group: root
+    mode: "0600"
+    remote_src: true
+
+- name: Label joined control-plane node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ k8s_kubeconfig_path }}
+    label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane= --overwrite
+  delegate_to: "{{ k8s_join_source_master }}"
+  register: k8s_label_joined_control_plane_node
+  changed_when: "'not labeled' not in k8s_label_joined_control_plane_node.stdout"

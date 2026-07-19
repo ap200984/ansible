@@ -1,0 +1,28 @@
+---
+- name: Build Mahones K8s VM list
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../group_vars/k8s_k112.yml
+  tasks:
+    - name: Validate Mahones K8s VM definitions
+      ansible.builtin.assert:
+        that:
+          - k8s_cluster_machines is defined
+          - k8s_cluster_machines | length > 0
+        fail_msg: >-
+          Define k8s_cluster_machines in ../group_vars/k8s_k112.yml before creating
+          Mahones K8s VMs.
+
+    - name: Build Mahones K8s VM list
+      ansible.builtin.set_fact:
+        mahones_k8s_vm_list: []
+
+    - name: Add Mahones K8s VM definitions to list
+      ansible.builtin.set_fact:
+        mahones_k8s_vm_list: "{{ mahones_k8s_vm_list + [{'name': item.key} | combine(item.value)] }}"
+      loop: "{{ k8s_cluster_machines | dict2items }}"
+
+- import_playbook: ../create_vm.yaml
+  vars:
+    vm_list: "{{ hostvars['localhost']['mahones_k8s_vm_list'] }}"
