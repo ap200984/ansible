@@ -10,7 +10,7 @@
 
     squid_container_name: squid
     squid_image: ubuntu/squid:latest
-    squid_host_port: 3128
+    squid_host_port: 31280
     squid_container_port: 3128
     squid_config_dir: /opt/squid
     squid_cache_dir: /opt/squid/cache

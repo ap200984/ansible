@@ -1,0 +1,6 @@
+---
+python3_use_nexus: "{{ use_nexus | default(false) }}"
+python3_pip_config_path: /etc/pip.conf
+python3_pip_config_backup_path: /etc/pip.conf.pre-nexus
+python3_pip_nexus_index_url: >-
+  {{ nexus_url | default('') }}/repository/pypi-proxy/simple

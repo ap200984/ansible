@@ -15,6 +15,7 @@
 #     /repository/docker-ubuntu-apt-proxy/   — Docker CE для Ubuntu
 #     /repository/kubernetes-v1-30-proxy/    — пакеты Kubernetes v1.30
 #     /repository/zabbix-proxy/              — пакеты repo.zabbix.com
+#     /repository/pypi-proxy/simple          — Python-пакеты PyPI
 #     /repository/debian-cloud-images/       — Debian QCOW2 cloud images
 #   8082 — Docker Registry proxy для Docker Hub
 #   8083 — Docker Registry proxy для docker.elastic.co
@@ -22,8 +23,8 @@
 # Веб-интерфейс:
 #   внешний URL:  http://86.110.170.70:8081/
 #   внутренний URL: http://10.9.1.70:8081/
-#   пользователь: admin
-#   пароль: nexus_admin_password из group_vars/all/passwords.yml (Ansible Vault)
+#   пользователь: nexus_login из group_vars/all/passwords.yml (Ansible Vault)
+#   пароль: nexus_pass из group_vars/all/passwords.yml (Ansible Vault)
 #
 # Использование на управляемых хостах через inventory:
 #   use_nexus=true
@@ -124,6 +125,11 @@
         extra:
           storage:
             strictContentTypeValidation: false
+      - name: pypi-proxy
+        format: pypi
+        endpoint: pypi/proxy
+        remote_url: https://pypi.org/
+        extra: {}
       - name: docker-hub
         format: docker
         endpoint: docker/proxy
@@ -206,44 +212,36 @@
       retries: 60
       delay: 5
 
-    - name: Check for the initial Nexus administrator password
-      ansible.builtin.stat:
-        path: "{{ nexus_data_dir }}/admin.password"
-      register: nexus_initial_password_file
-
-    - name: Require administrator credentials for an initialized Nexus
+    - name: Validate Nexus administrator credentials from Vault
       ansible.builtin.assert:
         that:
-          - nexus_initial_password_file.stat.exists or
-            (nexus_admin_password is defined and
-             nexus_admin_password | string | length > 0)
+          - nexus_login is defined
+          - nexus_pass is defined
+          - nexus_login | string | length > 0
+          - nexus_pass | string | length > 0
         fail_msg: >-
-          This Nexus instance no longer has its initial admin.password file.
-          Define nexus_admin_password in group_vars/all/passwords.yml so the
-          playbook can continue managing it.
-      no_log: false
+          Define non-empty nexus_login and nexus_pass in the encrypted
+          group_vars/all/passwords.yml file.
+      no_log: true
 
-    - name: Read the initial Nexus administrator password
-      ansible.builtin.slurp:
-        src: "{{ nexus_data_dir }}/admin.password"
-      register: nexus_initial_password
-      when: nexus_initial_password_file.stat.exists
-      no_log: false
-
-    - name: Select Nexus administrator password
-      ansible.builtin.set_fact:
-        nexus_effective_admin_password: >-
-          {{ (nexus_initial_password.content | b64decode | trim)
-             if nexus_initial_password_file.stat.exists
-             else nexus_admin_password }}
-      no_log: false
+    - name: Validate Nexus monitoring credentials from Vault
+      ansible.builtin.assert:
+        that:
+          - nexus_monitoring_login is defined
+          - nexus_monitoring_pass is defined
+          - nexus_monitoring_login | string | length > 0
+          - nexus_monitoring_pass | string | length > 0
+        fail_msg: >-
+          Define non-empty nexus_monitoring_login and nexus_monitoring_pass in
+          the encrypted group_vars/all/passwords.yml file.
+      no_log: true
 
     - name: Read active Nexus security realms
       ansible.builtin.uri:
         url: "{{ nexus_api_url }}/service/rest/v1/security/realms/active"
         method: GET
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         return_content: true
         status_code: 200
@@ -254,8 +252,8 @@
       ansible.builtin.uri:
         url: "{{ nexus_api_url }}/service/rest/v1/security/realms/active"
         method: PUT
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         body_format: json
         body: "{{ nexus_active_realms.json + ['DockerToken'] }}"
@@ -267,8 +265,8 @@
       ansible.builtin.uri:
         url: "{{ nexus_api_url }}/service/rest/v1/security/anonymous"
         method: PUT
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         body_format: json
         body:
@@ -278,12 +276,145 @@
         status_code: 200
       no_log: false
 
+    - name: Read Nexus security roles
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/roles"
+        method: GET
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        return_content: true
+        status_code: 200
+      register: nexus_security_roles
+      no_log: true
+
+    - name: Create Nexus monitoring role
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/roles"
+        method: POST
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          id: nexus-monitoring
+          name: Nexus monitoring
+          description: Read-only access to Nexus status and metrics APIs
+          privileges:
+            - nx-metrics-all
+          roles: []
+        status_code: 200
+      when: >-
+        'nexus-monitoring' not in
+        (nexus_security_roles.json | map(attribute='id') | list)
+      no_log: true
+
+    - name: Update Nexus monitoring role
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/roles/nexus-monitoring"
+        method: PUT
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          id: nexus-monitoring
+          name: Nexus monitoring
+          description: Read-only access to Nexus status and metrics APIs
+          privileges:
+            - nx-metrics-all
+          roles: []
+        status_code: 204
+      no_log: true
+
+    - name: Read Nexus local users
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/users?source=default"
+        method: GET
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        return_content: true
+        status_code: 200
+      register: nexus_local_users
+      no_log: true
+
+    - name: Create Nexus monitoring user
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/users"
+        method: POST
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          userId: "{{ nexus_monitoring_login }}"
+          firstName: Nexus
+          lastName: Monitoring
+          emailAddress: nexus-monitoring@localhost
+          password: "{{ nexus_monitoring_pass }}"
+          status: active
+          roles:
+            - nexus-monitoring
+        status_code: 200
+      when: >-
+        nexus_monitoring_login not in
+        (nexus_local_users.json | map(attribute='userId') | list)
+      no_log: true
+
+    - name: Update Nexus monitoring user
+      ansible.builtin.uri:
+        url: >-
+          {{ nexus_api_url }}/service/rest/v1/security/users/{{
+          nexus_monitoring_login | urlencode }}
+        method: PUT
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          userId: "{{ nexus_monitoring_login }}"
+          firstName: Nexus
+          lastName: Monitoring
+          emailAddress: nexus-monitoring@localhost
+          source: default
+          status: active
+          roles:
+            - nexus-monitoring
+        status_code: 204
+      no_log: true
+
+    - name: Set Nexus monitoring user password from Vault
+      ansible.builtin.uri:
+        url: >-
+          {{ nexus_api_url }}/service/rest/v1/security/users/{{
+          nexus_monitoring_login | urlencode }}/change-password
+        method: PUT
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
+        force_basic_auth: true
+        headers:
+          Content-Type: text/plain
+        body: "{{ nexus_monitoring_pass }}"
+        status_code: 204
+      no_log: true
+
+    - name: Verify Nexus monitoring user metrics access
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/metrics/ping"
+        method: GET
+        user: "{{ nexus_monitoring_login }}"
+        password: "{{ nexus_monitoring_pass }}"
+        force_basic_auth: true
+        status_code: 200
+      no_log: true
+
     - name: Configure authenticated Squid for Nexus outbound traffic
       ansible.builtin.uri:
         url: "{{ nexus_api_url }}/service/extdirect"
         method: POST
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         body_format: json
         body:
@@ -336,8 +467,8 @@
       ansible.builtin.uri:
         url: "{{ nexus_api_url }}/service/rest/v1/repositories"
         method: GET
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         return_content: true
         status_code: 200
@@ -348,8 +479,8 @@
       ansible.builtin.uri:
         url: "{{ nexus_api_url }}/service/rest/v1/repositories/{{ item.endpoint }}"
         method: POST
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         body_format: json
         body: "{{ nexus_repository_payload }}"
@@ -403,8 +534,8 @@
           {{ nexus_api_url }}/service/rest/v1/repositories/{{ item.endpoint }}/{{
           item.name }}
         method: GET
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         status_code: 200
       register: nexus_repository_check
@@ -422,8 +553,8 @@
           {{ nexus_api_url }}/service/rest/v1/repositories/{{ item.endpoint }}/{{
           item.name }}
         method: PUT
-        user: admin
-        password: "{{ nexus_effective_admin_password }}"
+        user: "{{ nexus_login }}"
+        password: "{{ nexus_pass }}"
         force_basic_auth: true
         body_format: json
         body: "{{ nexus_repository_payload }}"
@@ -488,6 +619,9 @@
           - >-
             Zabbix packages: http://{{ ansible_host | default(inventory_hostname) }}:{{
             nexus_application_port }}/repository/zabbix-proxy/
+          - >-
+            Python PyPI: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/pypi-proxy/simple
           - >-
             Docker Hub: http://{{ ansible_host | default(inventory_hostname) }}:{{
             nexus_docker_port }}

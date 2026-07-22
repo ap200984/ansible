@@ -20,6 +20,11 @@
     docker_network_subnet: 172.20.0.0/16
     docker_network_range: 172.20.240.0/20
     dns_propagation_seconds: 600
+    certbot_pip_nexus_args: >-
+      {{ '--index-url ' ~ nexus_url ~ '/repository/pypi-proxy/simple' ~
+         ' --trusted-host ' ~ (nexus_url | urlsplit('hostname'))
+         if use_nexus | default(false) | bool
+         else '' }}
 
   tasks:
     - name: Include regru secrets
@@ -74,7 +79,9 @@
     - name: Install certbot-regru via pip in container
       community.docker.docker_container_exec:
         container: certbot_container
-        command: pip3 install certbot-regru --break-system-packages
+        command: >-
+          pip3 install {{ certbot_pip_nexus_args }} certbot-regru
+          --break-system-packages
 
     - name: Set permissions for regru.ini file
       community.docker.docker_container_exec:
@@ -102,7 +109,7 @@
         entrypoint: sh
         command: >
           -c '
-          pip3 install certbot-regru;
+          pip3 install {{ certbot_pip_nexus_args }} certbot-regru;
           while true; do
             certbot renew --non-interactive --quiet;
             CERT_PATH="/etc/letsencrypt/live/{{ domain }}/cert.pem";

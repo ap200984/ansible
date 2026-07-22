@@ -10,3 +10,116 @@
   tags:
     - python3
     - "python3:packages"
+
+- name: Validate Nexus PyPI settings
+  ansible.builtin.assert:
+    that:
+      - nexus_url is defined
+      - nexus_url | string | length > 0
+      - nexus_url | urlsplit('scheme') in ['http', 'https']
+    fail_msg: use_nexus requires nexus_url for the PyPI proxy.
+  when: python3_use_nexus | bool
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Check the existing system pip configuration
+  ansible.builtin.stat:
+    path: "{{ python3_pip_config_path }}"
+  register: python3_pip_config
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Read the existing system pip configuration
+  ansible.builtin.slurp:
+    src: "{{ python3_pip_config_path }}"
+  register: python3_pip_config_content
+  when: python3_pip_config.stat.exists
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Back up the system pip configuration before enabling Nexus
+  ansible.builtin.copy:
+    src: "{{ python3_pip_config_path }}"
+    dest: "{{ python3_pip_config_backup_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when:
+    - python3_use_nexus | bool
+    - python3_pip_config.stat.exists
+    - >-
+      '/repository/pypi-proxy/simple' not in
+      (python3_pip_config_content.content | b64decode)
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Configure pip to use the Nexus PyPI proxy
+  ansible.builtin.copy:
+    dest: "{{ python3_pip_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [global]
+      index-url = {{ python3_pip_nexus_index_url }}
+      trusted-host = {{ nexus_url | urlsplit('hostname') }}
+  when: python3_use_nexus | bool
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Check for the pre-Nexus pip configuration
+  ansible.builtin.stat:
+    path: "{{ python3_pip_config_backup_path }}"
+  register: python3_pip_config_backup
+  when: not (python3_use_nexus | bool)
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Restore the system pip configuration when Nexus is disabled
+  ansible.builtin.copy:
+    src: "{{ python3_pip_config_backup_path }}"
+    dest: "{{ python3_pip_config_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - not (python3_use_nexus | bool)
+    - python3_pip_config_backup.stat.exists | default(false)
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Remove the Nexus pip configuration when no original file existed
+  ansible.builtin.file:
+    path: "{{ python3_pip_config_path }}"
+    state: absent
+  when:
+    - not (python3_use_nexus | bool)
+    - not (python3_pip_config_backup.stat.exists | default(false))
+    - python3_pip_config.stat.exists
+    - >-
+      '/repository/pypi-proxy/simple' in
+      (python3_pip_config_content.content | b64decode)
+  tags:
+    - python3
+    - "python3:pip"
+
+- name: Remove the consumed pre-Nexus pip configuration backup
+  ansible.builtin.file:
+    path: "{{ python3_pip_config_backup_path }}"
+    state: absent
+  when:
+    - not (python3_use_nexus | bool)
+    - python3_pip_config_backup.stat.exists | default(false)
+  tags:
+    - python3
+    - "python3:pip"
