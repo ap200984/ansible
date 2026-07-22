@@ -20,6 +20,21 @@
     - containerd
     - "containerd:config"
 
+- name: Validate Nexus container registry settings
+  ansible.builtin.assert:
+    that:
+      - containerd_nexus_registry | string | length > 0
+      - "':' in containerd_nexus_registry"
+      - containerd_nexus_elastic_registry | string | length > 0
+      - "':' in containerd_nexus_elastic_registry"
+    fail_msg: >-
+      use_nexus requires nexus_docker_registry and nexus_elastic_registry in
+      host or inventory variables.
+  when: containerd_use_nexus | bool
+  tags:
+    - containerd
+    - "containerd:config"
+
 - name: Configure containerd
   ansible.builtin.template:
     src: config.toml.j2

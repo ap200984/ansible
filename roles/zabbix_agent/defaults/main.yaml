@@ -7,3 +7,11 @@ zabbix_agent_host_metadata_tag: ""
 psk_identity: zabbix_host
 psk: "{{ zabbix_agent_psk | default('') }}"
 zabbix_agent_psk_file: /etc/zabbix/zabbix_agent2.psk
+zabbix_agent_use_nexus: "{{ use_nexus | default(false) }}"
+zabbix_agent_upstream_base_url: https://repo.zabbix.com
+zabbix_agent_nexus_base_url: >-
+  {{ nexus_url | default('') }}/repository/zabbix-proxy
+zabbix_agent_repository_base_url: >-
+  {{ zabbix_agent_nexus_base_url
+     if zabbix_agent_use_nexus | bool
+     else zabbix_agent_upstream_base_url }}

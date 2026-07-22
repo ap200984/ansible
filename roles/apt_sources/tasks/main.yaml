@@ -1,0 +1,164 @@
+---
+- name: Validate Nexus apt source settings
+  ansible.builtin.assert:
+    that:
+      - nexus_url | string | length > 0
+      - nexus_url | urlsplit('scheme') in ['http', 'https']
+      - ansible_distribution in ['Debian', 'Ubuntu']
+      - ansible_distribution_release | string | length > 0
+    fail_msg: >-
+      use_nexus requires nexus_url and supports Debian or Ubuntu hosts.
+  when: use_nexus | bool
+
+- name: Check the main apt sources file before enabling Nexus
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list
+  register: apt_sources_main_file
+  when: use_nexus | bool
+
+- name: Back up the main apt sources file before enabling Nexus
+  ansible.builtin.copy:
+    src: /etc/apt/sources.list
+    dest: "{{ apt_sources_backup_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when:
+    - use_nexus | bool
+    - apt_sources_main_file.stat.exists
+
+- name: Find distribution apt source definition files
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns:
+      - "*.list"
+      - "*.sources"
+    file_type: file
+  register: apt_sources_definition_files
+  when: use_nexus | bool
+
+- name: Read distribution apt source definition files
+  ansible.builtin.slurp:
+    src: "{{ item.path }}"
+  loop: "{{ apt_sources_definition_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: apt_sources_definition_contents
+  when: use_nexus | bool
+
+- name: Disable direct distribution apt source definition files
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ item.item.path }}"
+      - "{{ item.item.path }}.nexus-disabled"
+    creates: "{{ item.item.path }}.nexus-disabled"
+    removes: "{{ item.item.path }}"
+  loop: "{{ apt_sources_definition_contents.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.path }}"
+  register: apt_sources_disabled
+  when:
+    - use_nexus | bool
+    - >-
+      apt_sources_upstream_patterns |
+      select('in', item.content | default('') | b64decode) |
+      list | length > 0
+
+- name: Configure Debian apt sources through Nexus
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb {{ nexus_url }}/repository/debian-proxy/ {{ ansible_distribution_release }} {{ apt_sources_nexus_components.Debian | join(' ') }}
+      deb {{ nexus_url }}/repository/debian-proxy/ {{ ansible_distribution_release }}-updates {{ apt_sources_nexus_components.Debian | join(' ') }}
+      deb {{ nexus_url }}/repository/debian-security-proxy/ {{ ansible_distribution_release }}-security {{ apt_sources_nexus_components.Debian | join(' ') }}
+  when:
+    - use_nexus | bool
+    - ansible_distribution == 'Debian'
+  register: apt_sources_debian_config
+
+- name: Configure Ubuntu apt sources through Nexus
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb {{ nexus_url }}/repository/ubuntu-proxy/ {{ ansible_distribution_release }} {{ apt_sources_nexus_components.Ubuntu | join(' ') }}
+      deb {{ nexus_url }}/repository/ubuntu-proxy/ {{ ansible_distribution_release }}-updates {{ apt_sources_nexus_components.Ubuntu | join(' ') }}
+      deb {{ nexus_url }}/repository/ubuntu-proxy/ {{ ansible_distribution_release }}-security {{ apt_sources_nexus_components.Ubuntu | join(' ') }}
+      deb {{ nexus_url }}/repository/ubuntu-proxy/ {{ ansible_distribution_release }}-backports {{ apt_sources_nexus_components.Ubuntu | join(' ') }}
+  when:
+    - use_nexus | bool
+    - ansible_distribution == 'Ubuntu'
+  register: apt_sources_ubuntu_config
+
+- name: Find apt source definitions disabled for Nexus
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns: "*.nexus-disabled"
+    file_type: file
+  register: apt_sources_disabled_files
+  when: not (use_nexus | bool)
+
+- name: Restore direct distribution apt source definition files
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ item.path }}"
+      - "{{ item.path | regex_replace('\\.nexus-disabled$', '') }}"
+    creates: "{{ item.path | regex_replace('\\.nexus-disabled$', '') }}"
+    removes: "{{ item.path }}"
+  loop: "{{ apt_sources_disabled_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: apt_sources_restored
+  when: not (use_nexus | bool)
+
+- name: Check for the pre-Nexus main apt sources backup
+  ansible.builtin.stat:
+    path: "{{ apt_sources_backup_path }}"
+  register: apt_sources_backup
+  when: not (use_nexus | bool)
+
+- name: Restore the main apt sources file when Nexus is disabled
+  ansible.builtin.copy:
+    src: "{{ apt_sources_backup_path }}"
+    dest: /etc/apt/sources.list
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - not (use_nexus | bool)
+    - apt_sources_backup.stat.exists | default(false)
+
+- name: Remove the consumed pre-Nexus apt sources backup
+  ansible.builtin.file:
+    path: "{{ apt_sources_backup_path }}"
+    state: absent
+  when:
+    - not (use_nexus | bool)
+    - apt_sources_backup.stat.exists | default(false)
+
+- name: Refresh apt metadata after source changes
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - ansible_os_family == 'Debian'
+    - >-
+      (apt_sources_debian_config is defined and
+       apt_sources_debian_config.changed | default(false)) or
+      (apt_sources_ubuntu_config is defined and
+       apt_sources_ubuntu_config.changed | default(false)) or
+      (apt_sources_disabled is defined and
+       apt_sources_disabled.changed | default(false)) or
+      (apt_sources_restored is defined and
+       apt_sources_restored.changed | default(false)) or
+      (apt_sources_backup is defined and
+       apt_sources_backup.stat.exists | default(false))

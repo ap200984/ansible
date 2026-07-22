@@ -30,6 +30,9 @@ Optional but commonly used:
 - `vm_netmask_prefix`: network prefix. Default: `24`.
 - `vm_gateway`: gateway IP. Default: first three octets of `vm_ip_address` plus `.1`.
 - `vm_dns_servers`: DNS servers. Default: `1.1.1.1`, `8.8.8.8`.
+- `use_nexus`: download the Debian cloud image through Nexus. Default: `false`.
+- `nexus_url`: Nexus base URL required when `use_nexus` is enabled, for example
+  `http://10.9.1.70:8081`.
 
 ## Basic launch
 
@@ -97,6 +100,8 @@ ansible-playbook -i inventory/kvm_server create_vm.yaml \
   `/var/lib/libvirt/images/cloud-init/<vm_name>` by default.
 - The default cloud image is Debian 12:
   `https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2`.
+- With `use_nexus=true`, the same image is downloaded through the
+  `debian-cloud-images` raw proxy repository in Nexus.
 
 
 

@@ -9,6 +9,10 @@ zabbix_agent_host_metadata_group=k112
 zabbix_agent_host_metadata_tag=k8s_k112
 master_float_ip=10.9.1.5
 k8s_kubeadm_ignore_preflight_errors=NumCPU,Mem
+use_nexus=true
+nexus_url=http://10.9.1.70:8081
+nexus_docker_registry=10.9.1.70:8082
+nexus_elastic_registry=10.9.1.70:8083
 
 [k8s:children]
 etcd

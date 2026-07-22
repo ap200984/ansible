@@ -16,8 +16,11 @@
     k8s_containerd_proxy_enabled: "{{ k8s_squid_proxy_url | length > 0 }}"
     k8s_containerd_proxy_url: "{{ k8s_squid_proxy_url }}"
   roles:
+    - role: apt_sources
     - role: k8s_containerd
-      when: k8s_squid_proxy_url | length > 0
+      when: >-
+        k8s_squid_proxy_url | length > 0 or
+        use_nexus | default(false) | bool
 
 - name: Deploy and test nginx in Kubernetes
   hosts: "{{ host | default(groups['masters'][0]) }}"

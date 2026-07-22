@@ -63,6 +63,7 @@
         else 'http://127.0.0.1:' ~ (k8s_local_apt_proxy_target_port | default(18080))
       }}
   roles:
+    - apt_sources
     - k8s_prepare_hosts
     - k8s_local_apt_proxy
     - k8s_containerd

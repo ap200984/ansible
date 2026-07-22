@@ -1,0 +1,20 @@
+---
+use_nexus: false
+nexus_url: ""
+apt_sources_backup_path: /etc/apt/sources.list.pre-nexus
+apt_sources_nexus_components:
+  Debian:
+    - main
+    - contrib
+    - non-free
+    - non-free-firmware
+  Ubuntu:
+    - main
+    - restricted
+    - universe
+    - multiverse
+apt_sources_upstream_patterns:
+  - deb.debian.org
+  - security.debian.org
+  - archive.ubuntu.com
+  - security.ubuntu.com

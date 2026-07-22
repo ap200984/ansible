@@ -5,4 +5,5 @@
   gather_facts: true
 
   roles:
+    - apt_sources
     - ../roles/create_etcd_cluster

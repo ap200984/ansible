@@ -5,7 +5,22 @@ docker_apt_arch_map:
   armv7l: armhf
 docker_apt_arch: "{{ docker_apt_arch_map.get(ansible_architecture, ansible_architecture) }}"
 docker_apt_key_path: /etc/apt/keyrings/docker.asc
-docker_apt_repo_url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
+docker_use_nexus: "{{ use_nexus | default(false) }}"
+docker_nexus_registry: "{{ nexus_docker_registry | default('') }}"
+docker_apt_repo_url: >-
+  {{
+    nexus_url ~ '/repository/docker-' ~
+    (ansible_distribution | lower) ~ '-apt-proxy'
+    if docker_use_nexus | bool
+    else 'https://download.docker.com/linux/' ~ (ansible_distribution | lower)
+  }}
 docker_apt_repo: >-
   deb [arch={{ docker_apt_arch }} signed-by={{ docker_apt_key_path }}]
   {{ docker_apt_repo_url }} {{ ansible_distribution_release }} stable
+docker_upstream_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+  - python3-docker

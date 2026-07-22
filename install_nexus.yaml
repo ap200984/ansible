@@ -1,0 +1,496 @@
+---
+# Nexus Repository используется как локальный кеш внешних пакетов, файлов и
+# контейнерных образов. Nexus выходит в интернет через авторизованный Squid,
+# сохраняет загруженные данные в /backup/nexus и повторно отдаёт их локальным
+# клиентам. Время проверки актуальности кеша по умолчанию — 60 минут; если
+# upstream временно недоступен, уже закешированное содержимое остаётся доступно.
+#
+# Порты и назначение:
+#   8081 — веб-интерфейс, REST API, APT и Raw proxy repositories:
+#     http://<nexus-host>:8081/
+#     /repository/debian-proxy/              — пакеты Debian
+#     /repository/debian-security-proxy/     — обновления безопасности Debian
+#     /repository/ubuntu-proxy/              — пакеты Ubuntu
+#     /repository/docker-debian-apt-proxy/   — Docker CE для Debian
+#     /repository/docker-ubuntu-apt-proxy/   — Docker CE для Ubuntu
+#     /repository/kubernetes-v1-30-proxy/    — пакеты Kubernetes v1.30
+#     /repository/zabbix-proxy/              — пакеты repo.zabbix.com
+#     /repository/debian-cloud-images/       — Debian QCOW2 cloud images
+#   8082 — Docker Registry proxy для Docker Hub
+#   8083 — Docker Registry proxy для docker.elastic.co
+#
+# Веб-интерфейс:
+#   внешний URL:  http://86.110.170.70:8081/
+#   внутренний URL: http://10.9.1.70:8081/
+#   пользователь: admin
+#   пароль: nexus_admin_password из group_vars/all/passwords.yml (Ansible Vault)
+#
+# Использование на управляемых хостах через inventory:
+#   use_nexus=true
+#   nexus_url=http://10.9.1.70:8081
+#   nexus_docker_registry=10.9.1.70:8082
+#   nexus_elastic_registry=10.9.1.70:8083
+# Роль apt_sources направляет APT в Nexus, роль docker настраивает Docker Hub
+# mirror, а роли containerd добавляют зеркала docker.io и docker.elastic.co.
+# Обычное прямое обращение к upstream сохраняется при use_nexus=false.
+#
+# Первый bootstrap Nexus необходимо запускать с use_nexus=false: ещё не
+# запущенный Nexus не может использовать сам себя для установки Docker или
+# загрузки образа sonatype/nexus3. После первого запуска use_nexus можно включать.
+#
+# Запуск:
+#   ansible-playbook -i inventory/kvm_server install_nexus.yaml
+- name: Install Nexus Repository cache in Docker
+  hosts: all
+  become: true
+
+  vars:
+    nexus_container_name: nexus
+    nexus_image: sonatype/nexus3:3.76.0
+    nexus_data_dir: /backup/nexus
+    nexus_application_port: 8081
+    nexus_docker_port: 8082
+    nexus_elastic_docker_port: 8083
+    nexus_cache_minutes: 60
+    nexus_debian_distribution: trixie
+    nexus_ubuntu_distribution: noble
+    nexus_api_url: "http://127.0.0.1:{{ nexus_application_port }}"
+
+    nexus_squid_endpoint: "{{ squid_endpoint }}"
+    nexus_squid_host: "{{ nexus_squid_endpoint | urlsplit('hostname') }}"
+    nexus_squid_port: >-
+      {{ nexus_squid_endpoint | urlsplit('port') | default(3128, true) }}
+
+    nexus_proxy_repositories:
+      - name: debian-proxy
+        format: apt
+        endpoint: apt/proxy
+        remote_url: https://deb.debian.org/debian/
+        extra:
+          apt:
+            distribution: "{{ nexus_debian_distribution }}"
+            flat: false
+      - name: ubuntu-proxy
+        format: apt
+        endpoint: apt/proxy
+        remote_url: https://archive.ubuntu.com/ubuntu/
+        extra:
+          apt:
+            distribution: "{{ nexus_ubuntu_distribution }}"
+            flat: false
+      - name: debian-security-proxy
+        format: apt
+        endpoint: apt/proxy
+        remote_url: https://deb.debian.org/debian-security/
+        extra:
+          apt:
+            distribution: "{{ nexus_debian_distribution }}-security"
+            flat: false
+      - name: kubernetes-v1-30-proxy
+        format: apt
+        endpoint: apt/proxy
+        remote_url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/
+        extra:
+          apt:
+            distribution: "/"
+            flat: true
+      - name: docker-debian-apt-proxy
+        format: apt
+        endpoint: apt/proxy
+        remote_url: https://download.docker.com/linux/debian/
+        extra:
+          apt:
+            distribution: "{{ nexus_debian_distribution }}"
+            flat: false
+      - name: docker-ubuntu-apt-proxy
+        format: apt
+        endpoint: apt/proxy
+        remote_url: https://download.docker.com/linux/ubuntu/
+        extra:
+          apt:
+            distribution: "{{ nexus_ubuntu_distribution }}"
+            flat: false
+      - name: debian-cloud-images
+        format: raw
+        endpoint: raw/proxy
+        remote_url: https://cloud.debian.org/images/cloud/
+        extra:
+          storage:
+            strictContentTypeValidation: false
+      - name: zabbix-proxy
+        format: raw
+        endpoint: raw/proxy
+        remote_url: https://repo.zabbix.com/
+        extra:
+          storage:
+            strictContentTypeValidation: false
+      - name: docker-hub
+        format: docker
+        endpoint: docker/proxy
+        remote_url: https://registry-1.docker.io
+        extra:
+          docker:
+            v1Enabled: true
+            forceBasicAuth: false
+            httpPort: "{{ nexus_docker_port }}"
+          dockerProxy:
+            indexType: HUB
+            cacheForeignLayers: true
+            foreignLayerUrlWhitelist: []
+      - name: docker-elastic
+        format: docker
+        endpoint: docker/proxy
+        remote_url: https://docker.elastic.co
+        extra:
+          docker:
+            v1Enabled: false
+            forceBasicAuth: false
+            httpPort: "{{ nexus_elastic_docker_port }}"
+          dockerProxy:
+            indexType: REGISTRY
+            cacheForeignLayers: true
+            foreignLayerUrlWhitelist: []
+
+  roles:
+    - apt_sources
+    - docker
+
+  tasks:
+    - name: Validate Nexus proxy settings
+      ansible.builtin.assert:
+        that:
+          - squid_user is defined
+          - squid_pass is defined
+          - squid_user | string | length > 0
+          - squid_pass | string | length > 0
+          - nexus_squid_endpoint | length > 0
+          - nexus_squid_endpoint | urlsplit('scheme') in ['http', 'https']
+          - nexus_squid_host | length > 0
+          - nexus_squid_port | int > 0
+          - nexus_squid_port | int < 65536
+        fail_msg: >-
+          Define squid_user and squid_pass in group_vars/all/passwords.yml and
+          set squid_endpoint (for example, http://squid.example:3128) in the
+          inventory group variables.
+      no_log: false
+
+    - name: Create Nexus persistent storage
+      ansible.builtin.file:
+        path: "{{ nexus_data_dir }}"
+        state: directory
+        owner: "200"
+        group: "200"
+        mode: "0750"
+
+    - name: Start Nexus Repository container
+      community.docker.docker_container:
+        name: "{{ nexus_container_name }}"
+        image: "{{ nexus_image }}"
+        pull: false
+        ports:
+          - "{{ nexus_application_port }}:8081/tcp"
+          - "{{ nexus_docker_port }}:{{ nexus_docker_port }}/tcp"
+          - "{{ nexus_elastic_docker_port }}:{{ nexus_elastic_docker_port }}/tcp"
+        volumes:
+          - "{{ nexus_data_dir }}:/nexus-data:rw"
+        state: started
+        restart_policy: unless-stopped
+
+    - name: Wait for Nexus to become ready
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/status"
+        method: GET
+        status_code: 200
+      register: nexus_status
+      until: nexus_status.status | default(0) == 200
+      retries: 60
+      delay: 5
+
+    - name: Check for the initial Nexus administrator password
+      ansible.builtin.stat:
+        path: "{{ nexus_data_dir }}/admin.password"
+      register: nexus_initial_password_file
+
+    - name: Require administrator credentials for an initialized Nexus
+      ansible.builtin.assert:
+        that:
+          - nexus_initial_password_file.stat.exists or
+            (nexus_admin_password is defined and
+             nexus_admin_password | string | length > 0)
+        fail_msg: >-
+          This Nexus instance no longer has its initial admin.password file.
+          Define nexus_admin_password in group_vars/all/passwords.yml so the
+          playbook can continue managing it.
+      no_log: false
+
+    - name: Read the initial Nexus administrator password
+      ansible.builtin.slurp:
+        src: "{{ nexus_data_dir }}/admin.password"
+      register: nexus_initial_password
+      when: nexus_initial_password_file.stat.exists
+      no_log: false
+
+    - name: Select Nexus administrator password
+      ansible.builtin.set_fact:
+        nexus_effective_admin_password: >-
+          {{ (nexus_initial_password.content | b64decode | trim)
+             if nexus_initial_password_file.stat.exists
+             else nexus_admin_password }}
+      no_log: false
+
+    - name: Read active Nexus security realms
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/realms/active"
+        method: GET
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        return_content: true
+        status_code: 200
+      register: nexus_active_realms
+      no_log: false
+
+    - name: Enable the Docker bearer-token realm
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/realms/active"
+        method: PUT
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ nexus_active_realms.json + ['DockerToken'] }}"
+        status_code: 204
+      when: "'DockerToken' not in nexus_active_realms.json"
+      no_log: false
+
+    - name: Allow anonymous downloads from Nexus
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/security/anonymous"
+        method: PUT
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          enabled: true
+          userId: anonymous
+          realmName: NexusAuthorizingRealm
+        status_code: 200
+      no_log: false
+
+    - name: Configure authenticated Squid for Nexus outbound traffic
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/extdirect"
+        method: POST
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          action: coreui_HttpSettings
+          method: update
+          data:
+            - userAgentSuffix: null
+              timeout: 30
+              retries: 2
+              httpEnabled: true
+              httpHost: "{{ nexus_squid_host }}"
+              httpPort: "{{ nexus_squid_port | int }}"
+              httpAuthEnabled: true
+              httpAuthUsername: "{{ squid_user }}"
+              httpAuthPassword: "{{ squid_pass }}"
+              httpAuthNtlmHost: null
+              httpAuthNtlmDomain: null
+              httpsEnabled: true
+              httpsHost: "{{ nexus_squid_host }}"
+              httpsPort: "{{ nexus_squid_port | int }}"
+              httpsAuthEnabled: true
+              httpsAuthUsername: "{{ squid_user }}"
+              httpsAuthPassword: "{{ squid_pass }}"
+              httpsAuthNtlmHost: null
+              httpsAuthNtlmDomain: null
+              nonProxyHosts:
+                - localhost
+                - 127.0.0.1
+          type: rpc
+          tid: 1
+        return_content: true
+        status_code:
+          - 200
+      register: nexus_http_settings
+      no_log: false
+
+    - name: Validate Nexus Squid configuration response
+      ansible.builtin.assert:
+        that:
+          - nexus_http_settings.status | default(0) == 200
+          - nexus_http_settings.json.type | default('exception') == 'rpc'
+          - nexus_http_settings.json.result.success | default(false) | bool
+        fail_msg: >-
+          Nexus rejected its Squid configuration: {{
+          nexus_http_settings.json.message |
+          default(nexus_http_settings.json.result.message |
+          default(nexus_http_settings.msg | default('unknown response'))) }}
+
+    - name: List existing Nexus repositories
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/repositories"
+        method: GET
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        return_content: true
+        status_code: 200
+      register: nexus_existing_repositories
+      no_log: false
+
+    - name: Create missing Nexus proxy caches
+      ansible.builtin.uri:
+        url: "{{ nexus_api_url }}/service/rest/v1/repositories/{{ item.endpoint }}"
+        method: POST
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ nexus_repository_payload }}"
+        timeout: 120
+        status_code:
+          - 201
+          - 204
+          # Nexus 3.76 can persist a new repository before returning an error.
+          # The following GET and PUT tasks verify and finalize it.
+          - 400
+          - 500
+      register: nexus_repository_create
+      until: >-
+        nexus_repository_create.status | default(0) in [201, 204, 400, 500]
+      retries: 4
+      delay: 5
+      loop: "{{ nexus_proxy_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: >-
+        item.name not in
+        (nexus_existing_repositories.json | map(attribute='name') | list)
+      vars:
+        nexus_repository_payload: >-
+          {{ {
+               'name': item.name,
+               'online': true,
+               'storage': {
+                 'blobStoreName': 'default',
+                 'strictContentTypeValidation': true
+               },
+               'proxy': {
+                 'remoteUrl': item.remote_url,
+                 'contentMaxAge': nexus_cache_minutes,
+                 'metadataMaxAge': nexus_cache_minutes
+               },
+               'negativeCache': {
+                 'enabled': true,
+                 'timeToLive': nexus_cache_minutes
+               },
+               'httpClient': {
+                 'blocked': false,
+                 'autoBlock': true
+               }
+             } | combine(item.extra, recursive=true) }}
+      no_log: false
+
+    - name: Verify Nexus proxy caches exist
+      ansible.builtin.uri:
+        url: >-
+          {{ nexus_api_url }}/service/rest/v1/repositories/{{ item.endpoint }}/{{
+          item.name }}
+        method: GET
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        status_code: 200
+      register: nexus_repository_check
+      until: nexus_repository_check.status | default(0) == 200
+      retries: 6
+      delay: 2
+      loop: "{{ nexus_proxy_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      no_log: true
+
+    - name: Apply Nexus proxy cache configuration
+      ansible.builtin.uri:
+        url: >-
+          {{ nexus_api_url }}/service/rest/v1/repositories/{{ item.endpoint }}/{{
+          item.name }}
+        method: PUT
+        user: admin
+        password: "{{ nexus_effective_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ nexus_repository_payload }}"
+        timeout: 120
+        status_code: 204
+      register: nexus_repository_update
+      until: nexus_repository_update.status | default(0) == 204
+      retries: 4
+      delay: 5
+      loop: "{{ nexus_proxy_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      vars:
+        nexus_repository_payload: >-
+          {{ {
+               'name': item.name,
+               'online': true,
+               'storage': {
+                 'blobStoreName': 'default',
+                 'strictContentTypeValidation': true
+               },
+               'proxy': {
+                 'remoteUrl': item.remote_url,
+                 'contentMaxAge': nexus_cache_minutes,
+                 'metadataMaxAge': nexus_cache_minutes
+               },
+               'negativeCache': {
+                 'enabled': true,
+                 'timeToLive': nexus_cache_minutes
+               },
+               'httpClient': {
+                 'blocked': false,
+                 'autoBlock': true
+               }
+             } | combine(item.extra, recursive=true) }}
+      no_log: true
+
+    - name: Show Nexus cache endpoints
+      ansible.builtin.debug:
+        msg:
+          - >-
+            Debian: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/debian-proxy/
+          - >-
+            Ubuntu: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/ubuntu-proxy/
+          - >-
+            Debian security: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/debian-security-proxy/
+          - >-
+            Kubernetes: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/kubernetes-v1-30-proxy/
+          - >-
+            Docker apt (Debian): http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/docker-debian-apt-proxy/
+          - >-
+            Docker apt (Ubuntu): http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/docker-ubuntu-apt-proxy/
+          - >-
+            Debian cloud images: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/debian-cloud-images/
+          - >-
+            Zabbix packages: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/zabbix-proxy/
+          - >-
+            Docker Hub: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_docker_port }}
+          - >-
+            Elastic Docker: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_elastic_docker_port }}

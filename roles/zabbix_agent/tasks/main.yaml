@@ -26,9 +26,9 @@
   set_fact:
     zabbix_agent_release_url: >-
       {{
-        'https://repo.zabbix.com/zabbix/7.4/release/debian/pool/main/z/zabbix-release/zabbix-release_' ~ zabbix_agent_release_version ~ '%2Bdebian' ~ ansible_distribution_major_version ~ '_all.deb'
+        zabbix_agent_repository_base_url ~ '/zabbix/7.4/release/debian/pool/main/z/zabbix-release/zabbix-release_' ~ zabbix_agent_release_version ~ '%2Bdebian' ~ ansible_distribution_major_version ~ '_all.deb'
         if ansible_distribution | lower == 'debian'
-        else 'https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_' ~ zabbix_agent_release_version ~ '%2Bubuntu' ~ ansible_distribution_version ~ '_all.deb'
+        else zabbix_agent_repository_base_url ~ '/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_' ~ zabbix_agent_release_version ~ '%2Bubuntu' ~ ansible_distribution_version ~ '_all.deb'
         if ansible_distribution | lower == 'ubuntu'
         else ''
       }}
@@ -47,6 +47,20 @@
     - "zabbix_agent:validate"
     - "zabbix_agent:repo"
     - "zabbix_agent:packages"
+
+- name: Validate Nexus Zabbix repository settings
+  ansible.builtin.assert:
+    that:
+      - nexus_url is defined
+      - nexus_url | string | length > 0
+      - nexus_url | urlsplit('scheme') in ['http', 'https']
+    fail_msg: >-
+      use_nexus requires nexus_url for the Zabbix package proxy.
+  when: zabbix_agent_use_nexus | bool
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:validate"
+    - "zabbix_agent:repo"
 
 - name: Validate Zabbix Agent 2 PSK configuration
   assert:
@@ -81,7 +95,7 @@
     name: zabbix-agent
     state: absent
     purge: true
-    update_cache: true
+    update_cache: false
   tags:
     - zabbix_agent
     - "zabbix_agent:remove_old"
@@ -97,6 +111,58 @@
 - name: Install Zabbix 7.4 release repository
   apt:
     deb: "{{ zabbix_agent_release_url }}"
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
+
+- name: Find Zabbix apt source files
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns:
+      - "zabbix*.list"
+      - "zabbix*.sources"
+    file_type: file
+  register: zabbix_agent_source_files
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
+
+- name: Route Zabbix apt sources through Nexus
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: 'https?://repo\.zabbix\.com'
+    replace: "{{ zabbix_agent_nexus_base_url }}"
+  loop: "{{ zabbix_agent_source_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: zabbix_agent_use_nexus | bool
+  register: zabbix_agent_nexus_sources
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
+
+- name: Restore direct Zabbix apt sources when Nexus is disabled
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: 'https?://\S+/repository/zabbix-proxy'
+    replace: "{{ zabbix_agent_upstream_base_url }}"
+  loop: "{{ zabbix_agent_source_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: not (zabbix_agent_use_nexus | bool)
+  register: zabbix_agent_upstream_sources
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
+
+- name: Refresh apt metadata after changing Zabbix sources
+  ansible.builtin.apt:
+    update_cache: true
+  when: >-
+    (zabbix_agent_nexus_sources is defined and
+     zabbix_agent_nexus_sources.changed | default(false)) or
+    (zabbix_agent_upstream_sources is defined and
+     zabbix_agent_upstream_sources.changed | default(false))
   tags:
     - zabbix_agent
     - "zabbix_agent:repo"

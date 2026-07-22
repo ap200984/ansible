@@ -11,3 +11,6 @@ containerd_proxy_no_proxy:
   - "{{ k8s_service_subnet }}"
   - "{{ k8s_pod_subnet }}"
 containerd_systemd_dropin_dir: /etc/systemd/system/containerd.service.d
+containerd_use_nexus: "{{ use_nexus | default(false) }}"
+containerd_nexus_registry: "{{ nexus_docker_registry | default('') }}"
+containerd_nexus_elastic_registry: "{{ nexus_elastic_registry | default('') }}"

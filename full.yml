@@ -5,6 +5,7 @@
   gather_facts: true
 
   roles:
+    - apt_sources
     - hostname
     - tz
     - dns_client

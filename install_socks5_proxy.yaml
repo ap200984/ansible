@@ -6,6 +6,10 @@
     docker_network_subnet: 172.20.0.0/16
     docker_network_range: 172.20.240.0/20
 
+  roles:
+    - apt_sources
+    - docker
+
   tasks:
     # - name: Include secrets
     #   include_vars: secrets/common_secrets.yml

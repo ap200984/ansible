@@ -25,7 +25,14 @@
     vm_list: []
     vm_items: "{{ vm_list if vm_list | length > 0 else [ { 'name': vm_name, 'ip_address': vm_ip_address, 'memory_mb': vm_memory_mb, 'vcpus': vm_vcpus, 'disk_size_gb': vm_disk_size_gb, 'timezone': vm_timezone, 'network_source': vm_network_source, 'network_source_mode': vm_network_source_mode, 'netmask_prefix': vm_netmask_prefix, 'gateway': vm_gateway, 'dns_servers': vm_dns_servers, 'user': vm_user } ] }}"
 
-    vm_image_url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
+    vm_image_relative_path: bookworm/latest/debian-12-genericcloud-amd64.qcow2
+    vm_image_upstream_url: "https://cloud.debian.org/images/cloud/{{ vm_image_relative_path }}"
+    vm_image_nexus_url: >-
+      {{ nexus_url | default('') }}/repository/debian-cloud-images/{{ vm_image_relative_path }}
+    vm_image_url: >-
+      {{ vm_image_nexus_url
+         if use_nexus | default(false) | bool
+         else vm_image_upstream_url }}
     vm_image_name: debian-12-genericcloud-amd64.qcow2
     vm_libvirt_dir: /var/lib/libvirt/images
     vm_base_image: "{{ vm_libvirt_dir }}/{{ vm_image_name }}"
@@ -73,6 +80,16 @@
           Each VM needs a name, a valid ip_address, and a network_source.
           Check the vm_list entries or the vm_name/vm_ip_address variables.
       loop: "{{ vm_items }}"
+
+    - name: Validate Nexus cloud image settings
+      ansible.builtin.assert:
+        that:
+          - nexus_url is defined
+          - nexus_url | string | length > 0
+          - nexus_url | urlsplit('scheme') in ['http', 'https']
+        fail_msg: >-
+          use_nexus requires nexus_url, for example http://10.9.1.70:8081.
+      when: use_nexus | default(false) | bool
 
     - name: Validate VM user password hashes
       ansible.builtin.assert:

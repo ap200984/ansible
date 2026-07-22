@@ -17,9 +17,26 @@
     squid_log_dir: /opt/squid/logs
 
   roles:
+    - apt_sources
     - docker
 
   tasks:
+    - name: Validate Squid proxy credentials
+      ansible.builtin.assert:
+        that:
+          - squid_user is defined
+          - squid_pass is defined
+          - squid_user | string | length > 0
+          - squid_pass | string | length > 0
+          - "':' not in squid_user"
+          - "'\n' not in squid_user"
+          - "'\r' not in squid_user"
+        fail_msg: >-
+          squid_user and squid_pass must be set to non-empty values in
+          group_vars/all/passwords.yml. squid_user must not contain a colon or
+          newline.
+      no_log: false
+
     - name: Create Docker network for Squid
       community.docker.docker_network:
         name: "{{ docker_network_name }}"
@@ -42,6 +59,18 @@
         - path: "{{ squid_log_dir }}"
           mode: "0777"
 
+    - name: Configure Squid proxy credentials
+      ansible.builtin.copy:
+        dest: "{{ squid_config_dir }}/passwords"
+        owner: root
+        group: root
+        mode: "0644"
+        content: >-
+          {{ squid_user }}:{{ squid_pass | password_hash('sha512',
+          (squid_user | hash('sha256'))[:16]) }}
+      register: squid_credentials
+      no_log: false
+
     - name: Configure Squid
       ansible.builtin.copy:
         dest: "{{ squid_config_dir }}/squid.conf"
@@ -51,7 +80,11 @@
         content: |
           http_port {{ squid_container_port }}
 
-          http_access allow all
+          auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwords
+          auth_param basic realm Squid proxy
+          acl authenticated proxy_auth REQUIRED
+
+          http_access allow authenticated
           http_access deny all
 
           cache_dir ufs /var/spool/squid 256 16 256
@@ -76,8 +109,9 @@
           - "{{ squid_host_port }}:{{ squid_container_port }}/tcp"
         volumes:
           - "{{ squid_config_dir }}/squid.conf:/etc/squid/squid.conf:ro"
+          - "{{ squid_config_dir }}/passwords:/etc/squid/passwords:ro"
           - "{{ squid_cache_dir }}:/var/spool/squid:rw"
           - "{{ squid_log_dir }}:/var/log/squid:rw"
         state: started
         restart_policy: unless-stopped
-        recreate: "{{ squid_config.changed }}"
+        recreate: "{{ squid_config.changed or squid_credentials.changed }}"

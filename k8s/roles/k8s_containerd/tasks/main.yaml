@@ -37,6 +37,18 @@
     group: root
     mode: "0755"
 
+- name: Validate Nexus container registry settings
+  ansible.builtin.assert:
+    that:
+      - k8s_containerd_nexus_registry | string | length > 0
+      - "':' in k8s_containerd_nexus_registry"
+      - k8s_containerd_nexus_elastic_registry | string | length > 0
+      - "':' in k8s_containerd_nexus_elastic_registry"
+    fail_msg: >-
+      use_nexus requires nexus_docker_registry and nexus_elastic_registry in
+      host or inventory variables.
+  when: k8s_containerd_use_nexus | bool
+
 - name: Configure containerd
   ansible.builtin.template:
     src: config.toml.j2

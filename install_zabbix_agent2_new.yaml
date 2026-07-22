@@ -1,17 +1,26 @@
 ---
 - hosts: all
   become: true
-  # vars:
-  #   zabbix_server_ip: "10.9.0.70"
+  vars:
+    zabbix_upstream_base_url: https://repo.zabbix.com
+    zabbix_nexus_base_url: >-
+      {{ nexus_url | default('') }}/repository/zabbix-proxy
+    zabbix_repository_base_url: >-
+      {{ zabbix_nexus_base_url
+         if use_nexus | default(false) | bool
+         else zabbix_upstream_base_url }}
+
+  roles:
+    - apt_sources
 
   tasks:
     - name: Set Zabbix release package URL
       set_fact:
         zabbix_release_url: >-
           {% if ansible_distribution | lower == 'debian' %}
-          https://repo.zabbix.com/zabbix/7.4/release/debian/pool/main/z/zabbix-release/zabbix-release_7.4-1%2Bdebian{{ ansible_distribution_major_version }}_all.deb
+          {{ zabbix_repository_base_url }}/zabbix/7.4/release/debian/pool/main/z/zabbix-release/zabbix-release_7.4-1%2Bdebian{{ ansible_distribution_major_version }}_all.deb
           {% elif ansible_distribution | lower == 'ubuntu' %}
-          https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.4-1%2Bubuntu{{ ansible_distribution_version }}_all.deb
+          {{ zabbix_repository_base_url }}/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.4-1%2Bubuntu{{ ansible_distribution_version }}_all.deb
           {% endif %}
 
     - name: Download Zabbix release package
@@ -23,6 +32,31 @@
     - name: Install Zabbix release package
       apt:
         deb: /tmp/zabbix-release.deb
+
+    - name: Find Zabbix apt source files
+      ansible.builtin.find:
+        paths: /etc/apt/sources.list.d
+        patterns:
+          - "zabbix*.list"
+          - "zabbix*.sources"
+        file_type: file
+      register: zabbix_source_files
+
+    - name: Route Zabbix apt sources through Nexus
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: 'https?://repo\.zabbix\.com'
+        replace: "{{ zabbix_nexus_base_url }}"
+      loop: "{{ zabbix_source_files.files }}"
+      when: use_nexus | default(false) | bool
+
+    - name: Restore direct Zabbix apt sources when Nexus is disabled
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: 'https?://\S+/repository/zabbix-proxy'
+        replace: "{{ zabbix_upstream_base_url }}"
+      loop: "{{ zabbix_source_files.files }}"
+      when: not (use_nexus | default(false) | bool)
 
     - name: Update apt cache
       apt:

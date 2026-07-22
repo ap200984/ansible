@@ -11,3 +11,11 @@ version = 2
 
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
   SystemdCgroup = {{ containerd_systemd_cgroup | bool | ternary('true', 'false') }}
+{% if containerd_use_nexus | bool %}
+
+[plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+  endpoint = ["http://{{ containerd_nexus_registry }}"]
+
+[plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.elastic.co"]
+  endpoint = ["http://{{ containerd_nexus_elastic_registry }}"]
+{% endif %}
