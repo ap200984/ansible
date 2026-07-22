@@ -1,6 +1,10 @@
 ---
 etcd_version: v3.5.17
-etcd_download_base_url: https://github.com/etcd-io/etcd/releases/download
+etcd_upstream_download_base_url: https://github.com/etcd-io/etcd/releases/download
+etcd_download_base_url: >-
+  {{ (nexus_url | default('')) ~ '/repository/etcd-releases-raw'
+     if use_nexus | default(false) | bool
+     else etcd_upstream_download_base_url }}
 etcd_install_dir: /usr/local/bin
 etcd_config_dir: /etc/etcd
 etcd_data_dir: /var/lib/etcd
@@ -11,4 +15,3 @@ etcd_peer_port: 2380
 etcd_cluster_token: etcd-cluster
 etcd_initial_cluster_state: new
 etcd_selected_hosts: "{{ hosts | default(ansible_play_hosts_all | join(',')) }}"
-

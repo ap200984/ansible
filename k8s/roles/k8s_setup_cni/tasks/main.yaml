@@ -62,6 +62,15 @@
   changed_when: "'deleted' in k8s_cni_services_endpoint_delete.stdout"
   when: not (k8s_cni_use_direct_api_endpoint | bool)
 
+- name: Validate Nexus Calico manifest settings
+  ansible.builtin.assert:
+    that:
+      - nexus_url is defined
+      - nexus_url | string | length > 0
+      - nexus_url | urlsplit('scheme') in ['http', 'https']
+    fail_msg: use_nexus requires nexus_url for the Calico manifest proxy.
+  when: use_nexus | default(false) | bool
+
 - name: Download Calico manifest
   ansible.builtin.get_url:
     url: "{{ k8s_cni_manifest_url }}"

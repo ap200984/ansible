@@ -44,9 +44,11 @@
       - "':' in k8s_containerd_nexus_registry"
       - k8s_containerd_nexus_elastic_registry | string | length > 0
       - "':' in k8s_containerd_nexus_elastic_registry"
+      - k8s_containerd_nexus_k8s_registry | string | length > 0
+      - "':' in k8s_containerd_nexus_k8s_registry"
     fail_msg: >-
-      use_nexus requires nexus_docker_registry and nexus_elastic_registry in
-      host or inventory variables.
+      use_nexus requires nexus_docker_registry, nexus_elastic_registry and
+      nexus_k8s_registry in host or inventory variables.
   when: k8s_containerd_use_nexus | bool
 
 - name: Configure containerd

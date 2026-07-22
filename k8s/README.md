@@ -11,12 +11,12 @@ ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/00_remove_k8s
 ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/01_create_k8s_cluster_machines.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/02_full_rollout.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/03_create_etcd_cluster.yaml
-ansible-playbook -i inventory/k8s_k112 k8s/04_setup_k8s_master.yaml -e squid_ip=217.144.189.206
-ansible-playbook -i inventory/k8s_k112 k8s/05_add_k8s_master.yaml -e host=master2 -e squid_ip=217.144.189.206
-ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker1 -e squid_ip=217.144.189.206
-ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker2 -e squid_ip=217.144.189.206
-ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker3 -e squid_ip=217.144.189.206
-ansible-playbook -i inventory/k8s_k112 k8s/08_deploy_test_nginx.yaml -e squid_ip=217.144.189.206
+ansible-playbook -i inventory/k8s_k112 k8s/04_setup_k8s_master.yaml
+ansible-playbook -i inventory/k8s_k112 k8s/05_add_k8s_master.yaml -e host=master2
+ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker1
+ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker2
+ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker3
+ansible-playbook -i inventory/k8s_k112 k8s/08_deploy_test_nginx.yaml
 ```
 
 ## Notes

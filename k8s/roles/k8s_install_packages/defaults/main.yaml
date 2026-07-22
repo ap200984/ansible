@@ -12,7 +12,11 @@ kubernetes_apt_remote_url: >-
     if use_nexus | default(false) | bool
     else kubernetes_apt_upstream_url
   }}
-kubernetes_apt_key_url: "{{ kubernetes_apt_remote_url }}Release.key"
+kubernetes_apt_key_url: >-
+  {{ nexus_url ~ '/repository/kubernetes-' ~
+     (kubernetes_apt_version | replace('.', '-')) ~ '-raw/Release.key'
+     if use_nexus | default(false) | bool
+     else kubernetes_apt_upstream_url ~ 'Release.key' }}
 kubernetes_apt_key_tmp: /tmp/kubernetes-apt-release.key
 kubernetes_apt_keyring: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 kubernetes_apt_repo: >-

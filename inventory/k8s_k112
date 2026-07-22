@@ -13,6 +13,7 @@ use_nexus=true
 nexus_url=http://10.9.1.70:8081
 nexus_docker_registry=10.9.1.70:8082
 nexus_elastic_registry=10.9.1.70:8083
+nexus_k8s_registry=10.9.1.70:8084
 
 [k8s:children]
 etcd

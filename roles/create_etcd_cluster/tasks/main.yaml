@@ -123,6 +123,18 @@
     - create_etcd_cluster
     - "create_etcd_cluster:directories"
 
+- name: Validate Nexus etcd release settings
+  ansible.builtin.assert:
+    that:
+      - nexus_url is defined
+      - nexus_url | string | length > 0
+      - nexus_url | urlsplit('scheme') in ['http', 'https']
+    fail_msg: use_nexus requires nexus_url for the etcd release proxy.
+  when: use_nexus | default(false) | bool
+  tags:
+    - create_etcd_cluster
+    - "create_etcd_cluster:install"
+
 - name: Download etcd release
   ansible.builtin.get_url:
     url: "{{ etcd_download_base_url }}/{{ etcd_version }}/{{ etcd_archive_name }}.tar.gz"

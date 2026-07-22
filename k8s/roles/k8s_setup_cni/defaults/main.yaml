@@ -4,7 +4,13 @@ k8s_super_admin_kubeconfig_path: /etc/kubernetes/super-admin.conf
 k8s_master_group: masters
 k8s_api_port: 6443
 k8s_load_balancer_port: 8443
-k8s_cni_manifest_url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
+k8s_cni_manifest_relative_path: v3.28.2/manifests/calico.yaml
+k8s_cni_upstream_manifest_url: >-
+  https://raw.githubusercontent.com/projectcalico/calico/{{ k8s_cni_manifest_relative_path }}
+k8s_cni_manifest_url: >-
+  {{ nexus_url ~ '/repository/calico-raw/' ~ k8s_cni_manifest_relative_path
+     if use_nexus | default(false) | bool
+     else k8s_cni_upstream_manifest_url }}
 k8s_cni_manifest_path: /tmp/calico.yaml
 k8s_cni_pod_cidr: "{{ k8s_pod_subnet }}"
 k8s_cni_force_apply: false
@@ -17,6 +23,7 @@ k8s_cni_kubernetes_service_port: "{{ k8s_api_port }}"
 k8s_cni_proxy_url: >-
   {{
     'http://' ~ squid_ip ~ ':' ~ (squid_port | default(3128))
-    if squid_ip is defined and squid_ip | string | length > 0
+    if not (use_nexus | default(false) | bool) and
+       squid_ip is defined and squid_ip | string | length > 0
     else ''
   }}

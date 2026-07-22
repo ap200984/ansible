@@ -14,11 +14,15 @@
 #     /repository/docker-debian-apt-proxy/   — Docker CE для Debian
 #     /repository/docker-ubuntu-apt-proxy/   — Docker CE для Ubuntu
 #     /repository/kubernetes-v1-30-proxy/    — пакеты Kubernetes v1.30
+#     /repository/kubernetes-v1-30-raw/      — ключ Release.key Kubernetes
+#     /repository/calico-raw/                — manifest Calico
+#     /repository/etcd-releases-raw/         — архивы релизов etcd
 #     /repository/zabbix-proxy/              — пакеты repo.zabbix.com
 #     /repository/pypi-proxy/simple          — Python-пакеты PyPI
 #     /repository/debian-cloud-images/       — Debian QCOW2 cloud images
 #   8082 — Docker Registry proxy для Docker Hub
 #   8083 — Docker Registry proxy для docker.elastic.co
+#   8084 — Docker Registry proxy для registry.k8s.io
 #
 # Веб-интерфейс:
 #   внешний URL:  http://86.110.170.70:8081/
@@ -31,6 +35,7 @@
 #   nexus_url=http://10.9.1.70:8081
 #   nexus_docker_registry=10.9.1.70:8082
 #   nexus_elastic_registry=10.9.1.70:8083
+#   nexus_k8s_registry=10.9.1.70:8084
 # Роль apt_sources направляет APT в Nexus, роль docker настраивает Docker Hub
 # mirror, а роли containerd добавляют зеркала docker.io и docker.elastic.co.
 # Обычное прямое обращение к upstream сохраняется при use_nexus=false.
@@ -52,6 +57,7 @@
     nexus_application_port: 8081
     nexus_docker_port: 8082
     nexus_elastic_docker_port: 8083
+    nexus_k8s_docker_port: 8084
     nexus_cache_minutes: 60
     nexus_debian_distribution: trixie
     nexus_ubuntu_distribution: noble
@@ -95,6 +101,27 @@
           apt:
             distribution: "/"
             flat: true
+      - name: kubernetes-v1-30-raw
+        format: raw
+        endpoint: raw/proxy
+        remote_url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/
+        extra:
+          storage:
+            strictContentTypeValidation: false
+      - name: calico-raw
+        format: raw
+        endpoint: raw/proxy
+        remote_url: https://raw.githubusercontent.com/projectcalico/calico/
+        extra:
+          storage:
+            strictContentTypeValidation: false
+      - name: etcd-releases-raw
+        format: raw
+        endpoint: raw/proxy
+        remote_url: https://github.com/etcd-io/etcd/releases/download/
+        extra:
+          storage:
+            strictContentTypeValidation: false
       - name: docker-debian-apt-proxy
         format: apt
         endpoint: apt/proxy
@@ -156,6 +183,19 @@
             indexType: REGISTRY
             cacheForeignLayers: true
             foreignLayerUrlWhitelist: []
+      - name: docker-kubernetes
+        format: docker
+        endpoint: docker/proxy
+        remote_url: https://registry.k8s.io
+        extra:
+          docker:
+            v1Enabled: false
+            forceBasicAuth: false
+            httpPort: "{{ nexus_k8s_docker_port }}"
+          dockerProxy:
+            indexType: REGISTRY
+            cacheForeignLayers: true
+            foreignLayerUrlWhitelist: []
 
   roles:
     - apt_sources
@@ -197,6 +237,7 @@
           - "{{ nexus_application_port }}:8081/tcp"
           - "{{ nexus_docker_port }}:{{ nexus_docker_port }}/tcp"
           - "{{ nexus_elastic_docker_port }}:{{ nexus_elastic_docker_port }}/tcp"
+          - "{{ nexus_k8s_docker_port }}:{{ nexus_k8s_docker_port }}/tcp"
         volumes:
           - "{{ nexus_data_dir }}:/nexus-data:rw"
         state: started
@@ -608,6 +649,15 @@
             Kubernetes: http://{{ ansible_host | default(inventory_hostname) }}:{{
             nexus_application_port }}/repository/kubernetes-v1-30-proxy/
           - >-
+            Kubernetes key: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/kubernetes-v1-30-raw/Release.key
+          - >-
+            Calico manifests: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/calico-raw/
+          - >-
+            etcd releases: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_application_port }}/repository/etcd-releases-raw/
+          - >-
             Docker apt (Debian): http://{{ ansible_host | default(inventory_hostname) }}:{{
             nexus_application_port }}/repository/docker-debian-apt-proxy/
           - >-
@@ -628,3 +678,6 @@
           - >-
             Elastic Docker: http://{{ ansible_host | default(inventory_hostname) }}:{{
             nexus_elastic_docker_port }}
+          - >-
+            Kubernetes Registry: http://{{ ansible_host | default(inventory_hostname) }}:{{
+            nexus_k8s_docker_port }}
