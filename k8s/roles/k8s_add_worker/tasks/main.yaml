@@ -24,7 +24,13 @@
   delegate_to: "{{ k8s_join_source_master }}"
   register: k8s_join_command
   changed_when: false
-  when: k8s_join_target_node.rc != 0
+  run_once: true
+  when: >-
+    groups['selected_k8s_add_worker'] |
+    map('extract', hostvars, 'k8s_join_target_node') |
+    map(attribute='rc') |
+    reject('equalto', 0) |
+    list | length > 0
 
 - name: Join target worker to Kubernetes cluster
   ansible.builtin.command: >-

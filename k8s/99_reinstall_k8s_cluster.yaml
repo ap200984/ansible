@@ -1,0 +1,91 @@
+---
+# Destructive cluster rebuild orchestrator.
+# This playbook removes the existing Kubernetes VMs and recreates the complete
+# cluster by running the rollout playbooks below sequentially. It stops on the
+# first failed command.
+#
+# Run from the repository root:
+#   ansible-playbook k8s/99_reinstall_k8s_cluster.yaml
+
+- name: Reinstall the Kubernetes cluster
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    k8s_reinstall_repository_root: "{{ playbook_dir }}/.."
+    k8s_reinstall_commands:
+      - name: Remove Kubernetes cluster machines
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - -i
+          - inventory/kvm_server
+          - k8s/00_remove_k8s_cluster_mahines.yaml
+
+      - name: Create Kubernetes cluster machines
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - -i
+          - inventory/kvm_server
+          - k8s/01_create_k8s_cluster_machines.yaml
+
+      - name: Run full Kubernetes host rollout
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - k8s/02_full_rollout.yaml
+
+      - name: Create the etcd cluster
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - k8s/03_create_etcd_cluster.yaml
+
+      - name: Set up the first Kubernetes master
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - k8s/04_setup_k8s_master.yaml
+
+      - name: Add the second Kubernetes master
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - k8s/05_add_k8s_master.yaml
+          - -e
+          - host=master2
+
+      - name: Add all Kubernetes workers in parallel
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - k8s/06_add_k8s_worker.yaml
+          - -e
+          - host=workers
+
+      - name: Deploy the nginx cluster test
+        argv:
+          - ansible-playbook
+          - -i
+          - inventory/k8s_k112
+          - k8s/08_deploy_test_nginx.yaml
+
+  tasks:
+    - name: Run Kubernetes reinstall stages sequentially
+      ansible.builtin.command:
+        argv: "{{ item.argv }}"
+        chdir: "{{ k8s_reinstall_repository_root }}"
+      loop: "{{ k8s_reinstall_commands }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: k8s_reinstall_stage
+      changed_when: true

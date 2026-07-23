@@ -3,27 +3,36 @@
   hosts: localhost
   gather_facts: false
   vars:
-    k8s_add_worker_host: "{{ host | default(k8s_worker_host | default(worker_host | default('worker1'))) }}"
+    k8s_add_worker_selector: "{{ host | default(k8s_worker_host | default(worker_host | default('worker1'))) }}"
+    k8s_add_worker_hosts: >-
+      {{
+        groups['workers']
+        if k8s_add_worker_selector == 'workers'
+        else k8s_add_worker_selector | string | regex_replace('\s', '') | split(',')
+      }}
     k8s_join_source_master: "{{ source_master | default(groups['masters'][0]) }}"
   tasks:
-    - name: Validate selected Kubernetes worker
+    - name: Validate selected Kubernetes workers
       ansible.builtin.assert:
         that:
           - "'workers' in groups"
           - "'masters' in groups"
           - groups['masters'] | length > 0
-          - k8s_add_worker_host in groups['workers']
+          - k8s_add_worker_hosts | length > 0
+          - k8s_add_worker_hosts | difference(groups['workers']) | length == 0
           - k8s_join_source_master in groups['masters']
         fail_msg: >-
-          host must be a worker from the workers inventory group and
-          source_master must be an initialized master. Defaults:
-          host=worker1, source_master={{ groups['masters'][0] | default('master1') }}.
+          host must be a worker, a comma-separated worker list, or the literal
+          group name workers. source_master must be an initialized master.
+          Defaults: host=worker1,
+          source_master={{ groups['masters'][0] | default('master1') }}.
 
     - name: Create selected add-worker inventory group
       ansible.builtin.add_host:
-        name: "{{ k8s_add_worker_host }}"
+        name: "{{ item }}"
         groups: selected_k8s_add_worker
         k8s_join_source_master: "{{ k8s_join_source_master }}"
+      loop: "{{ k8s_add_worker_hosts }}"
 
 - name: Install packages and add Kubernetes worker
   hosts: selected_k8s_add_worker

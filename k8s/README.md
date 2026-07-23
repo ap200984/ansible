@@ -13,9 +13,7 @@ ansible-playbook -i inventory/k8s_k112 k8s/02_full_rollout.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/03_create_etcd_cluster.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/04_setup_k8s_master.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/05_add_k8s_master.yaml -e host=master2
-ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker1
-ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker2
-ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=worker3
+ansible-playbook -i inventory/k8s_k112 k8s/06_add_k8s_worker.yaml -e host=workers
 ansible-playbook -i inventory/k8s_k112 k8s/08_deploy_test_nginx.yaml
 ```
 
@@ -27,6 +25,9 @@ ansible-playbook -i inventory/k8s_k112 k8s/08_deploy_test_nginx.yaml
 - `squid_ip` is optional, but useful when cluster nodes cannot reach package or image registries directly.
 - `05_add_k8s_master.yaml` defaults to `host=master2`.
 - `06_add_k8s_worker.yaml` defaults to `host=worker1`.
+- Pass `host=workers` to configure and join every host in the `[workers]`
+  inventory group in parallel. A comma-separated subset such as
+  `host=worker1,worker3` is also supported.
 - `08_deploy_test_nginx.yaml` creates a test `nginx` Deployment and NodePort Service in namespace `test-nginx`.
 
 ## Check Cluster
