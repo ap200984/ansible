@@ -22,6 +22,7 @@ Defaults:
 - RAM: `512` MB
 - Disk: `10` GB
 - Graphics: `none`
+- Wait for SSH before returning: enabled, with a 300-second timeout
 - Timezone: `UTC`
 - Network source: `enp2s0`
 - Prefix: `/24`
@@ -52,6 +53,9 @@ ansible-playbook \
 ```
 
 Machines are processed sequentially in mapping order.
+Each role invocation waits for the VM's SSH port before creation proceeds to
+the next machine, so the subsequent bare-host rollout cannot start while a
+guest is still booting.
 
 When these playbooks run directly on the KVM server, `kvm1` uses Ansible's
 local connection. SSH connections to the newly created guests use the

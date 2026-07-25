@@ -1,6 +1,6 @@
 ---
 - name: Configure new machine
-  hosts: "{{ hosts | default('all') }}"
+  hosts: "{{ target_hosts | default('all') }}"
   become: true
   gather_facts: true
 

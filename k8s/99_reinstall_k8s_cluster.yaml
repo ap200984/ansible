@@ -6,6 +6,15 @@
 #
 # Run from the repository root:
 #   ansible-playbook k8s/99_reinstall_k8s_cluster.yaml
+#
+# Resume from a specific stage:
+#   ansible-playbook -i inventory/k8s_k112 \
+#     k8s/99_reinstall_k8s_cluster.yaml \
+#     -e k8s_reinstall_start_at=full_rollout
+#
+# Stage IDs:
+#   remove_machines, create_machines, full_rollout, etcd_cluster,
+#   first_master, second_master, workers, nginx_test
 
 - name: Reinstall the Kubernetes cluster
   hosts: localhost
@@ -14,22 +23,26 @@
 
   vars:
     k8s_reinstall_repository_root: "{{ playbook_dir }}/.."
-    k8s_reinstall_commands:
-      - name: Verify KVM host connectivity
-        changed: false
-        argv:
-          - ansible
-          - -i
-          - inventory/k8s_k112
-          - -i
-          - inventory/kvm_server
-          - kvm-server
-          - -c
-          - local
-          - -m
-          - ansible.builtin.ping
+    k8s_reinstall_start_at: remove_machines
+    k8s_reinstall_preflight:
+      id: preflight
+      name: Verify KVM host connectivity
+      changed: false
+      argv:
+        - ansible
+        - -i
+        - inventory/k8s_k112
+        - -i
+        - inventory/kvm_server
+        - kvm-server
+        - -c
+        - local
+        - -m
+        - ansible.builtin.ping
 
-      - name: Remove Kubernetes cluster machines
+    k8s_reinstall_commands:
+      - id: remove_machines
+        name: Remove Kubernetes cluster machines
         changed: true
         argv:
           - ansible-playbook
@@ -39,7 +52,8 @@
           - inventory/kvm_server
           - k8s/00_remove_k8s_cluster_machines.yaml
 
-      - name: Create Kubernetes cluster machines
+      - id: create_machines
+        name: Create Kubernetes cluster machines
         changed: true
         argv:
           - ansible-playbook
@@ -49,7 +63,8 @@
           - inventory/kvm_server
           - k8s/01_create_k8s_cluster_machines.yaml
 
-      - name: Run full Kubernetes host rollout
+      - id: full_rollout
+        name: Run full Kubernetes host rollout
         changed: true
         argv:
           - ansible-playbook
@@ -57,7 +72,8 @@
           - inventory/k8s_k112
           - k8s/02_full_rollout.yaml
 
-      - name: Create the etcd cluster
+      - id: etcd_cluster
+        name: Create the etcd cluster
         changed: true
         argv:
           - ansible-playbook
@@ -65,7 +81,8 @@
           - inventory/k8s_k112
           - k8s/03_create_etcd_cluster.yaml
 
-      - name: Set up the first Kubernetes master
+      - id: first_master
+        name: Set up the first Kubernetes master
         changed: true
         argv:
           - ansible-playbook
@@ -73,7 +90,8 @@
           - inventory/k8s_k112
           - k8s/04_setup_k8s_master.yaml
 
-      - name: Add the second Kubernetes master
+      - id: second_master
+        name: Add the second Kubernetes master
         changed: true
         argv:
           - ansible-playbook
@@ -83,7 +101,8 @@
           - -e
           - host=master2
 
-      - name: Add all Kubernetes workers in parallel
+      - id: workers
+        name: Add all Kubernetes workers in parallel
         changed: true
         argv:
           - ansible-playbook
@@ -93,7 +112,8 @@
           - -e
           - host=workers
 
-      - name: Deploy the nginx cluster test
+      - id: nginx_test
+        name: Deploy the nginx cluster test
         changed: true
         argv:
           - ansible-playbook
@@ -102,9 +122,39 @@
           - k8s/08_deploy_test_nginx.yaml
 
   tasks:
+    - name: Validate requested starting stage
+      ansible.builtin.assert:
+        that:
+          - >-
+            k8s_reinstall_start_at
+            in (k8s_reinstall_commands | map(attribute='id') | list)
+        fail_msg: >-
+          Unknown k8s_reinstall_start_at={{ k8s_reinstall_start_at }}.
+          Valid stages are:
+          {{ k8s_reinstall_commands | map(attribute='id') | join(', ') }}.
+
+    - name: Run KVM connectivity preflight
+      ansible.builtin.include_tasks: tasks/run_reinstall_stage.yml
+      vars:
+        k8s_reinstall_command: "{{ k8s_reinstall_preflight }}"
+
+    - name: Set reinstall stage IDs
+      ansible.builtin.set_fact:
+        k8s_reinstall_stage_ids: >-
+          {{ k8s_reinstall_commands | map(attribute='id') | list }}
+
+    - name: Select reinstall stages
+      ansible.builtin.set_fact:
+        k8s_selected_reinstall_commands: >-
+          {{
+            k8s_reinstall_commands[
+              k8s_reinstall_stage_ids.index(k8s_reinstall_start_at):
+            ]
+          }}
+
     - name: Run Kubernetes reinstall stages sequentially
       ansible.builtin.include_tasks: tasks/run_reinstall_stage.yml
-      loop: "{{ k8s_reinstall_commands }}"
+      loop: "{{ k8s_selected_reinstall_commands }}"
       loop_control:
         loop_var: k8s_reinstall_command
         label: "{{ k8s_reinstall_command.name }}"

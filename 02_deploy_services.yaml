@@ -1,6 +1,6 @@
 ---
 - name: Install container services
-  hosts: "{{ hosts | default('all') }}"
+  hosts: "{{ target_hosts | default('all') }}"
   become: true
   gather_facts: true
 

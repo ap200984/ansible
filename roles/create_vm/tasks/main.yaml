@@ -22,6 +22,7 @@
       - vm_disk_size_gb | int > 0
       - vm_network_source | length > 0
       - vm_graphics | length > 0
+      - vm_wait_for_ssh_timeout | int > 0
     fail_msg: VM resource, network, and graphics parameters must be valid.
   tags:
     - create_vm
@@ -250,3 +251,21 @@
   when: vm_name not in running_vms.stdout_lines
   tags:
     - create_vm
+
+- name: Wait until VM SSH is ready
+  ansible.builtin.wait_for:
+    host: "{{ vm_ip_address }}"
+    port: 22
+    delay: "{{ vm_wait_for_ssh_delay }}"
+    timeout: "{{ vm_wait_for_ssh_timeout }}"
+    connect_timeout: 5
+    state: started
+    msg: >-
+      VM {{ vm_name }} is running, but SSH did not become available at
+      {{ vm_ip_address }}:22 within {{ vm_wait_for_ssh_timeout }} seconds.
+  delegate_to: localhost
+  become: false
+  when: vm_wait_for_ssh | bool
+  tags:
+    - create_vm
+    - "create_vm:ready"

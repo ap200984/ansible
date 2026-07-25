@@ -16,6 +16,11 @@
 Create domain k112.space
     - setup nginx + certbot
 
+Add nexus monitoring in zabbix
+    - requests limit reched for today
+    - packeges cahced
+    - disk usage
+
 install_amnesiawg from playbook same as from phone with passingthrough directore with client configs
 
 backup
@@ -25,6 +30,7 @@ backup
         - mediatypes
         - mention rules
         - trigger actions
+        - dashboards
         - database (without history)
     - grafana
         - dashbords

@@ -7,6 +7,9 @@ vm_vcpus: 1
 vm_disk_size_gb: 10
 vm_os_variant: debian12
 vm_graphics: none
+vm_wait_for_ssh: true
+vm_wait_for_ssh_delay: 5
+vm_wait_for_ssh_timeout: 300
 
 vm_network_source: enp2s0
 vm_network_source_mode: bridge
