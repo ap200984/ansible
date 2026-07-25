@@ -21,14 +21,6 @@
 - name: Bootstrap the Let's Encrypt certificate
   when: not service_certbot_certificate.stat.exists
   block:
-    - name: Load Reg.ru credentials
-      ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/secrets/regru_secrets.yml"
-
-    - name: Load Let's Encrypt settings
-      ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/secrets/letsencrypt_secrets.yml"
-
     - name: Write Reg.ru DNS credentials
       ansible.builtin.copy:
         dest: /etc/letsencrypt/regru.ini
@@ -63,11 +55,12 @@
       community.docker.docker_container_exec:
         container: certbot_bootstrap
         command: >-
-          certbot certonly --authenticator dns
+          certbot certonly --authenticator dns-regru
           -d {{ domain }} -d *.{{ domain }}
-          --email {{ lets_encrypt_email }}
+          --dns-regru-credentials /etc/letsencrypt/regru.ini
+          --dns-regru-propagation-seconds 600
+          --email admin@{{ domain }}
           --non-interactive --agree-tos
-          --dns-propagation-seconds 600
 
   always:
     - name: Remove temporary Certbot bootstrap container

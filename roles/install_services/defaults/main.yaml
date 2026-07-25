@@ -14,6 +14,7 @@ service_nginx_templates:
   gitlab: gitlab.conf.j2
   jenkins: jenkins.conf.j2
   owncloud: owncloud.conf.j2
+  nexus: nexus.conf.j2
 
 service_catalog:
   speedtest:

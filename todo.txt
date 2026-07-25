@@ -39,6 +39,7 @@ backup
     - jenkins
     - gitlab
     - certbot certs
+    - nginx.conf
     - ejabberd
     - owncloud ???
 
@@ -48,14 +49,10 @@ ELK on kvm_server
     - deploy services
 
 
-
-add domain for k112
-    figure out how cert works
-    add proxy to server_k112
-
-
-    Can you include it inside 00 create_vm.yaml?
-And I have renamed create_vm.yaml to 00 create_vm.yaml. Fix 01_create_k8s_cluster_machines.yml accordingly
-
-Lets simplyfy thsi playbook. I don't need to create several machines at once. If I need it inside 01_create_k8s_cluster_machines.yaml let's create them one by one.
-In
+Add kvm_server service_containers:
+    - zabbix_proxy
+    - socks5
+    - speedtest
+    - nginx
+    - certbot
+    - nexus
