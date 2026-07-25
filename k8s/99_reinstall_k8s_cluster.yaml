@@ -15,7 +15,20 @@
   vars:
     k8s_reinstall_repository_root: "{{ playbook_dir }}/.."
     k8s_reinstall_commands:
+      - name: Verify KVM host connectivity
+        changed: false
+        argv:
+          - ansible
+          - -i
+          - inventory/k8s_k112
+          - -i
+          - inventory/kvm_server
+          - kvm-server
+          - -m
+          - ansible.builtin.ping
+
       - name: Remove Kubernetes cluster machines
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -25,6 +38,7 @@
           - k8s/00_remove_k8s_cluster_machines.yaml
 
       - name: Create Kubernetes cluster machines
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -34,6 +48,7 @@
           - k8s/01_create_k8s_cluster_machines.yaml
 
       - name: Run full Kubernetes host rollout
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -41,6 +56,7 @@
           - k8s/02_full_rollout.yaml
 
       - name: Create the etcd cluster
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -48,6 +64,7 @@
           - k8s/03_create_etcd_cluster.yaml
 
       - name: Set up the first Kubernetes master
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -55,6 +72,7 @@
           - k8s/04_setup_k8s_master.yaml
 
       - name: Add the second Kubernetes master
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -64,6 +82,7 @@
           - host=master2
 
       - name: Add all Kubernetes workers in parallel
+        changed: true
         argv:
           - ansible-playbook
           - -i
@@ -73,6 +92,7 @@
           - host=workers
 
       - name: Deploy the nginx cluster test
+        changed: true
         argv:
           - ansible-playbook
           - -i

@@ -4,4 +4,4 @@
     argv: "{{ k8s_reinstall_command.argv }}"
     chdir: "{{ k8s_reinstall_repository_root }}"
   register: k8s_reinstall_stage
-  changed_when: true
+  changed_when: k8s_reinstall_command.changed | default(true) | bool
