@@ -13,6 +13,7 @@
 
 - name: Create a new KVM virtual machine
   hosts: kvm-server
+  connection: local
   become: true
   gather_facts: true
 

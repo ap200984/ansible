@@ -1,6 +1,7 @@
 ---
 - name: Create Kubernetes virtual machines one by one
   hosts: kvm-server
+  connection: local
   become: true
   gather_facts: true
 

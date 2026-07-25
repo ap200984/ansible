@@ -24,6 +24,8 @@
           - -i
           - inventory/kvm_server
           - kvm-server
+          - -c
+          - local
           - -m
           - ansible.builtin.ping
 

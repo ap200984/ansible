@@ -1,6 +1,4 @@
 ---
-ansible_ssh_common_args: >-
-  -o ProxyJump=ansible@86.110.170.70:19020
 ntp_server: 10.9.1.70
 dns_server: 10.9.1.1
 zabbix_server: 10.9.1.70

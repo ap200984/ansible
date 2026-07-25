@@ -53,6 +53,11 @@ ansible-playbook \
 
 Machines are processed sequentially in mapping order.
 
+When these playbooks run directly on the KVM server, `kvm1` uses Ansible's
+local connection. SSH connections to the newly created guests use the
+controller user's SSH agent; ensure `ssh-add -l` lists the required key before
+starting the rollout.
+
 ## Required local files
 
 - At least one public key under `ssh_public_keys/*.pub`.

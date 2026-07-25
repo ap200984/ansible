@@ -21,25 +21,36 @@
 
 - name: Start reverse SSH tunnel for target proxy
   ansible.builtin.command:
-    argv:
-      - ssh
-      - -fN
-      - -M
-      - -S
-      - "{{ k8s_local_apt_proxy_dir }}/{{ inventory_hostname }}.ctl"
-      - -o
-      - ExitOnForwardFailure=yes
-      - -o
-      - ServerAliveInterval=30
-      - -o
-      - ServerAliveCountMax=3
-      - -R
-      - "127.0.0.1:{{ k8s_local_apt_proxy_target_port }}:{{ k8s_local_apt_proxy_controller_host }}:{{ k8s_local_apt_proxy_controller_port }}"
-      - -i
-      - "{{ ansible_ssh_private_key_file | default('~/.ssh/id_rsa') }}"
-      - -l
-      - "{{ ansible_user | default('root') }}"
-      - "{{ ansible_host | default(inventory_hostname) }}"
+    argv: >-
+      {{
+        [
+          'ssh',
+          '-fN',
+          '-M',
+          '-S',
+          k8s_local_apt_proxy_dir ~ '/' ~ inventory_hostname ~ '.ctl',
+          '-o',
+          'ExitOnForwardFailure=yes',
+          '-o',
+          'ServerAliveInterval=30',
+          '-o',
+          'ServerAliveCountMax=3',
+          '-R',
+          '127.0.0.1:' ~ k8s_local_apt_proxy_target_port ~ ':'
+          ~ k8s_local_apt_proxy_controller_host ~ ':'
+          ~ k8s_local_apt_proxy_controller_port
+        ]
+        + (
+          ['-i', ansible_ssh_private_key_file]
+          if ansible_ssh_private_key_file | default('') | length > 0
+          else []
+        )
+        + [
+          '-l',
+          ansible_user | default('root'),
+          ansible_host | default(inventory_hostname)
+        ]
+      }}
   delegate_to: localhost
   become: false
   register: k8s_local_apt_proxy_tunnel

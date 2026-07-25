@@ -1,6 +1,7 @@
 ---
 - name: Remove Machines K8s VMs
   hosts: kvm-server
+  connection: local
   become: true
   gather_facts: false
   vars_files:
