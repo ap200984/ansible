@@ -7,7 +7,7 @@ These playbooks build a small Kubernetes cluster for learning.
 Run from the repository root.
 
 ```bash
-ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/00_remove_k8s_cluster_mahines.yaml
+ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/00_remove_k8s_cluster_Machines.yaml
 ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/01_create_k8s_cluster_machines.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/02_full_rollout.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/03_create_etcd_cluster.yaml

@@ -9,9 +9,11 @@ ansible-playbook -i inventory/vds6 install_services.yaml \
   -e socks5_proxy_password=''
 ```
 
-Each host selects its desired services with `service_containers` in
-`host_vars/<inventory_hostname>.yml`. Container definitions and defaults live
-in `defaults/main.yaml`; per-service preparation and post-install work lives in
+Hosts that need containers select their desired services with
+`service_containers` in `host_vars/<inventory_hostname>.yml`. The role defaults
+to an empty list, so hosts without container services need no host-vars file or
+empty override. Container definitions and defaults live in
+`defaults/main.yaml`; per-service preparation and post-install work lives in
 small task files under `tasks/`.
 
 The order in `service_containers` is significant for dependent services. For

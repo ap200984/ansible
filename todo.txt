@@ -15,6 +15,38 @@
 
 install_amnesiawg from playbook same as from phone with passingthrough directore with client configs
 
+backup
+    - zabbix
+        - templates
+        - hosts
+        - mediatypes
+        - mention rules
+        - trigger actions
+        - database (without history)
+    - grafana
+        - dashbords
+        - plugins + theit settings
+    - amnezia configs
+    - jenkins
+    - gitlab
+    - certbot certs
+    - ejabberd
+    - owncloud ???
+
+
+ELK on kvm_server
+    - 3 VMs: elasticsearch, logstash, kibana
+    - deploy services
+
+
+
 add domain for k112
     figure out how cert works
     add proxy to server_k112
+
+
+    Can you include it inside 00 create_vm.yaml?
+And I have renamed create_vm.yaml to 00 create_vm.yaml. Fix 01_create_k8s_cluster_machines.yml accordingly
+
+Lets simplyfy thsi playbook. I don't need to create several machines at once. If I need it inside 01_create_k8s_cluster_machines.yaml let's create them one by one.
+In
