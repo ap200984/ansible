@@ -4,6 +4,23 @@
   become: true
   gather_facts: true
 
+  pre_tasks:
+    - name: Check whether cloud-init is installed
+      ansible.builtin.stat:
+        path: /usr/bin/cloud-init
+      register: bare_host_cloud_init
+
+    - name: Wait for cloud-init to finish
+      ansible.builtin.command:
+        argv:
+          - cloud-init
+          - status
+          - --wait
+      async: 600
+      poll: 5
+      changed_when: false
+      when: bare_host_cloud_init.stat.exists
+
   roles:
     - apt_sources
     - hostname

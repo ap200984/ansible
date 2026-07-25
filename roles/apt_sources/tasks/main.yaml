@@ -149,6 +149,7 @@
 - name: Refresh apt metadata after source changes
   ansible.builtin.apt:
     update_cache: true
+    lock_timeout: 300
   when:
     - ansible_os_family == 'Debian'
     - >-
