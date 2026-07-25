@@ -1,0 +1,62 @@
+---
+# vm_name and vm_ip_address are intentionally required and have no defaults.
+vm_user: ansible
+vm_timezone: UTC
+vm_memory_mb: 512
+vm_vcpus: 1
+vm_disk_size_gb: 10
+vm_os_variant: debian12
+vm_graphics: none
+
+vm_network_source: enp2s0
+vm_network_source_mode: bridge
+vm_netmask_prefix: 24
+vm_gateway: "{{ vm_ip_address.split('.')[:3] | join('.') }}.1"
+vm_dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+vm_image_relative_path: bookworm/latest/debian-12-genericcloud-amd64.qcow2
+vm_image_upstream_url: >-
+  https://cloud.debian.org/images/cloud/{{ vm_image_relative_path }}
+vm_image_nexus_url: >-
+  {{ nexus_url | default('') }}/repository/debian-cloud-images/{{ vm_image_relative_path }}
+vm_image_url: >-
+  {{
+    vm_image_nexus_url
+    if use_nexus | default(false) | bool
+    else vm_image_upstream_url
+  }}
+vm_image_name: debian-12-genericcloud-amd64.qcow2
+vm_libvirt_dir: /var/lib/libvirt/images
+vm_base_image: "{{ vm_libvirt_dir }}/{{ vm_image_name }}"
+
+vm_ssh_public_keys_dir: "{{ role_path }}/../../ssh_public_keys"
+vm_ssh_public_key_files: >-
+  {{
+    lookup(
+      'ansible.builtin.fileglob',
+      vm_ssh_public_keys_dir ~ '/*.pub',
+      wantlist=true
+    )
+  }}
+vm_passwd_hashes_dir: "{{ role_path }}/../../passwd_hashes"
+vm_users:
+  - name: root
+    password_hash_file: "{{ vm_passwd_hashes_dir }}/root"
+    shell: /bin/bash
+  - name: ansible
+    password_hash_file: "{{ vm_passwd_hashes_dir }}/ansible"
+    groups: sudo
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+  - name: user
+    password_hash_file: "{{ vm_passwd_hashes_dir }}/user"
+    groups: sudo
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+  - name: apopov
+    password_hash_file: "{{ vm_passwd_hashes_dir }}/apopov"
+    groups: sudo
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash

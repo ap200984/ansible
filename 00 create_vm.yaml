@@ -1,170 +1,20 @@
 ---
+# Required:
+#   vm_name       - libvirt domain name and guest hostname
+#   vm_ip_address - static IPv4 address for the guest
+#
+# Example:
+# ansible-playbook -i inventory/kvm_server create_vm.yaml \
+#   -e vm_name=pgadmin-vm \
+#   -e vm_ip_address=10.9.0.202 \
+#   -e vm_memory_mb=4096 \
+#   -e vm_vcpus=4 \
+#   -e vm_disk_size_gb=40
+
 - name: Create a new KVM virtual machine
   hosts: kvm-server
   become: true
   gather_facts: true
 
-  vars:
-    vm_user: ansible
-    vm_timezone: UTC
-    vm_memory_mb: 2048
-    vm_vcpus: 2
-    vm_disk_size_gb: 20
-    vm_wait_for_ssh: true
-    vm_wait_for_ssh_timeout: 300
-
-    vm_network_source: enp2s0
-    vm_network_source_mode: bridge
-    vm_network_arg: "type=direct,source={{ vm_network_source }},source_mode={{ vm_network_source_mode }},model=virtio"
-    vm_netmask_prefix: 24
-    vm_gateway: "{{ vm_ip_address.split('.')[:3] | join('.') }}.1"
-    vm_dns_servers:
-      - 1.1.1.1
-      - 8.8.8.8
-
-    vm_list: []
-    vm_items: "{{ vm_list if vm_list | length > 0 else [ { 'name': vm_name, 'ip_address': vm_ip_address, 'memory_mb': vm_memory_mb, 'vcpus': vm_vcpus, 'disk_size_gb': vm_disk_size_gb, 'timezone': vm_timezone, 'network_source': vm_network_source, 'network_source_mode': vm_network_source_mode, 'netmask_prefix': vm_netmask_prefix, 'gateway': vm_gateway, 'dns_servers': vm_dns_servers, 'user': vm_user } ] }}"
-
-    vm_image_relative_path: bookworm/latest/debian-12-genericcloud-amd64.qcow2
-    vm_image_upstream_url: "https://cloud.debian.org/images/cloud/{{ vm_image_relative_path }}"
-    vm_image_nexus_url: >-
-      {{ nexus_url | default('') }}/repository/debian-cloud-images/{{ vm_image_relative_path }}
-    vm_image_url: >-
-      {{ vm_image_nexus_url
-         if use_nexus | default(false) | bool
-         else vm_image_upstream_url }}
-    vm_image_name: debian-12-genericcloud-amd64.qcow2
-    vm_libvirt_dir: /var/lib/libvirt/images
-    vm_base_image: "{{ vm_libvirt_dir }}/{{ vm_image_name }}"
-
-    ssh_public_keys_dir: "{{ playbook_dir }}/ssh_public_keys"
-    ssh_public_key_files: "{{ lookup('ansible.builtin.fileglob', ssh_public_keys_dir ~ '/*.pub', wantlist=True) }}"
-    passwd_hashes_dir: "{{ playbook_dir }}/passwd_hashes"
-    vm_users:
-      - name: root
-        password_hash_file: "{{ passwd_hashes_dir }}/root"
-        shell: /bin/bash
-      - name: ansible
-        password_hash_file: "{{ passwd_hashes_dir }}/ansible"
-        groups: sudo
-        sudo: ALL=(ALL) NOPASSWD:ALL
-        shell: /bin/bash
-      - name: user
-        password_hash_file: "{{ passwd_hashes_dir }}/user"
-        groups: sudo
-        sudo: ALL=(ALL) NOPASSWD:ALL
-        shell: /bin/bash
-      - name: apopov
-        password_hash_file: "{{ passwd_hashes_dir }}/apopov"
-        groups: sudo
-        sudo: ALL=(ALL) NOPASSWD:ALL
-        shell: /bin/bash
-
-  pre_tasks:
-    - name: Validate VM definition list
-      ansible.builtin.assert:
-        that:
-          - vm_items | length > 0
-        fail_msg: >-
-          Pass vm_name/vm_ip_address or vm_list with at least one VM definition.
-
-    - name: Validate VM parameters
-      ansible.builtin.assert:
-        that:
-          - item.name is defined
-          - item.name | length > 0
-          - item.ip_address is defined
-          - item.ip_address is match('^([0-9]{1,3}\\.){3}[0-9]{1,3}$')
-          - item.network_source | default(vm_network_source) | length > 0
-        fail_msg: >-
-          Each VM needs a name, a valid ip_address, and a network_source.
-          Check the vm_list entries or the vm_name/vm_ip_address variables.
-      loop: "{{ vm_items }}"
-
-    - name: Validate Nexus cloud image settings
-      ansible.builtin.assert:
-        that:
-          - nexus_url is defined
-          - nexus_url | string | length > 0
-          - nexus_url | urlsplit('scheme') in ['http', 'https']
-        fail_msg: >-
-          use_nexus requires nexus_url, for example http://10.9.1.70:8081.
-      when: use_nexus | default(false) | bool
-
-    - name: Validate VM user password hashes
-      ansible.builtin.assert:
-        that:
-          - item.name is defined
-          - item.name | length > 0
-          - item.password_hash_file is defined
-          - lookup('ansible.builtin.file', item.password_hash_file, errors='ignore') | trim | length > 0
-          - "'\n' not in lookup('ansible.builtin.file', item.password_hash_file, errors='ignore') | trim"
-          - "'\r' not in lookup('ansible.builtin.file', item.password_hash_file, errors='ignore') | trim"
-        fail_msg: >-
-          Password hash file for VM user {{ item.name | default('unknown') }}
-          must exist, must be non-empty, and must contain one single-line hash:
-          {{ item.password_hash_file | default('undefined') }}
-      loop: "{{ vm_users }}"
-
-    - name: Show selected VM network attachment
-      ansible.builtin.debug:
-        msg: "VM network attachment: {{ vm_network_arg }}"
-
-  tasks:
-    - name: Install VM creation dependencies
-      ansible.builtin.apt:
-        name:
-          - libguestfs-tools
-          - libvirt-clients
-          - qemu-utils
-          - virtinst
-        state: present
-        update_cache: true
-        cache_valid_time: 86400
-      when: ansible_os_family == "Debian"
-
-    - name: Create or ensure VMs exist
-      ansible.builtin.include_tasks: tasks/create_vm_instance.yaml
-      loop: "{{ vm_items }}"
-      loop_control:
-        loop_var: vm
-
-    - name: Check running VMs
-      ansible.builtin.command:
-        cmd: "virsh list --state-running --name"
-      register: running_vms
-      changed_when: false
-
-    - name: Start VM when it is not running
-      ansible.builtin.command:
-        cmd: "virsh start {{ vm.name }}"
-      register: vm_start
-      changed_when: vm_start.rc == 0
-      failed_when:
-        - vm_start.rc != 0
-        - "'already active' not in vm_start.stderr"
-        - "'уже активен' not in vm_start.stderr"
-      when: vm.name not in running_vms.stdout_lines
-      loop: "{{ vm_items }}"
-      loop_control:
-        loop_var: vm
-
-    # - name: Wait for SSH to become available
-    #   ansible.builtin.wait_for:
-    #     host: "{{ vm_ip_address }}"
-    #     port: 22
-    #     delay: 10
-    #     timeout: "{{ vm_wait_for_ssh_timeout }}"
-    #     state: started
-    #   become: false
-    #   delegate_to: localhost
-    #   when: vm_wait_for_ssh | bool
-
-    # - name: Show SSH connection info
-    #   ansible.builtin.debug:
-    #     msg: "VM {{ vm_name }} is ready. Connect with: ssh {{ vm_user }}@{{ vm_ip_address }}"
-
-
-### ansible-playbook -i inventory/kvm_server create_vm.yaml   -e vm_name=etcd2   -e vm_ip_address=10.9.1.12   -e vm_memory_mb=512   -e vm_vcpus=1   -e vm_disk_size_gb=10
-### ansible-playbook -i inventory/k8s_k112 create_etcd_cluster.yaml -e hosts=etcd1,etcd2,etcd3
-### ansible-playbook -i inventory/k16_k112_server ntp_server.yml
+  roles:
+    - create_vm

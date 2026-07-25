@@ -1,0 +1,252 @@
+---
+- name: Validate required VM parameters
+  ansible.builtin.assert:
+    that:
+      - vm_name is defined
+      - vm_name | default('') | string | length > 0
+      - vm_name | default('') is match('^[A-Za-z0-9][A-Za-z0-9_.-]*$')
+      - vm_ip_address is defined
+      - vm_ip_address | default('') is match('^([0-9]{1,3}\\.){3}[0-9]{1,3}$')
+    fail_msg: >-
+      vm_name and vm_ip_address are obligatory. Pass both variables, for
+      example: -e vm_name=test-vm -e vm_ip_address=10.9.1.50
+  tags:
+    - create_vm
+    - "create_vm:validate"
+
+- name: Validate VM resource parameters
+  ansible.builtin.assert:
+    that:
+      - vm_memory_mb | int > 0
+      - vm_vcpus | int > 0
+      - vm_disk_size_gb | int > 0
+      - vm_network_source | length > 0
+      - vm_graphics | length > 0
+    fail_msg: VM resource, network, and graphics parameters must be valid.
+  tags:
+    - create_vm
+    - "create_vm:validate"
+
+- name: Validate Nexus cloud image settings
+  ansible.builtin.assert:
+    that:
+      - nexus_url is defined
+      - nexus_url | string | length > 0
+      - nexus_url | urlsplit('scheme') in ['http', 'https']
+    fail_msg: >-
+      use_nexus requires nexus_url, for example http://10.9.1.70:8081.
+  when: use_nexus | default(false) | bool
+  tags:
+    - create_vm
+    - "create_vm:validate"
+
+- name: Validate VM user password hashes
+  ansible.builtin.assert:
+    that:
+      - vm_account.name | length > 0
+      - lookup('ansible.builtin.file', vm_account.password_hash_file, errors='ignore') | trim | length > 0
+      - "'\n' not in lookup('ansible.builtin.file', vm_account.password_hash_file, errors='ignore') | trim"
+      - "'\r' not in lookup('ansible.builtin.file', vm_account.password_hash_file, errors='ignore') | trim"
+    fail_msg: >-
+      Password hash for {{ vm_account.name | default('unknown') }} must exist
+      and contain one non-empty line: {{ vm_account.password_hash_file }}
+  loop: "{{ vm_users }}"
+  loop_control:
+    loop_var: vm_account
+    label: "{{ vm_account.name }}"
+  tags:
+    - create_vm
+    - "create_vm:validate"
+
+- name: Install VM creation dependencies
+  ansible.builtin.apt:
+    name:
+      - libguestfs-tools
+      - libvirt-clients
+      - qemu-utils
+      - virtinst
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+  when: ansible_os_family == "Debian"
+  tags:
+    - create_vm
+    - "create_vm:packages"
+
+- name: Check whether VM already exists
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - dominfo
+      - "{{ vm_name }}"
+  register: vm_dominfo
+  changed_when: false
+  failed_when: false
+  tags:
+    - create_vm
+
+- name: Create VM
+  when: vm_dominfo.rc != 0
+  tags:
+    - create_vm
+  block:
+    - name: Check base cloud image
+      ansible.builtin.stat:
+        path: "{{ vm_base_image }}"
+      register: vm_base_image_stat
+
+    - name: Download Debian 12 base cloud image
+      ansible.builtin.get_url:
+        url: "{{ vm_image_url }}"
+        dest: "{{ vm_base_image }}"
+        mode: "0644"
+      when: not vm_base_image_stat.stat.exists
+
+    - name: Create cloud-init directory
+      ansible.builtin.file:
+        path: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create cloud-init datasource override
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/ds-identify.cfg"
+        mode: "0644"
+        content: |
+          policy: enabled
+          datasource: NoCloud
+
+    - name: Create cloud-init NoCloud datasource list
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/99_nocloud.cfg"
+        mode: "0644"
+        content: |
+          datasource_list: [ NoCloud, None ]
+
+    - name: Create VM disk image
+      ansible.builtin.command:
+        cmd: >-
+          qemu-img create -f qcow2 -F qcow2 -b {{ vm_base_image }}
+          {{ vm_libvirt_dir }}/{{ vm_name }}.qcow2 {{ vm_disk_size_gb }}G
+        creates: "{{ vm_libvirt_dir }}/{{ vm_name }}.qcow2"
+
+    - name: Create cloud-init user-data
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/user-data"
+        mode: "0644"
+        content: |
+          #cloud-config
+          timezone: {{ vm_timezone | to_json }}
+          hostname: {{ vm_name | to_json }}
+          manage_etc_hosts: true
+          users:
+            - default
+          {% for user in vm_users %}
+            - name: {{ user.name | to_json }}
+              shell: {{ user.shell | default('/bin/bash') | to_json }}
+          {% if user.groups is defined %}
+              groups: {{ user.groups | to_json }}
+          {% endif %}
+          {% if user.sudo is defined %}
+              sudo: {{ user.sudo | to_json }}
+          {% endif %}
+              lock_passwd: false
+              passwd: {{ lookup('ansible.builtin.file', user.password_hash_file) | trim | to_json }}
+              ssh_authorized_keys:
+          {% for key_file in vm_ssh_public_key_files %}
+                - {{ lookup('ansible.builtin.file', key_file) }}
+          {% endfor %}
+          {% endfor %}
+          ssh_pwauth: false
+          disable_root: false
+          package_update: true
+          packages:
+            - qemu-guest-agent
+          runcmd:
+            - systemctl enable --now serial-getty@ttyS0.service
+            - systemctl start qemu-guest-agent
+
+    - name: Create cloud-init meta-data
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/meta-data"
+        mode: "0644"
+        content: |
+          instance-id: {{ vm_name | to_json }}
+          local-hostname: {{ vm_name | to_json }}
+
+    - name: Create cloud-init network-config
+      ansible.builtin.copy:
+        dest: "{{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/network-config"
+        mode: "0644"
+        content: |
+          version: 2
+          ethernets:
+            vmnic0:
+              match:
+                name: "e*"
+              dhcp4: false
+              addresses:
+                - {{ vm_ip_address }}/{{ vm_netmask_prefix }}
+              routes:
+                - to: default
+                  via: {{ vm_gateway }}
+              nameservers:
+                addresses: {{ vm_dns_servers }}
+
+    - name: Seed NoCloud data into VM disk image
+      ansible.builtin.command:
+        cmd: >-
+          virt-customize
+          -a {{ vm_libvirt_dir }}/{{ vm_name }}.qcow2
+          --mkdir /var/lib/cloud/seed/nocloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/ds-identify.cfg:/etc/cloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/99_nocloud.cfg:/etc/cloud/cloud.cfg.d
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/user-data:/var/lib/cloud/seed/nocloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/meta-data:/var/lib/cloud/seed/nocloud
+          --copy-in {{ vm_libvirt_dir }}/cloud-init/{{ vm_name }}/network-config:/var/lib/cloud/seed/nocloud
+      environment:
+        LIBGUESTFS_BACKEND: direct
+
+    - name: Create and start VM
+      ansible.builtin.command:
+        cmd: >-
+          virt-install
+          --name {{ vm_name }}
+          --memory {{ vm_memory_mb }}
+          --vcpus {{ vm_vcpus }}
+          --disk path={{ vm_libvirt_dir }}/{{ vm_name }}.qcow2,format=qcow2,bus=virtio
+          --os-variant {{ vm_os_variant }}
+          --virt-type kvm
+          --graphics {{ vm_graphics }}
+          --console pty,target_type=serial
+          --network type=direct,source={{ vm_network_source }},source_mode={{ vm_network_source_mode }},model=virtio
+          --import
+          --noautoconsole
+
+- name: Check running VMs
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - list
+      - --state-running
+      - --name
+  register: running_vms
+  changed_when: false
+  tags:
+    - create_vm
+
+- name: Start VM when it is not running
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - start
+      - "{{ vm_name }}"
+  register: vm_start
+  changed_when: vm_start.rc == 0
+  failed_when:
+    - vm_start.rc != 0
+    - "'already active' not in vm_start.stderr"
+    - "'уже активен' not in vm_start.stderr"
+  when: vm_name not in running_vms.stdout_lines
+  tags:
+    - create_vm
