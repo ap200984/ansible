@@ -1,0 +1,7 @@
+---
+- name: "Run stage: {{ k8s_reinstall_command.name }}"
+  ansible.builtin.command:
+    argv: "{{ k8s_reinstall_command.argv }}"
+    chdir: "{{ k8s_reinstall_repository_root }}"
+  register: k8s_reinstall_stage
+  changed_when: true

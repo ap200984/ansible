@@ -81,11 +81,8 @@
 
   tasks:
     - name: Run Kubernetes reinstall stages sequentially
-      ansible.builtin.command:
-        argv: "{{ item.argv }}"
-        chdir: "{{ k8s_reinstall_repository_root }}"
+      ansible.builtin.include_tasks: tasks/run_reinstall_stage.yml
       loop: "{{ k8s_reinstall_commands }}"
       loop_control:
-        label: "{{ item.name }}"
-      register: k8s_reinstall_stage
-      changed_when: true
+        loop_var: k8s_reinstall_command
+        label: "{{ k8s_reinstall_command.name }}"
