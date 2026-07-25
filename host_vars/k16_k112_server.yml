@@ -1,0 +1,18 @@
+---
+ansible_port: 19020
+
+zabbix_server: 10.9.1.70
+squid_endpoint: http://195.245.239.82:31280
+use_nexus: false
+nexus_url: http://127.0.0.1:8081
+nexus_docker_registry: 127.0.0.1:8082
+nexus_elastic_registry: 127.0.0.1:8083
+nexus_k8s_registry: 127.0.0.1:8084
+ntp_server_enabled: true
+
+service_containers:
+  - certbot
+  - nginx
+  - nexus
+
+domain: k112.space

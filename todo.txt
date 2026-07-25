@@ -16,6 +16,8 @@
 Create domain k112.space
     - setup nginx + certbot
 
+Add nexus to list of secvices on kvm_server
+
 Add nexus monitoring in zabbix
     - requests limit reched for today
     - packeges cahced

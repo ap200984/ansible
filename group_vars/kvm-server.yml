@@ -1,5 +1,0 @@
----
-zabbix_server: 10.9.1.70
-squid_endpoint: http://195.245.239.82:31280
-nexus_url: http://127.0.0.1:8081
-ntp_server_enabled: true

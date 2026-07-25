@@ -6,6 +6,151 @@ service_docker_network:
   subnet: 172.20.0.0/16
   iprange: 172.20.240.0/20
 
+nexus_container_name: nexus
+nexus_image: sonatype/nexus3:3.76.0
+nexus_data_dir: /backup/nexus
+nexus_application_port: 8081
+nexus_docker_port: 8082
+nexus_elastic_docker_port: 8083
+nexus_k8s_docker_port: 8084
+nexus_cache_minutes: 60
+nexus_debian_distribution: trixie
+nexus_ubuntu_distribution: noble
+nexus_api_url: "http://127.0.0.1:{{ nexus_application_port }}"
+nexus_squid_endpoint: "{{ squid_endpoint }}"
+nexus_squid_host: "{{ nexus_squid_endpoint | urlsplit('hostname') }}"
+nexus_squid_port: >-
+  {{ nexus_squid_endpoint | urlsplit('port') | default(3128, true) }}
+
+nexus_proxy_repositories:
+  - name: debian-proxy
+    format: apt
+    endpoint: apt/proxy
+    remote_url: https://deb.debian.org/debian/
+    extra:
+      apt:
+        distribution: "{{ nexus_debian_distribution }}"
+        flat: false
+  - name: ubuntu-proxy
+    format: apt
+    endpoint: apt/proxy
+    remote_url: https://archive.ubuntu.com/ubuntu/
+    extra:
+      apt:
+        distribution: "{{ nexus_ubuntu_distribution }}"
+        flat: false
+  - name: debian-security-proxy
+    format: apt
+    endpoint: apt/proxy
+    remote_url: https://deb.debian.org/debian-security/
+    extra:
+      apt:
+        distribution: "{{ nexus_debian_distribution }}-security"
+        flat: false
+  - name: kubernetes-v1-30-proxy
+    format: apt
+    endpoint: apt/proxy
+    remote_url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/
+    extra:
+      apt:
+        distribution: "/"
+        flat: true
+  - name: kubernetes-v1-30-raw
+    format: raw
+    endpoint: raw/proxy
+    remote_url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/
+    extra:
+      storage:
+        strictContentTypeValidation: false
+  - name: calico-raw
+    format: raw
+    endpoint: raw/proxy
+    remote_url: https://raw.githubusercontent.com/projectcalico/calico/
+    extra:
+      storage:
+        strictContentTypeValidation: false
+  - name: etcd-releases-raw
+    format: raw
+    endpoint: raw/proxy
+    remote_url: https://github.com/etcd-io/etcd/releases/download/
+    extra:
+      storage:
+        strictContentTypeValidation: false
+  - name: docker-debian-apt-proxy
+    format: apt
+    endpoint: apt/proxy
+    remote_url: https://download.docker.com/linux/debian/
+    extra:
+      apt:
+        distribution: "{{ nexus_debian_distribution }}"
+        flat: false
+  - name: docker-ubuntu-apt-proxy
+    format: apt
+    endpoint: apt/proxy
+    remote_url: https://download.docker.com/linux/ubuntu/
+    extra:
+      apt:
+        distribution: "{{ nexus_ubuntu_distribution }}"
+        flat: false
+  - name: debian-cloud-images
+    format: raw
+    endpoint: raw/proxy
+    remote_url: https://cloud.debian.org/images/cloud/
+    extra:
+      storage:
+        strictContentTypeValidation: false
+  - name: zabbix-proxy
+    format: raw
+    endpoint: raw/proxy
+    remote_url: https://repo.zabbix.com/
+    extra:
+      storage:
+        strictContentTypeValidation: false
+  - name: pypi-proxy
+    format: pypi
+    endpoint: pypi/proxy
+    remote_url: https://pypi.org/
+    extra: {}
+  - name: docker-hub
+    format: docker
+    endpoint: docker/proxy
+    remote_url: https://registry-1.docker.io
+    extra:
+      docker:
+        v1Enabled: true
+        forceBasicAuth: false
+        httpPort: "{{ nexus_docker_port }}"
+      dockerProxy:
+        indexType: HUB
+        cacheForeignLayers: true
+        foreignLayerUrlWhitelist: []
+  - name: docker-elastic
+    format: docker
+    endpoint: docker/proxy
+    remote_url: https://docker.elastic.co
+    extra:
+      docker:
+        v1Enabled: false
+        forceBasicAuth: false
+        httpPort: "{{ nexus_elastic_docker_port }}"
+      dockerProxy:
+        indexType: REGISTRY
+        cacheForeignLayers: true
+        foreignLayerUrlWhitelist: []
+  - name: docker-kubernetes
+    format: docker
+    endpoint: docker/proxy
+    remote_url: https://registry.k8s.io
+    extra:
+      docker:
+        v1Enabled: false
+        forceBasicAuth: false
+        httpPort: "{{ nexus_k8s_docker_port }}"
+      dockerProxy:
+        indexType: REGISTRY
+        cacheForeignLayers: true
+        foreignLayerUrlWhitelist: []
+
 service_nginx_templates:
   speedtest: speedtest.conf.j2
   grafana: grafana.conf.j2
@@ -235,3 +380,4 @@ service_catalog:
         owner: "200"
         group: "200"
         mode: "0750"
+    post: nexus

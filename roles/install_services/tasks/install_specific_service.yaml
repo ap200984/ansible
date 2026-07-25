@@ -39,7 +39,10 @@
     recreate: "{{ service_force_recreate }}"
     state: started
     restart_policy: unless-stopped
+  when: not ansible_check_mode
 
 - name: Finish configuration for {{ service_name }}
   ansible.builtin.include_tasks: "post_{{ service_definition.post }}.yaml"
-  when: service_definition.post is defined
+  when:
+    - service_definition.post is defined
+    - not ansible_check_mode

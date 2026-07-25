@@ -1,0 +1,2 @@
+[kvm-server]
+k16_k112_server ansible_host=86.110.170.70

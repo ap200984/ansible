@@ -7,7 +7,6 @@
 
   vars_files:
     - ../group_vars/all/main.yml
-    - ../group_vars/kvm-server.yml
     - ../group_vars/k8s_k112.yml
 
   tasks:

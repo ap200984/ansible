@@ -19,7 +19,9 @@
     ipam_config:
       - subnet: "{{ service_docker_network.subnet }}"
         iprange: "{{ service_docker_network.iprange }}"
-  when: service_containers | length > 0
+  when:
+    - service_containers | length > 0
+    - not ansible_check_mode
   tags:
     - services
     - "services:network"

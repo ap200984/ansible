@@ -4,7 +4,7 @@
 #   vm_ip_address - static IPv4 address for the guest
 #
 # Example:
-# ansible-playbook -i inventory/kvm_server 00_create_vm.yaml \
+# ansible-playbook -i inventory/k16_k112_server 00_create_vm.yaml \
 #   -e vm_name=pgadmin-vm \
 #   -e vm_ip_address=10.9.0.202 \
 #   -e vm_memory_mb=4096 \

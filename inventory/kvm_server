@@ -1,2 +1,0 @@
-[kvm-server]
-kvm1 ansible_host=86.110.170.70
