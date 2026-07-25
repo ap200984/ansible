@@ -185,7 +185,12 @@
         url: "http://{{ hostvars[groups['workers'][0]].ansible_host | default(groups['workers'][0]) }}:{{ nginx_test_node_port }}"
         status_code: 200
         return_content: false
+        use_proxy: false
+        timeout: 10
       register: nginx_test_nodeport
+      retries: 6
+      delay: 5
+      until: nginx_test_nodeport.status == 200
 
     - name: Show nginx test result
       ansible.builtin.debug:
