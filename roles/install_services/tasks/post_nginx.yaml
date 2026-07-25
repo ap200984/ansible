@@ -1,0 +1,9 @@
+---
+- name: Reload NGINX after configuration changes
+  community.docker.docker_container_exec:
+    container: nginx
+    command:
+      - nginx
+      - -s
+      - reload
+  when: service_configuration_changed | bool

@@ -1,0 +1,76 @@
+---
+- name: Validate Certbot settings
+  ansible.builtin.assert:
+    that:
+      - domain | default('') | length > 0
+    fail_msg: Certbot requires domain in host_vars.
+
+- name: Ensure Let's Encrypt directory exists
+  ansible.builtin.file:
+    path: /etc/letsencrypt
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether a certificate already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/cert.pem"
+  register: service_certbot_certificate
+
+- name: Bootstrap the Let's Encrypt certificate
+  when: not service_certbot_certificate.stat.exists
+  block:
+    - name: Load Reg.ru credentials
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/secrets/regru_secrets.yml"
+
+    - name: Load Let's Encrypt settings
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/secrets/letsencrypt_secrets.yml"
+
+    - name: Write Reg.ru DNS credentials
+      ansible.builtin.copy:
+        dest: /etc/letsencrypt/regru.ini
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          dns_username = {{ regru_login }}
+          dns_password = {{ regru_passwd }}
+      no_log: true
+
+    - name: Start temporary Certbot bootstrap container
+      community.docker.docker_container:
+        name: certbot_bootstrap
+        image: ubuntu:24.04
+        state: started
+        command: sleep infinity
+        volumes:
+          - /etc/letsencrypt:/etc/letsencrypt
+        networks:
+          - name: "{{ service_docker_network.name }}"
+
+    - name: Install Certbot Reg.ru plugin
+      community.docker.docker_container_exec:
+        container: certbot_bootstrap
+        command: >-
+          sh -c 'apt-get update &&
+          apt-get install -y python3-pip &&
+          pip3 install certbot-regru --break-system-packages'
+
+    - name: Obtain wildcard certificate
+      community.docker.docker_container_exec:
+        container: certbot_bootstrap
+        command: >-
+          certbot certonly --authenticator dns
+          -d {{ domain }} -d *.{{ domain }}
+          --email {{ lets_encrypt_email }}
+          --non-interactive --agree-tos
+          --dns-propagation-seconds 600
+
+  always:
+    - name: Remove temporary Certbot bootstrap container
+      community.docker.docker_container:
+        name: certbot_bootstrap
+        state: absent

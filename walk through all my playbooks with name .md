@@ -8,5 +8,9 @@ Convert ntp_server to role and include it into full.yml disbaled by default. Add
 Let's move all variables from inventory to group_vars and host_vars. I want keep in inventory only hostnames, their ip addresses and group membership
 
 
-Convert install_* to one playboook "install_services.yaml" with params for all kind of containers. Mkae it according to ansible best practics. I don't know how it would be better, but seems there should be a role install_specific_service which will be callled many time from paybook install_services with params for every container required.
-The list of containers should be specified in host  
+Convert install_* to one playboook "install_services.yaml" with params for all kind of containers. Mkae it according to ansible best practics. I don't know how it would be better, but seems there should be a role install_specific_service.yaml which will be callled many time from paybook install_services.yaml with params for every container required.
+The list of containers should be specified in host_vars for every host.
+
+NGINX with certbot
+    - reload every day
+    - install on hosts with install_nginx: true

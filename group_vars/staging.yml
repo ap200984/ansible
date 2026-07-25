@@ -1,0 +1,5 @@
+---
+ansible_port: 19022
+ntp_server: 10.9.1.70
+dns_server: 10.9.1.1
+zabbix_server: 10.9.1.70

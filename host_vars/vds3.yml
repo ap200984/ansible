@@ -1,0 +1,4 @@
+---
+# No public domain is configured for this host, so the common public
+# container services cannot be installed here yet.
+service_containers: []

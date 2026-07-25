@@ -1,0 +1,21 @@
+---
+- name: Ensure ejabberd database directory exists
+  ansible.builtin.file:
+    path: /etc/ejabberd/database
+    state: directory
+    owner: "9000"
+    group: "9000"
+    mode: "0755"
+
+- name: Render ejabberd configuration
+  ansible.builtin.template:
+    src: ejabberd/ejabberd.yml.j2
+    dest: /etc/ejabberd/ejabberd.yml
+    owner: "9000"
+    group: "9000"
+    mode: "0644"
+  register: rendered_ejabberd_configuration
+
+- name: Recreate ejabberd after configuration changes
+  ansible.builtin.set_fact:
+    service_force_recreate: "{{ rendered_ejabberd_configuration.changed }}"

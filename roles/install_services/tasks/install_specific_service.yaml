@@ -1,0 +1,45 @@
+---
+- name: Set parameters for {{ service_name }}
+  ansible.builtin.set_fact:
+    service_definition: "{{ service_catalog[service_name] }}"
+    service_force_recreate: false
+    service_configuration_changed: false
+
+- name: Prepare {{ service_name }}
+  ansible.builtin.include_tasks: "prepare_{{ service_definition.prepare }}.yaml"
+  when: service_definition.prepare is defined
+
+- name: Create directories for {{ service_name }}
+  ansible.builtin.file:
+    path: "{{ directory.path }}"
+    state: directory
+    owner: "{{ directory.owner | default('root') }}"
+    group: "{{ directory.group | default('root') }}"
+    mode: "{{ directory.mode | default('0755') }}"
+  loop: "{{ service_definition.directories | default([]) }}"
+  loop_control:
+    loop_var: directory
+    label: "{{ directory.path }}"
+
+- name: Start {{ service_name }} container
+  community.docker.docker_container:
+    name: "{{ service_definition.name }}"
+    image: "{{ service_definition.image }}"
+    pull: "{{ service_definition.pull | default(true) }}"
+    networks:
+      - name: "{{ service_docker_network.name }}"
+    ports: "{{ service_definition.ports | default(omit) }}"
+    volumes: "{{ service_definition.volumes | default(omit) }}"
+    env: "{{ service_definition.env | default(omit) }}"
+    command: "{{ service_definition.command | default(omit) }}"
+    entrypoint: "{{ service_definition.entrypoint | default(omit) }}"
+    shm_size: "{{ service_definition.shm_size | default(omit) }}"
+    memory: "{{ service_definition.memory | default(omit) }}"
+    memory_swap: "{{ service_definition.memory_swap | default(omit) }}"
+    recreate: "{{ service_force_recreate }}"
+    state: started
+    restart_policy: unless-stopped
+
+- name: Finish configuration for {{ service_name }}
+  ansible.builtin.include_tasks: "post_{{ service_definition.post }}.yaml"
+  when: service_definition.post is defined

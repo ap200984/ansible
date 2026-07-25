@@ -1,0 +1,67 @@
+---
+- name: Ensure NGINX configuration directory exists
+  ansible.builtin.file:
+    path: /etc/nginx/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Set required NGINX template list
+  ansible.builtin.set_fact:
+    required_nginx_templates: >-
+      {{
+        ['common.conf.j2', 'resolver.conf.j2']
+        + service_containers
+          | select('in', service_nginx_templates)
+          | map('extract', service_nginx_templates)
+          | list
+      }}
+
+- name: Render NGINX service configurations
+  ansible.builtin.template:
+    src: "nginx/{{ template_name }}"
+    dest: "/etc/nginx/conf.d/{{ template_name | regex_replace('\\.j2$', '') }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ required_nginx_templates | unique }}"
+  loop_control:
+    loop_var: template_name
+  register: rendered_nginx_configurations
+
+- name: Find existing managed NGINX service configurations
+  ansible.builtin.find:
+    paths: /etc/nginx/conf.d
+    patterns: >-
+      {{
+        service_nginx_templates.values()
+        | map('regex_replace', '\.j2$', '')
+        | list
+      }}
+    file_type: file
+  register: managed_nginx_configurations
+
+- name: Remove configurations for services not selected on this host
+  ansible.builtin.file:
+    path: "{{ nginx_configuration.path }}"
+    state: absent
+  loop: "{{ managed_nginx_configurations.files }}"
+  loop_control:
+    loop_var: nginx_configuration
+    label: "{{ nginx_configuration.path | basename }}"
+  when: >-
+    nginx_configuration.path | basename
+    not in
+    (required_nginx_templates
+     | map('regex_replace', '\.j2$', '')
+     | list)
+  register: removed_nginx_configurations
+
+- name: Record NGINX configuration changes
+  ansible.builtin.set_fact:
+    service_configuration_changed: >-
+      {{
+        rendered_nginx_configurations.changed
+        or removed_nginx_configurations.changed
+      }}

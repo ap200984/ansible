@@ -1,0 +1,57 @@
+---
+- name: Validate Squid credentials
+  ansible.builtin.assert:
+    that:
+      - squid_user | default('') | string | length > 0
+      - squid_pass | default('') | string | length > 0
+      - "':' not in squid_user"
+    fail_msg: squid_user and squid_pass must be present in Vault.
+
+- name: Ensure Squid directories exist
+  ansible.builtin.file:
+    path: "{{ squid_directory.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ squid_directory.mode }}"
+  loop:
+    - {path: /opt/squid, mode: "0755"}
+    - {path: /opt/squid/cache, mode: "0777"}
+    - {path: /opt/squid/logs, mode: "0777"}
+  loop_control:
+    loop_var: squid_directory
+
+- name: Configure Squid credentials
+  ansible.builtin.copy:
+    dest: /opt/squid/passwords
+    owner: root
+    group: root
+    mode: "0600"
+    content: >-
+      {{ squid_user }}:{{ squid_pass | password_hash(
+      'sha512', (squid_user | hash('sha256'))[:16]) }}
+  no_log: true
+  register: configured_squid_credentials
+
+- name: Configure Squid
+  ansible.builtin.copy:
+    dest: /opt/squid/squid.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      http_port 3128
+      auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwords
+      auth_param basic realm Squid proxy
+      acl authenticated proxy_auth REQUIRED
+      http_access allow authenticated
+      http_access deny all
+      cache_dir ufs /var/spool/squid 256 16 256
+      access_log stdio:/var/log/squid/access.log
+      cache_log /var/log/squid/cache.log
+  register: configured_squid
+
+- name: Recreate Squid after configuration changes
+  ansible.builtin.set_fact:
+    service_force_recreate: >-
+      {{ configured_squid_credentials.changed or configured_squid.changed }}

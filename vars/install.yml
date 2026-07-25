@@ -1,6 +1,0 @@
----
-# Shared defaults for the install_*.yaml playbooks.
-# Extra variables passed with -e can override these playbook defaults.
-docker_network_name: docker-net
-docker_network_subnet: 172.20.0.0/16
-docker_network_range: 172.20.240.0/20

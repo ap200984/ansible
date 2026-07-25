@@ -1,12 +1,2 @@
-[staging:vars]
-ansible_user=ansible
-ansible_ssh_private_key_file=~/.ssh/priv/ansible
-ntp_server=10.9.1.70
-dns_server=10.9.1.1
-zabbix_server=10.9.1.70
-hostname=vds3
-
-
 [staging]
-86.110.170.70:19022
-#10.9.0.120
+vds3 ansible_host=86.110.170.70

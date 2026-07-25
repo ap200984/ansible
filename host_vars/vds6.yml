@@ -1,0 +1,18 @@
+---
+service_containers:
+  - speedtest
+  - socks5
+  - ejabberd
+  - gitlab
+  - gitlab_runner
+  - jenkins
+  - squid
+  - owncloud
+  - certbot
+  - nginx
+
+second_octet: 22
+wg_octet: 253
+gre_octet: 254
+l2tp_octet: 255
+domain: vds06.space

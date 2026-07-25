@@ -1,0 +1,16 @@
+---
+- name: Install container services
+  hosts: "{{ hosts | default('all') }}"
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: apt_sources
+      tags:
+        - services
+    - role: docker
+      tags:
+        - services
+    - role: install_services
+      tags:
+        - services

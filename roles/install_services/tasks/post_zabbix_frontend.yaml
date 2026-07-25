@@ -1,0 +1,19 @@
+---
+- name: Increase Zabbix dashboard row limits
+  community.docker.docker_container_exec:
+    container: zabbix-web-nginx-pgsql
+    command:
+      - /bin/sh
+      - -c
+      - |
+        config=/usr/share/zabbix/include/defines.inc.php
+        if ! grep -q "define('DASHBOARD_MAX_ROWS', 65536);" "$config" ||
+           ! grep -q "define('DASHBOARD_WIDGET_MAX_ROWS', 65536);" "$config"; then
+          sed -i \
+            -e "s|define('DASHBOARD_MAX_ROWS'.*|define('DASHBOARD_MAX_ROWS', 65536);|" \
+            -e "s|define('DASHBOARD_WIDGET_MAX_ROWS'.*|define('DASHBOARD_WIDGET_MAX_ROWS', 65536);|" \
+            "$config"
+          echo updated
+        fi
+  register: configured_zabbix_frontend
+  changed_when: "'updated' in configured_zabbix_frontend.stdout"

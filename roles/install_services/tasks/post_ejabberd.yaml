@@ -1,0 +1,23 @@
+---
+- name: Register ejabberd accounts
+  community.docker.docker_container_exec:
+    container: ejabberd
+    command:
+      - bin/ejabberdctl
+      - register
+      - "{{ ejabberd_account.0 }}"
+      - "{{ ejabberd_account.1 }}"
+      - "{{ ejabberd_password }}"
+  loop: >-
+    {{
+      ['admin', 'user1', 'user2']
+      | product(['localhost', 'ejabberd.' ~ domain])
+      | list
+    }}
+  loop_control:
+    loop_var: ejabberd_account
+    label: "{{ ejabberd_account.0 }}@{{ ejabberd_account.1 }}"
+  register: ejabberd_registration
+  changed_when: ejabberd_registration.rc == 0
+  failed_when: false
+  no_log: true

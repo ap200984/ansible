@@ -1,0 +1,18 @@
+---
+service_containers:
+  - speedtest
+  - socks5
+  - postgres
+  - zabbix_backend
+  - zabbix_frontend
+  - grafana
+  - ejabberd
+  - certbot
+  - nginx
+
+zabbix_server: 127.0.0.1
+second_octet: 21
+wg_octet: 253
+gre_octet: 254
+l2tp_octet: 255
+domain: vds05.space

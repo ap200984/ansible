@@ -1,0 +1,236 @@
+---
+service_containers: []
+
+service_docker_network:
+  name: docker-net
+  subnet: 172.20.0.0/16
+  iprange: 172.20.240.0/20
+
+service_nginx_templates:
+  speedtest: speedtest.conf.j2
+  grafana: grafana.conf.j2
+  ejabberd: ejabberd.conf.j2
+  zabbix_frontend: zabbix.conf.j2
+  gitlab: gitlab.conf.j2
+  jenkins: jenkins.conf.j2
+  owncloud: owncloud.conf.j2
+
+service_catalog:
+  speedtest:
+    name: speedtest
+    image: openspeedtest/latest
+    ports:
+      - 3005:3000/tcp
+      - 3001:3001/tcp
+
+  socks5:
+    name: socks5
+    image: serjs/go-socks5-proxy
+    ports:
+      - 1980:1080/tcp
+    env: >-
+      {{
+        {
+          'PROXY_USER': 'proxy',
+          'PROXY_PASSWORD': socks5_proxy_password | string
+        }
+        if socks5_proxy_password | default('') | string | length > 0
+        else {}
+      }}
+
+  nginx:
+    name: nginx
+    image: nginx:latest
+    entrypoint: /bin/sh
+    command: >-
+      -c 'marker=/etc/letsencrypt/.nginx-reload;
+      last_marker_time=0;
+      while true; do
+        marker_time=$(stat -c %Y "$marker" 2>/dev/null || echo 0);
+        if [ "$marker_time" != "$last_marker_time" ]; then
+          if [ "$last_marker_time" != 0 ]; then
+            nginx -s reload;
+          fi;
+          last_marker_time="$marker_time";
+        fi;
+        sleep 60;
+      done &
+      exec nginx -g "daemon off;"'
+    ports:
+      - 80:80/tcp
+      - 443:443/tcp
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /etc/nginx/conf.d:/etc/nginx/conf.d:ro
+    prepare: nginx
+    post: nginx
+
+  certbot:
+    name: certbot_renewal
+    image: ubuntu:24.04
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    entrypoint: sh
+    command: >-
+      -c 'apt-get update;
+      apt-get install -y python3-pip;
+      pip3 install certbot-regru --break-system-packages;
+      while true; do
+      certbot renew --non-interactive --quiet
+      --deploy-hook "touch /etc/letsencrypt/.nginx-reload";
+      sleep 12h; done'
+    prepare: certbot
+
+  grafana:
+    name: grafana
+    image: grafana/grafana
+    ports:
+      - 3000:3000/tcp
+    volumes:
+      - /etc/grafana:/var/lib/grafana:rw
+    directories:
+      - path: /etc/grafana
+        mode: "0770"
+
+  ejabberd:
+    name: ejabberd
+    image: ejabberd/ecs:24.10
+    ports:
+      - 1883:1883/tcp
+      - 4369:4369/tcp
+      - 3478:3478/udp
+      - 5222:5222/tcp
+      - 5269:5269/tcp
+      - 5280:5280/tcp
+      - 5443:5443/tcp
+    volumes:
+      - /etc/ejabberd/database:/home/ejabberd/database:rw
+      - /etc/ejabberd/ejabberd.yml:/home/ejabberd/conf/ejabberd.yml:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    prepare: ejabberd
+    post: ejabberd
+
+  postgres:
+    name: postgres-server
+    image: postgres:16
+    ports:
+      - 6432:5432/tcp
+    volumes:
+      - /postgres:/var/lib/postgresql/data
+    env:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: "{{ zabbix_postgres_password | string }}"
+      POSTGRES_DB: zabbix
+
+  zabbix_backend:
+    name: zabbix-server-pgsql
+    image: zabbix/zabbix-server-pgsql:ubuntu-7.4-latest
+    ports:
+      - 10051:10051/tcp
+    env:
+      DB_SERVER_HOST: postgres-server
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: "{{ zabbix_postgres_password | string }}"
+      POSTGRES_DB: zabbix
+      ZBX_ENABLE_SNMP_TRAPS: "true"
+
+  zabbix_frontend:
+    name: zabbix-web-nginx-pgsql
+    image: zabbix/zabbix-web-nginx-pgsql:ubuntu-7.4-latest
+    ports:
+      - 8080:8080/tcp
+    env:
+      ZBX_SERVER_HOST: zabbix-server-pgsql
+      DB_SERVER_HOST: postgres-server
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: "{{ zabbix_postgres_password | string }}"
+      POSTGRES_DB: zabbix
+    post: zabbix_frontend
+
+  gitlab:
+    name: gitlab
+    image: gitlab/gitlab-ce:18.9.8-ce.0
+    ports:
+      - 1080:80/tcp
+      - 1022:22/tcp
+    volumes:
+      - /gitlab/config:/etc/gitlab
+      - /var/log/gitlab:/var/log/gitlab
+      - /gitlab/data:/var/opt/gitlab
+    shm_size: 256m
+    memory: 4g
+    memory_swap: 6g
+    env:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.{{ domain }}/';
+        gitlab_rails['gitlab_shell_ssh_host'] = 'gitlab.{{ domain }}';
+        gitlab_rails['gitlab_shell_ssh_port'] = 1022;
+        nginx['listen_port'] = 80;
+        nginx['listen_https'] = false;
+        puma['worker_processes'] = 0;
+        puma['min_threads'] = 1;
+        puma['max_threads'] = 2;
+        sidekiq['concurrency'] = 5;
+        prometheus_monitoring['enable'] = false;
+
+  gitlab_runner:
+    name: gitlab-runner
+    image: gitlab/gitlab-runner:v18.9.0
+    volumes:
+      - /gitlab/gitlab-runner:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    memory: 256m
+    memory_swap: 384m
+
+  jenkins:
+    name: jenkins
+    image: jenkins/jenkins:2.541.2
+    ports:
+      - 9090:8080/tcp
+    volumes:
+      - /opt/jenkins:/var/jenkins_home:rw
+    directories:
+      - path: /opt/jenkins
+        owner: "1000"
+        mode: "0755"
+
+  squid:
+    name: squid
+    image: ubuntu/squid:latest
+    ports:
+      - 31280:3128/tcp
+    volumes:
+      - /opt/squid/squid.conf:/etc/squid/squid.conf:ro
+      - /opt/squid/passwords:/etc/squid/passwords:ro
+      - /opt/squid/cache:/var/spool/squid:rw
+      - /opt/squid/logs:/var/log/squid:rw
+    prepare: squid
+
+  owncloud:
+    name: owncloud
+    image: owncloud/server
+    ports:
+      - 1953:8080/tcp
+    volumes:
+      - /owncloud:/mnt/data:rw
+    env:
+      OWNCLOUD_TRUSTED_DOMAINS: >-
+        owncloud.{{ domain }}, {{ domain }}:1953, {{ ansible_host }}:1953,
+        localhost:1953, 127.0.0.1:1953
+      ADMIN_USERNAME: admin
+
+  nexus:
+    name: nexus
+    image: sonatype/nexus3:3.76.0
+    ports:
+      - 8081:8081/tcp
+      - 8082:8082/tcp
+      - 8083:8083/tcp
+      - 8084:8084/tcp
+    volumes:
+      - /backup/nexus:/nexus-data
+    directories:
+      - path: /backup/nexus
+        owner: "200"
+        group: "200"
+        mode: "0750"
