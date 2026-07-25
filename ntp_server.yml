@@ -1,8 +1,0 @@
----
-- name: Configure NTP server
-  hosts: "{{ hosts | default('all') }}"
-  become: true
-  gather_facts: true
-
-  roles:
-    - ntp_server

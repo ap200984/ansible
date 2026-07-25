@@ -7,13 +7,13 @@
 + check ssh access by key
 
 
-install k8s
++ install k8s
 
-setup workona in firefox
++ setup workona in firefox
 
-create readme
++ create readme
 
-install_amnesiawg
+install_amnesiawg from playbook same as from phone with passingthrough directore with client configs
 
 add domain for k112
     figure out how cert works
