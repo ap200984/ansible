@@ -1,10 +1,10 @@
 ---
 - hosts: all
   become: true
+  vars_files:
+    - vars/install.yml
+
   vars:
-    docker_network_name: docker-net
-    docker_network_subnet: 172.20.0.0/16
-    docker_network_range: 172.20.240.0/20
     zabbix_upstream_base_url: https://repo.zabbix.com
     zabbix_nexus_base_url: >-
       {{ nexus_url | default('') }}/repository/zabbix-proxy

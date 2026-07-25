@@ -50,6 +50,9 @@
   hosts: all
   become: true
 
+  vars_files:
+    - vars/install.yml
+
   vars:
     nexus_container_name: nexus
     nexus_image: sonatype/nexus3:3.76.0

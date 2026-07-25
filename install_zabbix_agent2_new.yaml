@@ -1,6 +1,9 @@
 ---
 - hosts: all
   become: true
+  vars_files:
+    - vars/install.yml
+
   vars:
     zabbix_upstream_base_url: https://repo.zabbix.com
     zabbix_nexus_base_url: >-

@@ -1,37 +1,51 @@
 ---
-- hosts: all
+# Custom password:
+#   ansible-playbook -i inventory/vds6 install_socks5_proxy.yaml \
+#     -e socks5_proxy_password='change-me'
+# No authentication:
+#   ansible-playbook -i inventory/vds6 install_socks5_proxy.yaml \
+#     -e socks5_proxy_password=''
+- name: Install SOCKS5 proxy
+  hosts: all
   become: true
+
+  vars_files:
+    - vars/install.yml
+
   vars:
-    docker_network_name: docker-net
-    docker_network_subnet: 172.20.0.0/16
-    docker_network_range: 172.20.240.0/20
+    socks5_proxy_container_name: socks5
+    socks5_proxy_image: serjs/go-socks5-proxy
+    socks5_proxy_port: 1980
+    socks5_proxy_user: proxy
 
   roles:
     - apt_sources
     - docker
 
   tasks:
-    # - name: Include secrets
-    #   include_vars: secrets/common_secrets.yml
-
-    - name: Create a network for socks5
-      become: true
-      docker_network:
+    - name: Create Docker network for SOCKS5
+      community.docker.docker_network:
         name: "{{ docker_network_name }}"
         ipam_config:
           - subnet: "{{ docker_network_subnet }}"
             iprange: "{{ docker_network_range }}"
 
-    - name: socks5
+    - name: Start SOCKS5 proxy
       community.docker.docker_container:
-        name: socks5
-        image: "serjs/go-socks5-proxy"
+        name: "{{ socks5_proxy_container_name }}"
+        image: "{{ socks5_proxy_image }}"
         networks:
           - name: "{{ docker_network_name }}"
-        env:
-          PROXY_USER: "proxy"
-          PROXY_PASSWORD: "{{ socks5_proxy_password }}"
+        env: >-
+          {{
+            {
+              'PROXY_USER': socks5_proxy_user,
+              'PROXY_PASSWORD': socks5_proxy_password | string
+            }
+            if socks5_proxy_password | string | length > 0
+            else {}
+          }}
         ports:
-          - 1980:1080/tcp
-        state: "started"
-        restart_policy: "unless-stopped"
+          - "{{ socks5_proxy_port }}:1080/tcp"
+        state: started
+        restart_policy: unless-stopped

@@ -10,6 +10,8 @@
     - tz
     - dns_client
     - ntp_client
+    - role: ntp_server
+      when: ntp_server_enabled | default(false) | bool
     - users
     - python3
     - iptables

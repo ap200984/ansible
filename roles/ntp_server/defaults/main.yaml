@@ -1,0 +1,12 @@
+---
+ntp_server_enabled: false
+ntp_server_upstream_servers:
+  - 0.ubuntu.pool.ntp.org
+  - 1.ubuntu.pool.ntp.org
+  - 2.ubuntu.pool.ntp.org
+  - 3.ubuntu.pool.ntp.org
+ntp_server_allow_networks:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+ntp_server_update_cache: true
