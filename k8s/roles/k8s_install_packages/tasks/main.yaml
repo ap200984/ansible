@@ -61,7 +61,7 @@
       --proxy {{ kubernetes_apt_proxy_effective }}
       {% endif %}
       {{ kubernetes_apt_key_url }} -o {{ kubernetes_apt_key_tmp }}
-    creates: "{{ kubernetes_apt_key_tmp }}"
+    creates: "{{ kubernetes_apt_keyring }}"
   when: ansible_os_family == "Debian"
 
 - name: Install Kubernetes apt repository key

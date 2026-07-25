@@ -1,6 +1,18 @@
 ---
-# VM definitions for inventory k8s_k112.
-# Use k8s_cluster.yaml to create one or more cluster VMs on the KVM host.
+ntp_server: 10.9.1.70
+dns_server: 10.9.1.1
+zabbix_server: 10.9.1.70
+zabbix_agent_host_metadata_group: k112
+zabbix_agent_host_metadata_tag: k8s_k112
+master_float_ip: 10.9.1.5
+k8s_kubeadm_ignore_preflight_errors: NumCPU,Mem
+use_nexus: true
+nexus_url: http://10.9.1.70:8081
+nexus_docker_registry: 10.9.1.70:8082
+nexus_elastic_registry: 10.9.1.70:8083
+nexus_k8s_registry: 10.9.1.70:8084
+
+# Virtual machines that make up this Kubernetes cluster.
 k8s_cluster_machines:
   etcd1:
     ip_address: 10.9.1.11

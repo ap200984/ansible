@@ -3,6 +3,8 @@
   hosts: "{{ hosts | default('etcd') }}"
   become: true
   gather_facts: true
+  vars_files:
+    - ../group_vars/k8s_k112.yml
 
   roles:
     - apt_sources
