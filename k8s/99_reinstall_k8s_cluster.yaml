@@ -22,7 +22,7 @@
           - inventory/k8s_k112
           - -i
           - inventory/kvm_server
-          - k8s/00_remove_k8s_cluster_Machines.yaml
+          - k8s/00_remove_k8s_cluster_machines.yaml
 
       - name: Create Kubernetes cluster machines
         argv:

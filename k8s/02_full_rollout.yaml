@@ -1,4 +1,4 @@
 ---
-- import_playbook: ../full.yml
+- import_playbook: ../01_bare_host.yml
   vars:
     hosts: k8s

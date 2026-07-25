@@ -7,7 +7,7 @@ These playbooks build a small Kubernetes cluster for learning.
 Run from the repository root.
 
 ```bash
-ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/00_remove_k8s_cluster_Machines.yaml
+ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/00_remove_k8s_cluster_machines.yaml
 ansible-playbook -i inventory/k8s_k112 -i inventory/kvm_server k8s/01_create_k8s_cluster_machines.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/02_full_rollout.yaml
 ansible-playbook -i inventory/k8s_k112 k8s/03_create_etcd_cluster.yaml
@@ -20,7 +20,7 @@ ansible-playbook -i inventory/k8s_k112 k8s/08_deploy_test_nginx.yaml
 ## Notes
 
 - `04_setup_k8s_master.yaml` installs Calico CNI after initializing `master1`.
-- `02_full_rollout.yaml` runs root `full.yml` on the `k8s` inventory group.
+- `02_full_rollout.yaml` runs root `01_bare_host.yml` on the `k8s` inventory group.
 - Additional masters and workers do not need a separate CNI playbook. Calico starts on new nodes automatically.
 - `squid_ip` is optional, but useful when cluster nodes cannot reach package or image registries directly.
 - `05_add_k8s_master.yaml` defaults to `host=master2`.

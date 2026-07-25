@@ -10,7 +10,7 @@ cloud-init configuration, and configures a static IPv4 address.
 defaults:
 
 ```bash
-ansible-playbook -i inventory/kvm_server "00 create_vm.yaml" \
+ansible-playbook -i inventory/kvm_server 00_create_vm.yaml \
   -e vm_name=test-vm \
   -e vm_ip_address=10.9.1.50
 ```
@@ -31,7 +31,7 @@ Defaults:
 Override resources when needed:
 
 ```bash
-ansible-playbook -i inventory/kvm_server "00 create_vm.yaml" \
+ansible-playbook -i inventory/kvm_server 00_create_vm.yaml \
   -e vm_name=large-vm \
   -e vm_ip_address=10.9.1.51 \
   -e vm_vcpus=4 \

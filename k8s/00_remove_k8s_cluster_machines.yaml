@@ -4,6 +4,8 @@
   become: true
   gather_facts: false
   vars_files:
+    - ../group_vars/all/main.yml
+    - ../group_vars/kvm-server.yml
     - ../group_vars/k8s_k112.yml
   vars:
     Machines_k8s_vm_names: "{{ k8s_cluster_machines.keys() | list }}"
