@@ -1,9 +1,17 @@
 ---
+- name: Wait for NGINX to accept configuration checks
+  community.docker.docker_container_exec:
+    container: nginx
+    command: nginx -t
+  register: service_nginx_config_test
+  until: service_nginx_config_test is succeeded
+  retries: 15
+  delay: 2
+  changed_when: false
+  when: service_configuration_changed | bool
+
 - name: Reload NGINX after configuration changes
   community.docker.docker_container_exec:
     container: nginx
-    command:
-      - nginx
-      - -s
-      - reload
+    command: nginx -s reload
   when: service_configuration_changed | bool

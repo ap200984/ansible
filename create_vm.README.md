@@ -43,7 +43,7 @@ ansible-playbook -i inventory/k16_k112_server 00_create_vm.yaml \
 ## Kubernetes machines
 
 The Kubernetes wrapper calls the same single-VM role once per entry in
-`group_vars/k8s_k112.yml`:
+`k8s/vars/k16_k112_k8s_cluster.yml`:
 
 ```bash
 ansible-playbook \

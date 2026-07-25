@@ -1,22 +1,21 @@
 ---
 - name: Create Kubernetes virtual machines one by one
   hosts: kvm-server
-  connection: local
   become: true
   gather_facts: true
 
   vars_files:
     - ../group_vars/all/main.yml
-    - ../group_vars/k8s_k112.yml
+    - vars/k16_k112_k8s_cluster.yml
 
   tasks:
     - name: Validate Kubernetes VM definitions
       ansible.builtin.assert:
         that:
-          - k8s_cluster_machines is defined
-          - k8s_cluster_machines | length > 0
+          - k16_k12_k8s_cluster is defined
+          - k16_k12_k8s_cluster | length > 0
         fail_msg: >-
-          Define k8s_cluster_machines in ../group_vars/k8s_k112.yml.
+          Define k16_k12_k8s_cluster in vars/k16_k112_k8s_cluster.yml.
 
     - name: Create Kubernetes VM
       ansible.builtin.include_role:
@@ -27,7 +26,7 @@
         vm_memory_mb: "{{ vm_definition.value.memory_mb | default(512) }}"
         vm_vcpus: "{{ vm_definition.value.vcpus | default(1) }}"
         vm_disk_size_gb: "{{ vm_definition.value.disk_size_gb | default(10) }}"
-      loop: "{{ k8s_cluster_machines | dict2items }}"
+      loop: "{{ k16_k12_k8s_cluster | dict2items }}"
       loop_control:
         loop_var: vm_definition
         label: "{{ vm_definition.key }}"

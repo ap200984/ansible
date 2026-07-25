@@ -35,8 +35,6 @@
         - -i
         - inventory/k16_k112_server
         - kvm-server
-        - -c
-        - local
         - -m
         - ansible.builtin.ping
 

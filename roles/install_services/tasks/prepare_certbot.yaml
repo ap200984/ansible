@@ -19,7 +19,9 @@
   register: service_certbot_certificate
 
 - name: Bootstrap the Let's Encrypt certificate
-  when: not service_certbot_certificate.stat.exists
+  when:
+    - not service_certbot_certificate.stat.exists
+    - not ansible_check_mode
   block:
     - name: Write Reg.ru DNS credentials
       ansible.builtin.copy:
@@ -28,8 +30,8 @@
         group: root
         mode: "0600"
         content: |
-          dns_username = {{ regru_login }}
-          dns_password = {{ regru_passwd }}
+          dns_regru_username = {{ regru_login }}
+          dns_regru_password = {{ regru_passwd }}
       no_log: true
 
     - name: Start temporary Certbot bootstrap container
@@ -49,18 +51,34 @@
         command: >-
           sh -c 'apt-get update &&
           apt-get install -y python3-pip &&
-          pip3 install certbot-regru --break-system-packages'
+          pip3 install certbot-dns-regru==1.1.1 --break-system-packages'
 
     - name: Obtain wildcard certificate
-      community.docker.docker_container_exec:
-        container: certbot_bootstrap
-        command: >-
-          certbot certonly --authenticator dns-regru
-          -d {{ domain }} -d *.{{ domain }}
-          --dns-regru-credentials /etc/letsencrypt/regru.ini
-          --dns-regru-propagation-seconds 600
-          --email admin@{{ domain }}
-          --non-interactive --agree-tos
+      ansible.builtin.command:
+        argv:
+          - timeout
+          - --signal=TERM
+          - 15m
+          - docker
+          - exec
+          - certbot_bootstrap
+          - certbot
+          - certonly
+          - --authenticator
+          - dns-regru
+          - --domains
+          - "{{ domain }}"
+          - --domains
+          - "*.{{ domain }}"
+          - --dns-regru-credentials
+          - /etc/letsencrypt/regru.ini
+          - --dns-regru-propagation-seconds
+          - "180"
+          - --email
+          - "admin@{{ domain }}"
+          - --non-interactive
+          - --agree-tos
+      changed_when: true
 
   always:
     - name: Remove temporary Certbot bootstrap container

@@ -1,23 +1,22 @@
 ---
 - name: Remove Machines K8s VMs
   hosts: kvm-server
-  connection: local
   become: true
   gather_facts: false
   vars_files:
     - ../group_vars/all/main.yml
-    - ../group_vars/k8s_k112.yml
+    - vars/k16_k112_k8s_cluster.yml
   vars:
-    Machines_k8s_vm_names: "{{ k8s_cluster_machines.keys() | list }}"
+    Machines_k8s_vm_names: "{{ k16_k12_k8s_cluster.keys() | list }}"
 
   pre_tasks:
     - name: Validate Machines K8s VM definitions
       ansible.builtin.assert:
         that:
-          - k8s_cluster_machines is defined
-          - k8s_cluster_machines | length > 0
+          - k16_k12_k8s_cluster is defined
+          - k16_k12_k8s_cluster | length > 0
         fail_msg: >-
-          Define k8s_cluster_machines in ../group_vars/k8s_k112.yml before removing
+          Define k16_k12_k8s_cluster in vars/k16_k112_k8s_cluster.yml before removing
           Machines K8s VMs.
 
   tasks:

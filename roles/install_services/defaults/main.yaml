@@ -220,7 +220,7 @@ service_catalog:
     command: >-
       -c 'apt-get update;
       apt-get install -y python3-pip;
-      pip3 install certbot-regru --break-system-packages;
+      pip3 install certbot-dns-regru==1.1.1 --break-system-packages;
       while true; do
       certbot renew --non-interactive --quiet
       --deploy-hook "touch /etc/letsencrypt/.nginx-reload";
