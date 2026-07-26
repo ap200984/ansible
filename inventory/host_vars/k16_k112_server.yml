@@ -14,5 +14,6 @@ service_containers:
   - certbot
   - nginx
   - nexus
+  - speedtest
 
 domain: k112.space
