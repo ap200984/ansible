@@ -9,11 +9,13 @@ nexus_docker_registry: 127.0.0.1:8082
 nexus_elastic_registry: 127.0.0.1:8083
 nexus_k8s_registry: 127.0.0.1:8084
 ntp_server_enabled: true
+owncloud_data_dir: /hdd/owncloud
 
 service_containers:
   - certbot
   - nginx
   - nexus
+  - owncloud
   - speedtest
 
 domain: k112.space

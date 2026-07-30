@@ -1,6 +1,8 @@
 ---
 service_containers: []
 
+owncloud_data_dir: /owncloud
+
 service_docker_network:
   name: docker-net
   subnet: 172.20.0.0/16
@@ -358,7 +360,7 @@ service_catalog:
     ports:
       - 1953:8080/tcp
     volumes:
-      - /owncloud:/mnt/data:rw
+      - "{{ owncloud_data_dir }}:/mnt/data:rw"
     env:
       OWNCLOUD_TRUSTED_DOMAINS: >-
         owncloud.{{ domain }}, {{ domain }}:1953, {{ ansible_host }}:1953,
