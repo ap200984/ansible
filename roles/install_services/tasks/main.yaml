@@ -13,28 +13,17 @@
     - services
     - "services:validate"
 
-- name: Ensure shared Docker network exists
-  community.docker.docker_network:
-    name: "{{ service_docker_network.name }}"
-    ipam_config:
-      - subnet: "{{ service_docker_network.subnet }}"
-        iprange: "{{ service_docker_network.iprange }}"
-  when:
-    - service_containers | length > 0
-    - not ansible_check_mode
-  tags:
-    - services
-    - "services:network"
-
 - name: Install requested container services
   ansible.builtin.include_tasks:
     file: install_specific_service.yaml
     apply:
       tags:
         - services
+        - "{{ service_name }}"
+        - "services:{{ service_name }}"
   loop: "{{ service_containers }}"
   loop_control:
     loop_var: service_name
     label: "{{ service_name }}"
   tags:
-    - services
+    - always

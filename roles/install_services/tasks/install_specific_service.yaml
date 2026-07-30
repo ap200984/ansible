@@ -4,9 +4,24 @@
     service_definition: "{{ service_catalog[service_name] }}"
     service_force_recreate: false
     service_configuration_changed: false
+  no_log: "{{ service_catalog[service_name].no_log | default(false) }}"
+
+- name: Ensure shared Docker network exists for {{ service_name }}
+  community.docker.docker_network:
+    name: "{{ service_docker_network.name }}"
+    ipam_config:
+      - subnet: "{{ service_docker_network.subnet }}"
+        iprange: "{{ service_docker_network.iprange }}"
+  when: not ansible_check_mode
 
 - name: Prepare {{ service_name }}
-  ansible.builtin.include_tasks: "prepare_{{ service_definition.prepare }}.yaml"
+  ansible.builtin.include_tasks:
+    file: "prepare_{{ service_definition.prepare }}.yaml"
+    apply:
+      tags:
+        - services
+        - "{{ service_name }}"
+        - "services:{{ service_name }}"
   when: service_definition.prepare is defined
 
 - name: Create directories for {{ service_name }}
@@ -40,9 +55,16 @@
     state: started
     restart_policy: unless-stopped
   when: not ansible_check_mode
+  no_log: "{{ service_definition.no_log | default(false) }}"
 
 - name: Finish configuration for {{ service_name }}
-  ansible.builtin.include_tasks: "post_{{ service_definition.post }}.yaml"
+  ansible.builtin.include_tasks:
+    file: "post_{{ service_definition.post }}.yaml"
+    apply:
+      tags:
+        - services
+        - "{{ service_name }}"
+        - "services:{{ service_name }}"
   when:
     - service_definition.post is defined
     - not ansible_check_mode

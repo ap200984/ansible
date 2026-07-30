@@ -9,6 +9,19 @@ ansible-playbook -i inventory/vds6 install_services.yaml \
   -e socks5_proxy_password=''
 ```
 
+Install or update only one selected service by using either its short tag or
+its namespaced tag:
+
+```shell
+ansible-playbook -i inventory/k16_k112_server 02_deploy_services.yaml \
+  --tags owncloud
+ansible-playbook -i inventory/k16_k112_server 02_deploy_services.yaml \
+  --tags services:owncloud
+```
+
+The `services` tag continues to install or update every service selected for
+the host.
+
 Hosts that need containers select their desired services with
 `service_containers` in `host_vars/<inventory_hostname>.yml`. The role defaults
 to an empty list, so hosts without container services need no host-vars file or

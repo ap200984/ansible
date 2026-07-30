@@ -2,6 +2,15 @@
 service_containers: []
 
 owncloud_data_dir: /owncloud
+owncloud_users:
+  - username: "{{ owncloud_user1_login | default('') }}"
+    password: "{{ owncloud_user1_passwd | default('') }}"
+  - username: "{{ owncloud_user2_login | default('') }}"
+    password: "{{ owncloud_user2_passwd | default('') }}"
+  - username: "{{ owncloud_user3_login | default('') }}"
+    password: "{{ owncloud_user3_passwd | default('') }}"
+  - username: "{{ owncloud_user4_login | default('') }}"
+    password: "{{ owncloud_user4_passwd | default('') }}"
 
 service_docker_network:
   name: docker-net
@@ -357,6 +366,7 @@ service_catalog:
   owncloud:
     name: owncloud
     image: owncloud/server
+    no_log: false
     ports:
       - 1953:8080/tcp
     volumes:
@@ -365,7 +375,9 @@ service_catalog:
       OWNCLOUD_TRUSTED_DOMAINS: >-
         owncloud.{{ domain }}, {{ domain }}:1953, {{ ansible_host }}:1953,
         localhost:1953, 127.0.0.1:1953
-      ADMIN_USERNAME: admin
+      OWNCLOUD_ADMIN_USERNAME: "{{ owncloud_admin_login | string }}"
+      OWNCLOUD_ADMIN_PASSWORD: "{{ owncloud_admin_passwd | string }}"
+    post: owncloud
 
   nexus:
     name: nexus

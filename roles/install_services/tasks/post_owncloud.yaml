@@ -1,0 +1,59 @@
+---
+- name: Validate OwnCloud credentials from Vault
+  ansible.builtin.assert:
+    that:
+      - owncloud_admin_login is defined
+      - owncloud_admin_passwd is defined
+      - owncloud_admin_login | string | length > 0
+      - owncloud_admin_passwd | string | length > 0
+      - owncloud_users | length > 0
+      - owncloud_users | map(attribute='username') | reject('equalto', '') | list | length == owncloud_users | length
+      - owncloud_users | map(attribute='password') | reject('equalto', '') | list | length == owncloud_users | length
+      - owncloud_users | map(attribute='username') | unique | list | length == owncloud_users | length
+    fail_msg: >-
+      Define non-empty owncloud_admin_login, owncloud_admin_passwd, and
+      owncloud_userN_login/owncloud_userN_passwd pairs in the encrypted
+      group_vars/all/passwords.yml file.
+  no_log: true
+
+- name: Wait for OwnCloud to become ready
+  community.docker.docker_container_exec:
+    container: owncloud
+    user: www-data
+    argv:
+      - /usr/bin/occ
+      - status
+  register: owncloud_status
+  until: owncloud_status.rc == 0
+  retries: 60
+  delay: 5
+  changed_when: false
+
+- name: Read OwnCloud users
+  community.docker.docker_container_exec:
+    container: owncloud
+    user: www-data
+    argv:
+      - /usr/bin/occ
+      - user:list
+      - --output=json
+  register: owncloud_user_list
+  changed_when: false
+
+- name: Create missing OwnCloud users
+  community.docker.docker_container_exec:
+    container: owncloud
+    user: www-data
+    argv:
+      - /usr/bin/occ
+      - user:add
+      - --password-from-env
+      - "{{ owncloud_user.username }}"
+    env:
+      OC_PASS: "{{ owncloud_user.password | string }}"
+  loop: "{{ owncloud_users }}"
+  loop_control:
+    loop_var: owncloud_user
+    label: "{{ owncloud_user.username }}"
+  when: owncloud_user.username not in (owncloud_user_list.stdout | from_json)
+  no_log: true
