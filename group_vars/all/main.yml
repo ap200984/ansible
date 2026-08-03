@@ -1,3 +1,8 @@
 ---
 ansible_user: ansible
 ip_address: "{{ ansible_host }}"
+
+service_docker_network:
+  name: docker-net
+  subnet: 172.20.0.0/16
+  iprange: 172.20.240.0/20

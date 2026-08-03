@@ -12,11 +12,6 @@ owncloud_users:
   - username: "{{ owncloud_user4_login | default('') }}"
     password: "{{ owncloud_user4_passwd | default('') }}"
 
-service_docker_network:
-  name: docker-net
-  subnet: 172.20.0.0/16
-  iprange: 172.20.240.0/20
-
 nexus_container_name: nexus
 nexus_image: sonatype/nexus3:3.76.0
 nexus_data_dir: /backup/nexus
