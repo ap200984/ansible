@@ -8,16 +8,24 @@
     - role: docker
 
   vars:
-    amnezia_container_name: amnezia-awg2
-    amnezia_image: amnezia-awg2
+    amnezia_variant: auto
     amnezia_host_dir: /amnezia
     amnezia_data_dir: "{{ amnezia_host_dir }}/opt-amnezia"
-    amnezia_image_archive: "{{ amnezia_host_dir }}/image/amnezia-awg2.tar"
-    amnezia_image_id_file: "{{ amnezia_host_dir }}/image/amnezia-awg2.id"
-    amnezia_config_file: "{{ amnezia_data_dir }}/awg/awg0.conf"
+    amnezia_image_dir: "{{ amnezia_host_dir }}/image"
+    amnezia_variants:
+      awg2:
+        container: amnezia-awg2
+        config: "{{ amnezia_data_dir }}/awg/awg0.conf"
+        interface: awg0
+        tool: awg
+      awg:
+        container: amnezia-awg
+        config: "{{ amnezia_data_dir }}/awg/wg0.conf"
+        interface: wg0
+        tool: wg
 
   tasks:
-    - name: Ensure Amnezia host directories exist
+    - name: Ensure protected Amnezia host directories exist
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -27,29 +35,130 @@
       loop:
         - "{{ amnezia_host_dir }}"
         - "{{ amnezia_data_dir }}"
-        - "{{ amnezia_host_dir }}/image"
+        - "{{ amnezia_image_dir }}"
+        - "{{ amnezia_host_dir }}/backup"
 
-    - name: Check for persisted Amnezia configuration
-      ansible.builtin.stat:
-        path: "{{ amnezia_config_file }}"
-      register: amnezia_persisted_config
-
-    - name: Inspect the phone-created Amnezia container
-      community.docker.docker_container_info:
-        name: "{{ amnezia_container_name }}"
-      register: amnezia_source_container
-      when: not amnezia_persisted_config.stat.exists
-
-    - name: Require a source for the initial migration
+    - name: Validate requested Amnezia generation
       ansible.builtin.assert:
         that:
-          - amnezia_source_container.exists
+          - amnezia_variant == 'auto' or amnezia_variant in amnezia_variants
+        fail_msg: "amnezia_variant must be auto, awg2, or awg."
+
+    - name: Check for persisted Amnezia configurations
+      ansible.builtin.stat:
+        path: "{{ item.value.config }}"
+      loop: "{{ amnezia_variants | dict2items }}"
+      loop_control:
+        label: "{{ item.value.config }}"
+      register: amnezia_persisted_config_candidates
+
+    - name: Inspect supported Amnezia containers
+      community.docker.docker_container_info:
+        name: "{{ item.value.container }}"
+      loop: "{{ amnezia_variants | dict2items }}"
+      loop_control:
+        label: "{{ item.value.container }}"
+      register: amnezia_container_candidates
+
+    - name: Collect detected Amnezia generations
+      ansible.builtin.set_fact:
+        amnezia_persisted_variants: >-
+          {{
+            amnezia_persisted_config_candidates.results |
+            selectattr('stat.exists') |
+            map(attribute='item.key') | list
+          }}
+        amnezia_container_variants: >-
+          {{
+            amnezia_container_candidates.results |
+            selectattr('exists') |
+            map(attribute='item.key') | list
+          }}
+
+    - name: Reject ambiguous automatic generation detection
+      ansible.builtin.assert:
+        that:
+          - amnezia_persisted_variants | length <= 1
+          - amnezia_container_variants | length <= 1
+        fail_msg: >-
+          More than one Amnezia generation was detected. Run with
+          -e amnezia_variant=awg2 or -e amnezia_variant=awg after verifying
+          which configuration should be used.
+      when: amnezia_variant == 'auto'
+
+    - name: Select the Amnezia generation
+      ansible.builtin.set_fact:
+        amnezia_selected_variant: >-
+          {{
+            amnezia_variant
+            if amnezia_variant != 'auto'
+            else
+            (amnezia_persisted_variants | first)
+            if amnezia_persisted_variants | length > 0
+            else
+            (amnezia_container_variants | first)
+            if amnezia_container_variants | length > 0
+            else ''
+          }}
+
+    - name: Require an Amnezia generation source
+      ansible.builtin.assert:
+        that:
+          - amnezia_selected_variant in amnezia_variants
+        fail_msg: >-
+          Neither a persisted configuration nor an amnezia-awg2/amnezia-awg
+          container was found. Restore /amnezia or install Amnezia first.
+
+    - name: Set selected Amnezia generation parameters
+      ansible.builtin.set_fact:
+        amnezia_container_name: >-
+          {{ amnezia_variants[amnezia_selected_variant].container }}
+        amnezia_config_file: >-
+          {{ amnezia_variants[amnezia_selected_variant].config }}
+        amnezia_interface_name: >-
+          {{ amnezia_variants[amnezia_selected_variant].interface }}
+        amnezia_tool: >-
+          {{ amnezia_variants[amnezia_selected_variant].tool }}
+        amnezia_image_archive: >-
+          {{ amnezia_image_dir }}/{{ amnezia_variants[amnezia_selected_variant].container }}.tar
+        amnezia_image_id_file: >-
+          {{ amnezia_image_dir }}/{{ amnezia_variants[amnezia_selected_variant].container }}.id
+        amnezia_inspect_file: >-
+          {{ amnezia_host_dir }}/backup/{{ amnezia_variants[amnezia_selected_variant].container }}-inspect.json
+
+    - name: Select existing container information
+      ansible.builtin.set_fact:
+        amnezia_existing_container: >-
+          {{
+            amnezia_container_candidates.results |
+            selectattr('item.key', 'equalto', amnezia_selected_variant) |
+            first
+          }}
+
+    - name: Set persisted configuration status
+      ansible.builtin.set_fact:
+        amnezia_persisted_config_exists: >-
+          {{ amnezia_selected_variant in amnezia_persisted_variants }}
+
+    - name: Require a container for the initial migration
+      ansible.builtin.assert:
+        that:
+          - amnezia_existing_container.exists
         fail_msg: >-
           {{ amnezia_config_file }} is absent and container
           {{ amnezia_container_name }} does not exist. Restore /amnezia from
-          backup or install AmneziaWG from the application before running this
-          playbook for the first time.
-      when: not amnezia_persisted_config.stat.exists
+          backup or install the matching Amnezia generation before running
+          this playbook for the first time.
+      when: not amnezia_persisted_config_exists | bool
+
+    - name: Save current container metadata
+      ansible.builtin.copy:
+        content: "{{ amnezia_existing_container.container | to_nice_json }}\n"
+        dest: "{{ amnezia_inspect_file }}"
+        owner: root
+        group: root
+        mode: "0600"
+      when: amnezia_existing_container.exists
 
     - name: Copy the complete phone-created Amnezia directory to the host
       ansible.builtin.command:
@@ -59,8 +168,8 @@
           - "{{ amnezia_container_name }}:/opt/amnezia/."
           - "{{ amnezia_data_dir }}/"
       when:
-        - not amnezia_persisted_config.stat.exists
-        - amnezia_source_container.exists
+        - not amnezia_persisted_config_exists | bool
+        - amnezia_existing_container.exists
 
     - name: Check required persisted Amnezia files
       ansible.builtin.stat:
@@ -86,14 +195,102 @@
       loop_control:
         label: "{{ item.item }}"
 
-    - name: Ensure the Amnezia startup script is executable
+    - name: Ensure the persisted startup script is executable
       ansible.builtin.file:
         path: "{{ amnezia_data_dir }}/start.sh"
         owner: root
         group: root
         mode: "0700"
 
-    - name: Read the AWG listening port from the persisted configuration
+    - name: Check for the recorded Amnezia image ID
+      ansible.builtin.stat:
+        path: "{{ amnezia_image_id_file }}"
+      register: amnezia_recorded_image_id_file
+
+    - name: Record the exact image used by the existing container
+      ansible.builtin.copy:
+        content: "{{ amnezia_existing_container.container.Image }}\n"
+        dest: "{{ amnezia_image_id_file }}"
+        owner: root
+        group: root
+        mode: "0600"
+      when:
+        - not amnezia_recorded_image_id_file.stat.exists
+        - amnezia_existing_container.exists
+
+    - name: Read the recorded Amnezia image ID
+      ansible.builtin.slurp:
+        path: "{{ amnezia_image_id_file }}"
+      register: amnezia_image_id_raw
+
+    - name: Set the exact Amnezia image ID
+      ansible.builtin.set_fact:
+        amnezia_image_id: "{{ amnezia_image_id_raw.content | b64decode | trim }}"
+
+    - name: Validate the recorded image ID format
+      ansible.builtin.assert:
+        that:
+          - amnezia_image_id is match('^sha256:[0-9a-f]{64}$')
+        fail_msg: "Invalid image ID in {{ amnezia_image_id_file }}."
+
+    - name: Verify the existing container still uses the recorded image
+      ansible.builtin.assert:
+        that:
+          - amnezia_existing_container.container.Image == amnezia_image_id
+        fail_msg: >-
+          The running {{ amnezia_container_name }} container uses image
+          {{ amnezia_existing_container.container.Image }}, but the persisted
+          backup records {{ amnezia_image_id }}. Review and migrate the image
+          change deliberately before replacing the saved version.
+      when: amnezia_existing_container.exists
+
+    - name: Inspect the exact local Amnezia image
+      community.docker.docker_image_info:
+        name: "{{ amnezia_image_id }}"
+      register: amnezia_exact_image_info
+
+    - name: Check for the saved exact Amnezia image
+      ansible.builtin.stat:
+        path: "{{ amnezia_image_archive }}"
+      register: amnezia_saved_image
+
+    - name: Restore the exact Amnezia image from host backup
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - load
+          - --input
+          - "{{ amnezia_image_archive }}"
+      when:
+        - amnezia_exact_image_info.images | length == 0
+        - amnezia_saved_image.stat.exists
+
+    - name: Recheck the exact Amnezia image
+      community.docker.docker_image_info:
+        name: "{{ amnezia_image_id }}"
+      register: amnezia_final_image_info
+
+    - name: Validate the exact Amnezia image is available
+      ansible.builtin.assert:
+        that:
+          - amnezia_final_image_info.images | length > 0
+        fail_msg: >-
+          Image {{ amnezia_image_id }} is unavailable and no usable archive
+          exists at {{ amnezia_image_archive }}.
+
+    - name: Save the exact Amnezia image to the host
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - save
+          - --output
+          - "{{ amnezia_image_archive }}"
+          - "{{ amnezia_image_id }}"
+      when: not amnezia_saved_image.stat.exists
+
+    - name: Read the AWG listening port from persisted configuration
       ansible.builtin.command:
         argv:
           - awk
@@ -112,93 +309,11 @@
           - amnezia_configured_port.stdout is match('^[0-9]+$')
           - amnezia_configured_port.stdout | int >= 1
           - amnezia_configured_port.stdout | int <= 65535
-        fail_msg: >-
-          No valid ListenPort was found in {{ amnezia_config_file }}.
+        fail_msg: "No valid ListenPort was found in {{ amnezia_config_file }}."
 
     - name: Set the AWG listening port
       ansible.builtin.set_fact:
         amnezia_port: "{{ amnezia_configured_port.stdout | int }}"
-
-    - name: Inspect the local Amnezia image
-      community.docker.docker_image_info:
-        name: "{{ amnezia_image }}"
-      register: amnezia_image_info
-
-    - name: Check for the saved Amnezia image
-      ansible.builtin.stat:
-        path: "{{ amnezia_image_archive }}"
-      register: amnezia_saved_image
-
-    - name: Restore the matching Amnezia image from the host backup
-      ansible.builtin.command:
-        argv:
-          - docker
-          - image
-          - load
-          - --input
-          - "{{ amnezia_image_archive }}"
-      when:
-        - amnezia_image_info.images | length == 0
-        - amnezia_saved_image.stat.exists
-
-    - name: Require the matching Amnezia image
-      community.docker.docker_image_info:
-        name: "{{ amnezia_image }}"
-      register: amnezia_final_image_info
-
-    - name: Validate the matching Amnezia image
-      ansible.builtin.assert:
-        that:
-          - amnezia_final_image_info.images | length > 0
-        fail_msg: >-
-          Docker image {{ amnezia_image }} is unavailable and no usable image
-          archive exists at {{ amnezia_image_archive }}. Restore that archive
-          or let the Amnezia application build the image first.
-
-    - name: Check for the pinned Amnezia image ID
-      ansible.builtin.stat:
-        path: "{{ amnezia_image_id_file }}"
-      register: amnezia_saved_image_id
-
-    - name: Pin the initially migrated Amnezia image ID
-      ansible.builtin.copy:
-        content: "{{ amnezia_final_image_info.images[0].Id }}\n"
-        dest: "{{ amnezia_image_id_file }}"
-        owner: root
-        group: root
-        mode: "0600"
-      when: not amnezia_saved_image_id.stat.exists
-
-    - name: Read the pinned Amnezia image ID
-      ansible.builtin.slurp:
-        path: "{{ amnezia_image_id_file }}"
-      register: amnezia_pinned_image_id_raw
-
-    - name: Set the pinned Amnezia image ID
-      ansible.builtin.set_fact:
-        amnezia_pinned_image_id: >-
-          {{ amnezia_pinned_image_id_raw.content | b64decode | trim }}
-
-    - name: Reject an incompatible unreviewed Amnezia image change
-      ansible.builtin.assert:
-        that:
-          - amnezia_final_image_info.images[0].Id == amnezia_pinned_image_id
-        fail_msg: >-
-          The {{ amnezia_image }} tag now resolves to
-          {{ amnezia_final_image_info.images[0].Id }}, but the persisted
-          configuration is pinned to {{ amnezia_pinned_image_id }}. Test and
-          migrate the new image deliberately instead of replacing it silently.
-
-    - name: Save the matching locally-built Amnezia image
-      ansible.builtin.command:
-        argv:
-          - docker
-          - image
-          - save
-          - --output
-          - "{{ amnezia_image_archive }}"
-          - "{{ amnezia_image }}"
-      when: not amnezia_saved_image.stat.exists
 
     - name: Ensure the shared Docker network exists
       community.docker.docker_network:
@@ -207,10 +322,10 @@
           - subnet: "{{ service_docker_network.subnet }}"
             iprange: "{{ service_docker_network.iprange }}"
 
-    - name: Run AmneziaWG from host-persisted state
+    - name: Run the exact Amnezia image from host-persisted state
       community.docker.docker_container:
         name: "{{ amnezia_container_name }}"
-        image: "{{ amnezia_pinned_image_id }}"
+        image: "{{ amnezia_image_id }}"
         pull: false
         state: started
         restart_policy: always
@@ -237,28 +352,31 @@
             source: "{{ amnezia_data_dir }}"
             target: /opt/amnezia
 
-    - name: Wait for the AmneziaWG interface
+    - name: Wait for the Amnezia VPN interface
       community.docker.docker_container_exec:
         container: "{{ amnezia_container_name }}"
-        command: ip address show awg0
+        command: "ip address show {{ amnezia_interface_name }}"
       register: amnezia_interface
       retries: 10
       delay: 1
       until: amnezia_interface.rc == 0
       changed_when: false
 
-    - name: Verify the AmneziaWG listening port
+    - name: Verify the Amnezia listening port
       community.docker.docker_container_exec:
         container: "{{ amnezia_container_name }}"
-        command: awg show awg0 listen-port
+        command: >-
+          {{ amnezia_tool }} show {{ amnezia_interface_name }} listen-port
       register: amnezia_listen_port
       changed_when: false
-      failed_when: amnezia_listen_port.stdout | trim != amnezia_port | string
+      failed_when: >-
+        amnezia_listen_port.stdout | trim != amnezia_port | string
 
-    - name: Report the persisted image and configuration
+    - name: Report persisted Amnezia state
       ansible.builtin.debug:
         msg:
+          - "Amnezia generation: {{ amnezia_selected_variant }}"
           - "Amnezia configuration: {{ amnezia_data_dir }}"
           - "Amnezia image archive: {{ amnezia_image_archive }}"
-          - "Amnezia image ID: {{ amnezia_pinned_image_id }}"
+          - "Amnezia image ID: {{ amnezia_image_id }}"
           - "Amnezia UDP port: {{ amnezia_port }}"
