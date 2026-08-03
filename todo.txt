@@ -25,6 +25,8 @@ Add nexus monitoring in zabbix
     - disk usage
 
 install_amnesiawg from playbook same as from phone with passingthrough directore with client configs
+backup amnezia container
+restore amnezia container
 
 backup
     - zabbix
