@@ -301,7 +301,7 @@ service_catalog:
 
   gitlab:
     name: gitlab
-    image: gitlab/gitlab-ce:18.9.8-ce.0
+    image: gitlab/gitlab-ce:19.2.1-ce.0
     ports:
       - 1080:80/tcp
       - 1022:22/tcp
