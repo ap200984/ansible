@@ -2,6 +2,7 @@
 service_containers:
   - speedtest
   - socks5
+  - socks5_pmikle
   - ejabberd
   - certbot
   - nginx

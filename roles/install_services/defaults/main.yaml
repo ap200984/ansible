@@ -190,6 +190,16 @@ service_catalog:
         else {}
       }}
 
+  socks5_pmikle:
+    name: socks5_pmikle
+    image: serjs/go-socks5-proxy
+    no_log: true
+    ports:
+      - 2980:1080/tcp
+    env:
+      PROXY_USER: "{{ socks5_auth_proxy_user | string }}"
+      PROXY_PASSWORD: "{{ socks5_pmikle_proxy_password | mandatory | string }}"
+
   nginx:
     name: nginx
     image: nginx:latest
