@@ -200,6 +200,17 @@ service_catalog:
       PROXY_USER: "{{ socks5_auth_proxy_user | string }}"
       PROXY_PASSWORD: "{{ socks5_pmikle_proxy_password | mandatory | string }}"
 
+  mtproto_pmikle_proxy:
+    name: mtproto_pmikle_proxy
+    image: nineseconds/mtg:2
+    no_log: true
+    ports:
+      - 2980:3128/tcp
+    command:
+      - simple-run
+      - 0.0.0.0:3128
+      - "{{ mtproto_pmikle_secret | mandatory | string }}"
+
   nginx:
     name: nginx
     image: nginx:latest
