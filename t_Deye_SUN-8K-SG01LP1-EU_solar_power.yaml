@@ -1,0 +1,290 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+  templates:
+    - uuid: 565c9301f97b458ea22ef468c50f528d
+      template: t_Deye_SUN-8K-SG01LP1-EU_solar_power
+      name: t_Deye_SUN-8K-SG01LP1-EU_solar_power
+      description: 'Мониторинг инвертора, солнечных панелей и аккумулятора'
+      groups:
+        - name: Templates
+      items:
+        - uuid: d1fa2efea591430c96719b76c3b1fcce
+          name: master.item
+          key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'
+          history: 1h
+          value_type: TEXT
+        - uuid: a1000000000040008000000000000001
+          name: 'PV1 voltage'
+          type: DEPENDENT
+          key: deye.pv1.voltage
+          value_type: FLOAT
+          units: V
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.pv1_voltage]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000002
+          name: 'PV1 current'
+          type: DEPENDENT
+          key: deye.pv1.current
+          value_type: FLOAT
+          units: A
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.pv1_current]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000003
+          name: 'PV1 power'
+          type: DEPENDENT
+          key: deye.pv1.power
+          value_type: FLOAT
+          units: W
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.pv1_power]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000004
+          name: 'PV2 power'
+          type: DEPENDENT
+          key: deye.pv2.power
+          value_type: FLOAT
+          units: W
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.pv2_power]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000005
+          name: 'Power source: Solar'
+          type: DEPENDENT
+          key: deye.pv.total_power
+          value_type: FLOAT
+          units: W
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.total_power]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000006
+          name: 'PV production today'
+          type: DEPENDENT
+          key: deye.pv.production_today
+          value_type: FLOAT
+          units: kWh
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.production_today]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000007
+          name: 'PV production total'
+          type: DEPENDENT
+          key: deye.pv.production_total
+          value_type: FLOAT
+          units: kWh
+          preprocessing: [{type: JSONPATH, parameters: [$.pv.production_total]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000008
+          name: 'Battery voltage'
+          type: DEPENDENT
+          key: deye.battery.voltage
+          value_type: FLOAT
+          units: V
+          preprocessing: [{type: JSONPATH, parameters: [$.battery.voltage]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000009
+          name: 'Battery state: Charged'
+          type: DEPENDENT
+          key: deye.battery.soc
+          value_type: FLOAT
+          units: '%'
+          preprocessing: [{type: JSONPATH, parameters: [$.battery.soc]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000014
+          name: 'Battery state: Empty'
+          type: DEPENDENT
+          key: deye.battery.soc_empty
+          value_type: FLOAT
+          units: '%'
+          preprocessing:
+            - type: JSONPATH
+              parameters: [$.battery.soc]
+            - type: JAVASCRIPT
+              parameters: ['return Math.max(0, 100 - value);']
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a100000000004000800000000000000a
+          name: 'Battery current'
+          type: DEPENDENT
+          key: deye.battery.current
+          value_type: FLOAT
+          units: A
+          preprocessing: [{type: JSONPATH, parameters: [$.battery.current]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a100000000004000800000000000000b
+          name: 'Power source: Battery'
+          type: DEPENDENT
+          key: deye.battery.power
+          value_type: FLOAT
+          units: W
+          preprocessing: [{type: JSONPATH, parameters: [$.battery.power]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a100000000004000800000000000000c
+          name: 'Battery temperature'
+          type: DEPENDENT
+          key: deye.battery.temperature
+          value_type: FLOAT
+          units: °C
+          preprocessing: [{type: JSONPATH, parameters: [$.battery.temperature]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a100000000004000800000000000000d
+          name: 'Grid voltage raw'
+          type: DEPENDENT
+          key: deye.grid.voltage_raw
+          value_type: FLOAT
+          preprocessing: [{type: JSONPATH, parameters: [$.grid.voltage_raw]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a100000000004000800000000000000e
+          name: 'Power source: Grid'
+          type: DEPENDENT
+          key: deye.grid.power
+          value_type: FLOAT
+          units: W
+          preprocessing: [{type: JSONPATH, parameters: [$.grid.power]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a100000000004000800000000000000f
+          name: 'Load power'
+          type: DEPENDENT
+          key: deye.load.power
+          value_type: FLOAT
+          units: W
+          preprocessing: [{type: JSONPATH, parameters: [$.load.power]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000010
+          name: 'Load frequency'
+          type: DEPENDENT
+          key: deye.load.frequency
+          value_type: FLOAT
+          units: Hz
+          preprocessing: [{type: JSONPATH, parameters: [$.load.frequency]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000011
+          name: 'Inverter frequency'
+          type: DEPENDENT
+          key: deye.inverter.frequency
+          value_type: FLOAT
+          units: Hz
+          preprocessing: [{type: JSONPATH, parameters: [$.inverter.frequency]}]
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000012
+          name: 'Inverter DC temperature'
+          type: DEPENDENT
+          key: deye.inverter.dc_temperature
+          value_type: FLOAT
+          units: °C
+          preprocessing:
+            - type: JSONPATH
+              parameters: [$.inverter.dc_temperature_raw]
+            - type: JAVASCRIPT
+              parameters: ['return (value - 1000) * 0.1;']
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+        - uuid: a1000000000040008000000000000013
+          name: 'Inverter AC temperature'
+          type: DEPENDENT
+          key: deye.inverter.ac_temperature
+          value_type: FLOAT
+          units: °C
+          preprocessing:
+            - type: JSONPATH
+              parameters: [$.inverter.ac_temperature_raw]
+            - type: JAVASCRIPT
+              parameters: ['return (value - 1000) * 0.1;']
+          master_item: {key: 'deye.inverter.get[10.10.0.196,2984960372,8899,1]'}
+      dashboards:
+        - uuid: a2000000000040008000000000000001
+          name: 'Deye solar overview'
+          pages:
+            - name: Overview
+              widgets:
+                - type: svggraph
+                  name: 'Power: solar, battery, grid and load (W)'
+                  width: '54'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'Power source: *'}
+                    - {type: INTEGER, name: ds.0.color_palette, value: '4'}
+                    - {type: INTEGER, name: ds.0.stacked, value: '1'}
+                    - {type: INTEGER, name: ds.0.fill, value: '5'}
+                    - {type: STRING, name: ds.1.items.0, value: 'Load power'}
+                    - {type: STRING, name: ds.1.color, value: 5C6BC0}
+                    - {type: INTEGER, name: ds.1.width, value: '3'}
+                    - {type: STRING, name: ds.2.items.0, value: 'PV* power'}
+                    - {type: INTEGER, name: ds.2.color_palette, value: '6'}
+                    - {type: STRING, name: reference, value: DEYEP}
+                - type: piechart
+                  name: 'Battery state of charge'
+                  x: '54'
+                  width: '18'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'Battery state: *'}
+                    - {type: INTEGER, name: ds.0.color_palette, value: '2'}
+                    - {type: INTEGER, name: ds.0.aggregate_function, value: '7'}
+                    - {type: INTEGER, name: draw_type, value: '0'}
+                    - {type: INTEGER, name: legend_value, value: '1'}
+                - type: svggraph
+                  name: 'Voltages (V)'
+                  'y': '8'
+                  width: '36'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'PV1 voltage'}
+                    - {type: STRING, name: ds.0.color, value: 42A5F5}
+                    - {type: STRING, name: ds.1.items.0, value: 'Battery voltage'}
+                    - {type: STRING, name: ds.1.color, value: 66BB6A}
+                    - {type: STRING, name: reference, value: DEYEV}
+                - type: svggraph
+                  name: 'Currents (A)'
+                  x: '36'
+                  'y': '8'
+                  width: '36'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'PV1 current'}
+                    - {type: STRING, name: ds.0.color, value: FFD54F}
+                    - {type: STRING, name: ds.1.items.0, value: 'Battery current'}
+                    - {type: STRING, name: ds.1.color, value: AB47BC}
+                    - {type: STRING, name: reference, value: DEYEC}
+                - type: svggraph
+                  name: 'Temperatures (°C)'
+                  'y': '16'
+                  width: '36'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'Battery temperature'}
+                    - {type: STRING, name: ds.0.color, value: 42A5F5}
+                    - {type: STRING, name: ds.1.items.0, value: 'Inverter DC temperature'}
+                    - {type: STRING, name: ds.1.color, value: EF5350}
+                    - {type: STRING, name: ds.2.items.0, value: 'Inverter AC temperature'}
+                    - {type: STRING, name: ds.2.color, value: FF9800}
+                    - {type: STRING, name: reference, value: DEYET}
+                - type: svggraph
+                  name: 'Frequencies (Hz)'
+                  x: '36'
+                  'y': '16'
+                  width: '36'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'Load frequency'}
+                    - {type: STRING, name: ds.0.color, value: 42A5F5}
+                    - {type: STRING, name: ds.1.items.0, value: 'Inverter frequency'}
+                    - {type: STRING, name: ds.1.color, value: 66BB6A}
+                    - {type: STRING, name: reference, value: DEYEF}
+                - type: svggraph
+                  name: 'Energy production (kWh)'
+                  'y': '24'
+                  width: '54'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'PV production today'}
+                    - {type: STRING, name: ds.0.color, value: 66BB6A}
+                    - {type: STRING, name: ds.1.items.0, value: 'PV production total'}
+                    - {type: STRING, name: ds.1.color, value: 26A69A}
+                    - {type: STRING, name: reference, value: DEYEE}
+                - type: svggraph
+                  name: 'Grid register (raw)'
+                  x: '54'
+                  'y': '24'
+                  width: '18'
+                  height: '8'
+                  fields:
+                    - {type: STRING, name: ds.0.items.0, value: 'Grid voltage raw'}
+                    - {type: STRING, name: ds.0.color, value: EF5350}
+                    - {type: STRING, name: reference, value: DEYER}

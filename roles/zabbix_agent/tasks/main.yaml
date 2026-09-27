@@ -13,7 +13,9 @@
   set_fact:
     zabbix_agent_hostname: >-
       {{ hostname if hostname is defined and hostname | length > 0 else zabbix_agent_system_hostname.stdout }}
-    zabbix_agent_server: "{{ zabbix_server | default(server) }}"
+    zabbix_agent_server: >-
+      {{ zabbix_agent_allowed_servers
+         | default(zabbix_server | default(server)) }}
     zabbix_agent_server_active: "{{ zabbix_server | default(server_active) }}"
     zabbix_agent_host_metadata: >-
       os=linux,zabbix_proxy={{ zabbix_server | default(server) }},group={{ zabbix_agent_host_metadata_group }},tag={{ zabbix_agent_host_metadata_tag }}
@@ -184,6 +186,67 @@
     - zabbix_agent
     - "zabbix_agent:packages"
 
+- name: Install Deye monitoring Python dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+    state: present
+    update_cache: true
+  when: zabbix_agent_deya_solar_enabled | bool
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:deya_solar"
+
+- name: Install pysolarmanv5 on the Zabbix Agent host
+  ansible.builtin.pip:
+    name: pysolarmanv5
+    executable: pip3
+    extra_args: --break-system-packages
+  when: zabbix_agent_deya_solar_enabled | bool
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:deya_solar"
+
+- name: Create Zabbix Agent external scripts directory
+  ansible.builtin.file:
+    path: "{{ zabbix_agent_external_scripts_dir }}"
+    state: directory
+    owner: root
+    group: zabbix
+    mode: "0755"
+  when: zabbix_agent_deya_solar_enabled | bool
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:deya_solar"
+
+- name: Install Deye monitoring script on the Zabbix Agent host
+  ansible.builtin.copy:
+    src: deya_solar.py
+    dest: "{{ zabbix_agent_external_scripts_dir }}/deya_solar.py"
+    owner: root
+    group: zabbix
+    mode: "0755"
+  when: zabbix_agent_deya_solar_enabled | bool
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:deya_solar"
+
+- name: Configure Deye monitoring user parameter
+  ansible.builtin.copy:
+    dest: /etc/zabbix/zabbix_agent2.d/deya_solar.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: >
+      UserParameter=deye.inverter.get[*],{{ zabbix_agent_external_scripts_dir
+      }}/deya_solar.py --ip "$1" --serial "$2" --port "$3" --slave-id "$4"
+  when: zabbix_agent_deya_solar_enabled | bool
+  notify: Restart zabbix-agent2
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:deya_solar"
+    - "zabbix_agent:config"
+
 - name: Configure Zabbix Agent 2 PSK file
   copy:
     dest: "{{ zabbix_agent_psk_file }}"
@@ -218,6 +281,7 @@
       Include=/etc/zabbix/zabbix_agent2.d/*.conf
       PluginSocket=/run/zabbix/agent.plugin.sock
       ControlSocket=/run/zabbix/agent.sock
+      AllowKey=deye.inverter.get[*]
       AllowKey=system.run[*]
       Include=/etc/zabbix/zabbix_agent2.d/plugins.d/*.conf
   notify: Restart zabbix-agent2

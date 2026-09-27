@@ -1,6 +1,9 @@
 ---
 service_containers: []
 
+zabbix_proxy_psk_dir: /opt/zabbix-proxy/enc
+zabbix_proxy_psk_file: "{{ zabbix_proxy_psk_dir }}/zbxprx.psk"
+
 owncloud_data_dir: /owncloud
 owncloud_users:
   - username: "{{ owncloud_user1_login | default('') }}"
@@ -319,6 +322,26 @@ service_catalog:
       POSTGRES_PASSWORD: "{{ zabbix_postgres_password | string }}"
       POSTGRES_DB: zabbix
     post: zabbix_frontend
+
+  zabbix_proxy:
+    name: zabbix-proxy
+    image: zabbix/zabbix-proxy-sqlite3:ubuntu-7.4-latest
+    ports:
+      - 10051:10051/tcp
+    volumes:
+      - "{{ zabbix_proxy_psk_file }}:/var/lib/zabbix/enc/zbxprx.psk:ro"
+    env:
+      ZBX_PROXYMODE: "0"
+      ZBX_DEBUGLEVEL: "3"
+      ZBX_TLSPSKFILE: /var/lib/zabbix/enc/zbxprx.psk
+      ZBX_TLSPSKIDENTITY: "{{ zabbix_proxy_tls_psk_identity | string }}"
+      ZBX_HOSTNAME: "{{ zabbix_proxy_hostname | string }}"
+      ZBX_TLSCONNECT: psk
+      ZBX_PROXYCONFIGFREQUENCY: "10"
+      ZBX_DATASENDERFREQUENCY: "1"
+      ZBX_SERVER_HOST: "{{ zabbix_proxy_server_host | string }}"
+      ZBX_SERVER_PORT: "{{ zabbix_proxy_server_port | string }}"
+    prepare: zabbix_proxy
 
   gitlab:
     name: gitlab

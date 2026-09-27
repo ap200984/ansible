@@ -1,0 +1,40 @@
+---
+- name: Validate Zabbix proxy configuration
+  ansible.builtin.assert:
+    that:
+      - zabbix_proxy_hostname | default('') | string | length > 0
+      - zabbix_proxy_server_host | default('') | string | length > 0
+      - zabbix_proxy_tls_psk_identity | default('') | string | length > 0
+      - zabbix_proxy_psk is defined
+      - zabbix_proxy_psk | string | length >= 32
+      - zabbix_proxy_psk | string | length <= 512
+      - zabbix_proxy_psk | string | length is divisibleby 2
+      - zabbix_proxy_psk | string is match('^[0-9a-fA-F]+$')
+    fail_msg: >-
+      Configure zabbix_proxy_hostname, zabbix_proxy_server_host,
+      zabbix_proxy_tls_psk_identity, and a hexadecimal zabbix_proxy_psk
+      Vault secret between 32 and 512 characters.
+  no_log: true
+
+- name: Create Zabbix proxy PSK directory
+  ansible.builtin.file:
+    path: "{{ zabbix_proxy_psk_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install Zabbix proxy PSK from Vault
+  ansible.builtin.copy:
+    dest: "{{ zabbix_proxy_psk_file }}"
+    owner: "1997"
+    group: "1997"
+    mode: "0400"
+    content: "{{ zabbix_proxy_psk }}\n"
+  register: zabbix_proxy_psk_result
+  no_log: true
+
+- name: Recreate Zabbix proxy after PSK changes
+  ansible.builtin.set_fact:
+    service_force_recreate: true
+  when: zabbix_proxy_psk_result.changed

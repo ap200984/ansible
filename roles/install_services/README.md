@@ -41,3 +41,10 @@ After a successful renewal, Certbot touches
 `/etc/letsencrypt/.nginx-reload`. NGINX watches that marker through the shared
 read-only certificate volume and reloads itself within one minute. This does
 not require host cron, the Docker socket, or privileged container access.
+
+The Zabbix proxy uses the unmodified official image. Checks that must execute
+on the Docker host are exposed through Zabbix Agent 2 user parameters instead
+of being mounted into the proxy container.
+Its hexadecimal PSK is read from the Vault variable `zabbix_proxy_psk`; the
+role writes the bind-mounted PSK file and recreates the container when it
+changes.
