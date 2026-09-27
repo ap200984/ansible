@@ -9,32 +9,9 @@
     - "hostname:validate"
     - "hostname:config"
 
-- name: Set standards-compliant runtime hostname
+- name: Set runtime hostname
   ansible.builtin.hostname:
     name: "{{ hostname_name }}"
-  when: "'_' not in hostname_name"
-  tags:
-    - hostname
-    - "hostname:config"
-
-- name: Read runtime hostname for legacy underscore names
-  ansible.builtin.command: hostname
-  register: hostname_runtime_name
-  changed_when: false
-  when: "'_' in hostname_name"
-  tags:
-    - hostname
-    - "hostname:config"
-
-- name: Set runtime hostname with legacy underscore support
-  ansible.builtin.command:
-    argv:
-      - sysctl
-      - -w
-      - "kernel.hostname={{ hostname_name }}"
-  when:
-    - "'_' in hostname_name"
-    - hostname_runtime_name.stdout != hostname_name
   tags:
     - hostname
     - "hostname:config"
