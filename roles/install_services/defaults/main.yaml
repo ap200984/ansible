@@ -345,7 +345,7 @@ service_catalog:
 
   gitlab:
     name: gitlab
-    image: gitlab/gitlab-ce:19.4.0-ce.0
+    image: gitlab/gitlab-ce:19.4.1-ce.0
     ports:
       - 1080:80/tcp
       - 1022:22/tcp
