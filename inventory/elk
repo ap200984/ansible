@@ -1,0 +1,2 @@
+[elk]
+elk ansible_host=10.9.0.90

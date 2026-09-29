@@ -7,11 +7,35 @@
     group: root
     mode: "0755"
 
+- name: Validate NGINX upstream list
+  ansible.builtin.assert:
+    that:
+      - nginx_upstreams is sequence
+      - nginx_upstreams is not string
+    fail_msg: >-
+      nginx_upstreams must be a list of single-entry mappings, for example
+      [{kibana: '10.9.0.90:5601'}].
+
+- name: Validate NGINX upstream definitions
+  ansible.builtin.assert:
+    that:
+      - nginx_upstream is mapping
+      - nginx_upstream | length == 1
+      - nginx_upstream.keys() | first is match('^[A-Za-z0-9][A-Za-z0-9_-]*$')
+      - nginx_upstream.values() | first | string is match('^[A-Za-z0-9_.-]+:[0-9]+$')
+    fail_msg: >-
+      Each nginx_upstreams item must contain one valid name and one host:port,
+      for example {kibana: '10.9.0.90:5601'}.
+  loop: "{{ nginx_upstreams }}"
+  loop_control:
+    loop_var: nginx_upstream
+    label: "{{ nginx_upstream }}"
+
 - name: Set required NGINX template list
   ansible.builtin.set_fact:
     required_nginx_templates: >-
       {{
-        ['common.conf.j2', 'resolver.conf.j2']
+        ['common.conf.j2', 'resolver.conf.j2', 'upstreams.conf.j2']
         + service_containers
           | select('in', service_nginx_templates)
           | map('extract', service_nginx_templates)

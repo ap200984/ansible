@@ -170,6 +170,10 @@ service_nginx_templates:
   owncloud: owncloud.conf.j2
   nexus: nexus.conf.j2
 
+# Each item maps an upstream name to a host:port backend. The public hostname
+# is <name>.<domain>; underscores in names are rendered as hyphens.
+nginx_upstreams: []
+
 service_catalog:
   speedtest:
     name: speedtest

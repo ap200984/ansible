@@ -1,0 +1,3 @@
+---
+squid_endpoint: http://195.245.239.82:31280
+# elk_kibana_integrations_use_proxy: true

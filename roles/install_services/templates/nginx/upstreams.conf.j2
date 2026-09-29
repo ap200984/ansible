@@ -1,0 +1,27 @@
+{% for nginx_upstream in nginx_upstreams %}
+{% set upstream = nginx_upstream | dict2items | first %}
+upstream managed_{{ upstream.key }} {
+    server {{ upstream.value }};
+    keepalive 16;
+}
+
+server {
+    listen 443 ssl;
+    server_name {{ upstream.key | replace('_', '-') }}.{{ domain }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+
+    location / {
+        proxy_pass http://managed_{{ upstream.key }};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+{% endfor %}

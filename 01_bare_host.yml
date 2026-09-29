@@ -35,5 +35,6 @@
     - utils
     - rsyslog
     - docker
+    - auditbeat
     - zabbix_agent
     - ssh_keys

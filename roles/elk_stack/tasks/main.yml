@@ -1,0 +1,184 @@
+---
+- name: Validate ELK settings
+  ansible.builtin.assert:
+    that:
+      - elk_version | length > 0
+      - elk_elasticsearch_port | int > 0
+      - elk_kibana_port | int > 0
+      - elk_beats_port | int > 0
+    fail_msg: ELK version and listening ports must be valid.
+  tags: [elk, "elk:validate"]
+
+- name: Validate Kibana integrations proxy settings
+  ansible.builtin.assert:
+    that:
+      - elk_kibana_integrations_proxy_endpoint | length > 0
+      - elk_kibana_integrations_proxy_endpoint | urlsplit('scheme') in ['http', 'https']
+      - elk_kibana_integrations_proxy_endpoint | urlsplit('hostname') | length > 0
+      - elk_kibana_integrations_proxy_user | length > 0
+      - elk_kibana_integrations_proxy_password | length > 0
+    fail_msg: >-
+      Enabling the Kibana integrations proxy requires squid_endpoint,
+      squid_user, and squid_pass (or the corresponding
+      elk_kibana_integrations_proxy_* overrides).
+  when: elk_kibana_integrations_use_proxy | bool
+  no_log: true
+  tags: [elk, "elk:validate"]
+
+- name: Build authenticated Kibana integrations proxy URL
+  ansible.builtin.set_fact:
+    elk_kibana_integrations_proxy_url: >-
+      {{ elk_kibana_integrations_proxy_endpoint | urlsplit('scheme') }}://{{
+      elk_kibana_integrations_proxy_user | urlencode }}:{{
+      elk_kibana_integrations_proxy_password | urlencode }}@{{
+      elk_kibana_integrations_proxy_endpoint | urlsplit('hostname') }}:{{
+      elk_kibana_integrations_proxy_endpoint | urlsplit('port') | default(3128, true) }}
+  when: elk_kibana_integrations_use_proxy | bool
+  no_log: true
+  tags: [elk, "elk:validate", "elk:containers"]
+
+- name: Set the Elasticsearch virtual memory limit
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    state: present
+    sysctl_set: true
+    reload: true
+  tags: [elk, "elk:system"]
+
+- name: Create ELK configuration and data directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ elk_install_dir }}", owner: root, group: root, mode: "0755" }
+    - { path: "{{ elk_install_dir }}/elasticsearch", owner: "1000", group: root, mode: "0770" }
+    - { path: "{{ elk_install_dir }}/logstash/pipeline", owner: root, group: root, mode: "0755" }
+  loop_control:
+    label: "{{ item.path }}"
+  tags: [elk, "elk:config"]
+
+- name: Install Logstash pipeline
+  ansible.builtin.template:
+    src: logstash.conf.j2
+    dest: "{{ elk_install_dir }}/logstash/pipeline/logstash.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: elk_logstash_config
+  tags: [elk, "elk:config"]
+
+- name: Ensure ELK Docker network exists
+  community.docker.docker_network:
+    name: "{{ elk_network_name }}"
+  when: not ansible_check_mode
+  tags: [elk, "elk:containers"]
+
+- name: Start Elasticsearch container
+  community.docker.docker_container:
+    name: elasticsearch
+    image: "{{ elk_elasticsearch_image }}"
+    pull: true
+    state: started
+    restart_policy: unless-stopped
+    memory: "{{ elk_elasticsearch_memory }}"
+    networks:
+      - name: "{{ elk_network_name }}"
+    ports:
+      - "{{ elk_elasticsearch_port }}:9200"
+    volumes:
+      - "{{ elk_install_dir }}/elasticsearch:/usr/share/elasticsearch/data"
+    env:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+  when: not ansible_check_mode
+  tags: [elk, "elk:containers"]
+
+- name: Wait for Elasticsearch API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ elk_elasticsearch_port }}/_cluster/health"
+    status_code: 200
+    return_content: true
+  register: elk_elasticsearch_health
+  until: >-
+    elk_elasticsearch_health.status | default(0) == 200 and
+    elk_elasticsearch_health.json.status | default('') in ['yellow', 'green']
+  retries: 30
+  delay: 5
+  when: not ansible_check_mode
+  tags: [elk, "elk:ready"]
+
+- name: Start Logstash container
+  community.docker.docker_container:
+    name: logstash
+    image: "{{ elk_logstash_image }}"
+    pull: true
+    state: started
+    restart_policy: unless-stopped
+    recreate: "{{ elk_logstash_config.changed }}"
+    memory: "{{ elk_logstash_memory }}"
+    networks:
+      - name: "{{ elk_network_name }}"
+    ports:
+      - "{{ elk_beats_port }}:5044"
+    volumes:
+      - "{{ elk_install_dir }}/logstash/pipeline:/usr/share/logstash/pipeline:ro"
+    env:
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+  when: not ansible_check_mode
+  tags: [elk, "elk:containers"]
+
+- name: Start Kibana container
+  community.docker.docker_container:
+    name: kibana
+    image: "{{ elk_kibana_image }}"
+    pull: true
+    state: started
+    restart_policy: unless-stopped
+    memory: "{{ elk_kibana_memory }}"
+    networks:
+      - name: "{{ elk_network_name }}"
+    ports:
+      - "{{ elk_kibana_port }}:5601"
+    env: >-
+      {{
+        {
+          'ELASTICSEARCH_HOSTS': 'http://elasticsearch:9200',
+          'SERVER_HOST': '0.0.0.0'
+        }
+        | combine(
+            {
+              'XPACK_FLEET_REGISTRYPROXYURL':
+                elk_kibana_integrations_proxy_url
+            }
+            if elk_kibana_integrations_use_proxy | bool
+            else {}
+          )
+      }}
+  when: not ansible_check_mode
+  no_log: "{{ elk_kibana_integrations_use_proxy | bool }}"
+  tags: [elk, "elk:containers"]
+
+- name: Wait for Kibana API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ elk_kibana_port }}/api/status"
+    status_code: 200
+  register: elk_kibana_health
+  until: elk_kibana_health.status == 200
+  retries: 40
+  delay: 5
+  when: not ansible_check_mode
+  tags: [elk, "elk:ready"]
+
+- name: Wait for the Logstash Beats listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ elk_beats_port }}"
+    timeout: 180
+  when: not ansible_check_mode
+  tags: [elk, "elk:ready"]

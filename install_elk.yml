@@ -1,0 +1,13 @@
+---
+- name: Install Elasticsearch, Logstash, and Kibana
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: apt_sources
+      tags: [elk]
+    - role: docker
+      tags: [elk]
+    - role: elk_stack
+      tags: [elk]

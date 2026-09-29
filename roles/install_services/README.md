@@ -33,6 +33,21 @@ The order in `service_containers` is significant for dependent services. For
 example, PostgreSQL must precede the Zabbix backend and frontend, and Certbot
 must precede NGINX.
 
+NGINX can proxy arbitrary HTTP services with `nginx_upstreams` in host vars.
+Each item maps one name to one `host:port`; the name becomes a subdomain of
+`domain`:
+
+```yaml
+nginx_upstreams:
+  - kibana: 10.9.0.90:5601
+  - elasticsearch: 10.9.0.90:9200
+  - some_other_web_service: 10.0.0.20:8080
+```
+
+This creates `kibana.<domain>`, `elasticsearch.<domain>`, and
+`some-other-web-service.<domain>`. HTTP requests are redirected to HTTPS by
+the common wildcard server, and the existing wildcard certificate is used.
+
 Certbot bootstraps a wildcard certificate only when one is not already present.
 It requires `domain` in host vars and the existing Vault-backed Reg.ru and
 Let's Encrypt secret files.

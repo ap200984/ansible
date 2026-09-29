@@ -1,0 +1,20 @@
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [@metadata][beat] == "auditbeat" {
+    mutate { add_field => { "[@metadata][target_index]" => "auditbeat-%{+YYYY.MM.dd}" } }
+  } else {
+    mutate { add_field => { "[@metadata][target_index]" => "beats-%{+YYYY.MM.dd}" } }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://elasticsearch:9200"]
+    index => "%{[@metadata][target_index]}"
+  }
+}

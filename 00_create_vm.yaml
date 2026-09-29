@@ -5,11 +5,11 @@
 #
 # Example:
 # ansible-playbook -i inventory/k16_k112_server 00_create_vm.yaml \
-#   -e vm_name=pgadmin-vm \
-#   -e vm_ip_address=10.9.0.202 \
-#   -e vm_memory_mb=4096 \
+#   -e vm_name=elk \
+#   -e vm_ip_address=10.9.0.90 \
+#   -e vm_memory_mb=8192 \
 #   -e vm_vcpus=4 \
-#   -e vm_disk_size_gb=40
+#   -e vm_disk_size_gb=100
 
 - name: Create a new KVM virtual machine
   hosts: kvm-server

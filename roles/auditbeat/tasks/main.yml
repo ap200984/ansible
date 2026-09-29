@@ -1,0 +1,66 @@
+---
+- name: Validate Auditbeat settings
+  ansible.builtin.assert:
+    that:
+      - auditbeat_elk_host | string | length > 0
+      - auditbeat_logstash_port | int > 0
+    fail_msg: auditbeat_elk_host and auditbeat_logstash_port must be valid.
+  tags: [auditbeat, "auditbeat:validate"]
+
+- name: Install Auditbeat repository prerequisites
+  ansible.builtin.apt:
+    name: [ca-certificates, gnupg]
+    state: present
+    update_cache: true
+  tags: [auditbeat, "auditbeat:packages"]
+
+- name: Ensure apt keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [auditbeat, "auditbeat:repo"]
+
+- name: Install Elastic repository signing key
+  ansible.builtin.get_url:
+    url: "{{ auditbeat_apt_key_url }}"
+    dest: "{{ auditbeat_apt_key_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [auditbeat, "auditbeat:repo"]
+
+- name: Add Elastic apt repository
+  ansible.builtin.apt_repository:
+    repo: "{{ auditbeat_apt_repository }}"
+    filename: elastic-8.x
+    state: present
+    update_cache: true
+  tags: [auditbeat, "auditbeat:repo"]
+
+- name: Install Auditbeat
+  ansible.builtin.apt:
+    name: auditbeat
+    state: present
+  tags: [auditbeat, "auditbeat:packages"]
+
+- name: Configure Auditbeat
+  ansible.builtin.template:
+    src: auditbeat.yml.j2
+    dest: /etc/auditbeat/auditbeat.yml
+    owner: root
+    group: root
+    mode: "0600"
+    validate: /usr/bin/auditbeat test config -c %s
+  notify: Restart auditbeat
+  tags: [auditbeat, "auditbeat:config"]
+
+- name: Enable and start Auditbeat
+  ansible.builtin.service:
+    name: auditbeat
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+  tags: [auditbeat, "auditbeat:service"]

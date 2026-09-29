@@ -28,3 +28,6 @@ zabbix_agent_deya_solar_enabled: true
 zabbix_agent_allowed_servers: "{{ zabbix_server }},172.20.0.0/16"
 
 domain: k112.space
+
+nginx_upstreams:
+  - kibana: 10.9.0.90:5601

@@ -1,0 +1,6 @@
+---
+- name: Restart auditbeat
+  ansible.builtin.service:
+    name: auditbeat
+    state: restarted
+  when: not ansible_check_mode
