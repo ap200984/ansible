@@ -59,24 +59,10 @@
     - utils
     - "utils:atop"
 
-- name: Configure atop log rotation
-  copy:
+- name: Remove conflicting atop logrotate configuration
+  file:
     dest: /etc/logrotate.d/atop
-    owner: root
-    group: root
-    mode: "0644"
-    content: |
-      /var/log/atop/atop_*
-      {
-          weekly
-          maxsize 500M
-          rotate 6
-          missingok
-          notifempty
-          compress
-          delaycompress
-          copytruncate
-      }
+    state: absent
   tags:
     - utils
     - "utils:atop"

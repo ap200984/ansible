@@ -32,6 +32,8 @@
     - users
     - python3
     - iptables
+    - role: wireguard
+      when: wireguard_enabled | default(false) | bool
     - utils
     - rsyslog
     - docker

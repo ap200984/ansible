@@ -1,0 +1,19 @@
+[Interface]
+Address = {{ wireguard_address }}
+PrivateKey = {{ wireguard_private_key }}
+ListenPort = {{ wireguard_listen_port }}
+MTU = {{ wireguard_mtu }}
+
+{% for peer in wireguard_peers %}
+# {{ peer.name }}
+[Peer]
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.allowed_ips | join(', ') }}
+Endpoint = {{ peer.endpoint }}
+{% if peer.persistent_keepalive | default(0) | int > 0 %}
+PersistentKeepalive = {{ peer.persistent_keepalive }}
+{% endif %}
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}

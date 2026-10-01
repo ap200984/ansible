@@ -196,6 +196,7 @@
   tags:
     - zabbix_agent
     - "zabbix_agent:deya_solar"
+    - "zabbix_agent:config"
 
 - name: Install pysolarmanv5 on the Zabbix Agent host
   ansible.builtin.pip:
@@ -206,6 +207,7 @@
   tags:
     - zabbix_agent
     - "zabbix_agent:deya_solar"
+    - "zabbix_agent:config"
 
 - name: Create Zabbix Agent external scripts directory
   ansible.builtin.file:
@@ -218,6 +220,7 @@
   tags:
     - zabbix_agent
     - "zabbix_agent:deya_solar"
+    - "zabbix_agent:config"
 
 - name: Install Deye monitoring script on the Zabbix Agent host
   ansible.builtin.copy:
@@ -230,6 +233,7 @@
   tags:
     - zabbix_agent
     - "zabbix_agent:deya_solar"
+    - "zabbix_agent:config"
 
 - name: Configure Deye monitoring user parameter
   ansible.builtin.copy:

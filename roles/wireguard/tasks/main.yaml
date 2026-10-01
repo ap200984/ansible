@@ -1,0 +1,79 @@
+---
+- name: Validate WireGuard interface settings
+  ansible.builtin.assert:
+    that:
+      - wireguard_interface is match('^[A-Za-z0-9_=+.-]{1,15}$')
+      - wireguard_address is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$')
+      - wireguard_listen_port | int >= 1
+      - wireguard_listen_port | int <= 65535
+      - wireguard_private_key is match('^[A-Za-z0-9+/]{43}=$')
+      - wireguard_peers | length > 0
+    fail_msg: >-
+      Configure a valid WireGuard interface address, listen port, private key,
+      and at least one peer.
+  no_log: true
+  tags:
+    - wireguard
+    - "wireguard:validate"
+    - "wireguard:config"
+
+- name: Validate WireGuard peers
+  ansible.builtin.assert:
+    that:
+      - item.name | default('') | length > 0
+      - item.public_key | default('') is match('^[A-Za-z0-9+/]{43}=$')
+      - item.allowed_ips | default([]) | length > 0
+      - item.endpoint | default('') is match('^[^:]+:[0-9]+$')
+      - item.persistent_keepalive | default(0) | int >= 0
+      - item.persistent_keepalive | default(0) | int <= 65535
+    fail_msg: "WireGuard peer {{ item.name | default('unnamed') }} is invalid."
+  loop: "{{ wireguard_peers }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+  tags:
+    - wireguard
+    - "wireguard:validate"
+    - "wireguard:config"
+
+- name: Install WireGuard
+  ansible.builtin.apt:
+    name: "{{ wireguard_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+  tags:
+    - wireguard
+    - "wireguard:packages"
+
+- name: Ensure WireGuard configuration directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - wireguard
+    - "wireguard:config"
+
+- name: Configure WireGuard interface
+  ansible.builtin.template:
+    src: wg.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart WireGuard
+  tags:
+    - wireguard
+    - "wireguard:config"
+
+- name: Enable and start WireGuard interface
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wireguard_interface }}"
+    enabled: true
+    state: started
+  tags:
+    - wireguard
+    - "wireguard:service"
