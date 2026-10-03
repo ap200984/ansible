@@ -1,4 +1,4 @@
-# 2026-10-03 17:54:08 by RouterOS 7.24.5
+# by RouterOS 7.24.5
 # software id = I0ZR-FT3A
 #
 # model = C53UiG+5HPaxD2HPaxD
@@ -10,7 +10,6 @@
 /interface wifi set [ find default-name=wifi2 ] channel.band=2ghz-ax .skip-dfs-channels=10min-cac .width=20/40mhz configuration.country=Spain .mode=ap .ssid=Ath1 disabled=no name=wifi_2g security.authentication-types=wpa2-psk,wpa3-psk .ft=yes .ft-over-ds=yes
 /interface wifi set [ find default-name=wifi1 ] channel.band=5ghz-ax .skip-dfs-channels=10min-cac .width=20/40/80mhz configuration.country=Spain .mode=ap .ssid=Ath1 disabled=no name=wifi_5g security.authentication-types=wpa2-psk,wpa3-psk .ft=yes .ft-over-ds=yes
 /interface wireguard add listen-port=56685 mtu=1420 name=wg-server
-/interface wireguard add comment=vds9 listen-port=23086 mtu=1420 name=wg-vds9
 /interface wireguard add comment=wg_main_interface listen-port=56686 mtu=1420 name=wg_main_interface
 /interface ethernet switch set switch1 cpu-flow-control=yes
 /interface list add comment=defconf name=WAN
@@ -71,7 +70,7 @@
 /interface list member add interface=ether5 list=EXTERNAL
 /interface list member add interface=LAN list=INTERNAL
 /interface list member add interface=l2tp-to-vds8 list=EXTERNAL
-/interface list member add interface=wg-vds9 list=EXTERNAL
+/interface list member add interface=*13 list=EXTERNAL
 /interface ovpn-server server add mac-address=FE:C6:98:91:C7:D1 name=ovpn-server1
 /interface pptp-server server
 # PPTP connections are considered unsafe, it is suggested to use a more modern VPN protocol instead
@@ -80,12 +79,12 @@ set authentication=mschap2 enabled=yes
 /interface wifi capsman set ca-certificate=auto certificate=auto interfaces=LAN package-path="" require-peer-certificate=no upgrade-policy=none
 /interface wireguard peers add allowed-address=10.9.250.2/32 comment="ASUS ZenFone7" interface=wg-server name=peer2 public-key="L+V9o0fNYkMVKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q="
 /interface wireguard peers add allowed-address=0.0.0.0/0 comment=wg_to_vds5 endpoint-address=217.144.189.206 endpoint-port=56685 interface=wg_main_interface name=wg_to_vds5 persistent-keepalive=25s public-key="vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks="
-/interface wireguard peers add allowed-address=0.0.0.0/0 comment=wg-vds9 endpoint-address=90.156.218.209 endpoint-port=34182 interface=wg-vds9 name=wg-vds9 persistent-keepalive=47s public-key="IuNS/0QsZG2q3yHkAJwyoztBTloeCxf81Szr8vVgogQ="
+/interface wireguard peers add allowed-address=0.0.0.0/0 comment=wg-vds9 endpoint-address=90.156.218.209 endpoint-port=34182 interface=*13 name=wg-vds9 persistent-keepalive=47s public-key="IuNS/0QsZG2q3yHkAJwyoztBTloeCxf81Szr8vVgogQ="
 /ip address add address=86.110.170.70/30 interface=ether5 network=86.110.170.68
 /ip address add address=10.9.0.1/24 interface=LAN network=10.9.0.0
 /ip address add address=10.9.250.1/24 interface=wg-server network=10.9.250.0
 /ip address add address=10.250.0.60/24 interface=wg_main_interface network=10.250.0.0
-/ip address add address=10.8.1.2 interface=wg-vds9 network=10.8.1.2
+/ip address add address=10.8.1.2 interface=*13 network=10.8.1.2
 /ip address add address=10.9.1.1/24 interface=LAN network=10.9.1.0
 /ip cloud set ddns-enabled=yes
 /ip dhcp-client add default-route-distance=20 default-route-tables=main disabled=yes interface=ether5 name=TTK use-peer-dns=no use-peer-ntp=no

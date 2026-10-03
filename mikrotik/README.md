@@ -60,8 +60,17 @@ module alone does not provide reconciliation; the bundled module implements it.
 `python3 mikrotik/capture.py 10.9.0.3` refreshes both exports and generated YAML
 in the directory named after the router identity and writes connection details
 to `host_vars/<identity>.yml`. `--user`, `--key`, and `--port` override SSH
-credentials. This overwrites local desired state and secrets; only run it
-when intentionally taking a fresh snapshot. Review the generated selectors
+credentials. The default SSH key is `~/.ssh/priv/ansible`, expanded against the
+local user's home on Ubuntu or macOS. Captures also store explicit keys under
+the current user's home using `~/` to avoid machine-specific path changes.
+This overwrites local desired state and secrets; only run it
+when intentionally taking a fresh snapshot.
+Secret references are matched by record identity rather than export position,
+so unrelated additions or removals do not renumber existing references. New
+references use a stable identity hash. Export timestamps are omitted while the
+RouterOS version is retained. Existing Vault snapshots stay encrypted during
+refresh, and their ciphertext is preserved when their contents are unchanged.
+Review the generated selectors
 before using captures from other routers. The parser covers this router's
 export syntax, not every possible RouterOS script or command.
 Use `python3 mikrotik/capture.py 62.60.216.73 --port 20022` for a router on a

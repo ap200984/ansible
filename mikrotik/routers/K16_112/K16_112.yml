@@ -63,16 +63,6 @@ routeros_records:
   create: true
 - path: /interface wireguard
   values:
-    comment: vds9
-    listen-port: '23086'
-    mtu: '1420'
-    name: wg-vds9
-    private-key: '{{ routeros_secrets.record_7_private_key }}'
-  selector:
-    name: wg-vds9
-  create: true
-- path: /interface wireguard
-  values:
     comment: wg_main_interface
     listen-port: '56686'
     mtu: '1420'
@@ -546,11 +536,11 @@ routeros_records:
   create: true
 - path: /interface list member
   values:
-    interface: wg-vds9
+    interface: '*13'
     list: EXTERNAL
   selector:
     list: EXTERNAL
-    interface: wg-vds9
+    interface: '*13'
   create: true
 - path: /interface ovpn-server server
   values:
@@ -606,7 +596,7 @@ routeros_records:
     comment: wg-vds9
     endpoint-address: 90.156.218.209
     endpoint-port: '34182'
-    interface: wg-vds9
+    interface: '*13'
     name: wg-vds9
     persistent-keepalive: 47s
     preshared-key: '{{ routeros_secrets.record_75_preshared_key }}'
@@ -653,11 +643,11 @@ routeros_records:
 - path: /ip address
   values:
     address: 10.8.1.2
-    interface: wg-vds9
+    interface: '*13'
     network: 10.8.1.2
   selector:
     address: 10.8.1.2
-    interface: wg-vds9
+    interface: '*13'
   create: true
 - path: /ip address
   values:

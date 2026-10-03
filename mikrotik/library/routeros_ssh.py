@@ -2,6 +2,7 @@
 """Reconcile declarative RouterOS records through the local OpenSSH client."""
 import subprocess
 import re
+import os
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.routeros_export import parse_export
 
@@ -65,7 +66,7 @@ def main():
         identity_file=dict(type='path', required=True), records=dict(type='list', elements='dict', required=True)), supports_check_mode=True)
     if not 1 <= module.params['port'] <= 65535:
         module.fail_json(msg='SSH port must be between 1 and 65535')
-    ssh = ['ssh', '-p', str(module.params['port']), '-i', module.params['identity_file'], '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
+    ssh = ['ssh', '-p', str(module.params['port']), '-i', os.path.expanduser(module.params['identity_file']), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
            '-o', 'ConnectTimeout=10', module.params['user'] + '@' + module.params['host']]
     changed = []
     try:
