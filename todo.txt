@@ -28,6 +28,18 @@ install_amnesiawg from playbook same as from phone with passingthrough directore
 backup amnezia container
 restore amnezia container
 
+
+Setup https proxy on k112 server for vivaldi access
+
+Create mikrotik docker image from official image
+
+Mikrotik temparature
+
+WireGuard signle IP address for all connections
+
+zabbix_proxy with pysolar lib
+
+
 backup
     - zabbix
         - templates
