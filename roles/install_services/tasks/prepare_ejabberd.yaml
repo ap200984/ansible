@@ -1,4 +1,69 @@
 ---
+- name: Install POSIX ACL tools for ejabberd certificates
+  ansible.builtin.apt:
+    name: acl
+    state: present
+
+- name: Check ejabberd TLS certificate files
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/{{ item }}"
+  loop:
+    - fullchain.pem
+    - privkey.pem
+  register: ejabberd_certificate_files
+
+- name: Validate ejabberd TLS certificate files
+  ansible.builtin.assert:
+    that:
+      - ejabberd_certificate_files.results | map(attribute='stat.exists') | min
+    fail_msg: >-
+      The Let's Encrypt certificate for {{ domain }} must exist before
+      starting ejabberd.
+
+- name: Allow ejabberd to traverse Let's Encrypt directories
+  ansible.posix.acl:
+    path: "{{ item }}"
+    entity: "9000"
+    etype: user
+    permissions: x
+    state: present
+  loop:
+    - /etc/letsencrypt
+    - /etc/letsencrypt/live
+    - /etc/letsencrypt/archive
+
+- name: Allow ejabberd to traverse its certificate directories
+  ansible.posix.acl:
+    path: "{{ item }}"
+    entity: "9000"
+    etype: user
+    permissions: rx
+    state: present
+  loop:
+    - "/etc/letsencrypt/live/{{ domain }}"
+    - "/etc/letsencrypt/archive/{{ domain }}"
+
+- name: Allow ejabberd to read its current certificate files
+  ansible.posix.acl:
+    path: "/etc/letsencrypt/live/{{ domain }}/{{ item }}"
+    entity: "9000"
+    etype: user
+    permissions: r
+    state: present
+    follow: true
+  loop:
+    - fullchain.pem
+    - privkey.pem
+
+- name: Preserve ejabberd certificate access after renewal
+  ansible.posix.acl:
+    path: "/etc/letsencrypt/archive/{{ domain }}"
+    entity: "9000"
+    etype: user
+    permissions: r
+    default: true
+    state: present
+
 - name: Ensure ejabberd database directory exists
   ansible.builtin.file:
     path: /etc/ejabberd/database

@@ -1,6 +1,8 @@
 ---
 service_containers: []
 
+ejabberd_users: []
+
 zabbix_proxy_psk_dir: /opt/zabbix-proxy/enc
 zabbix_proxy_psk_file: "{{ zabbix_proxy_psk_dir }}/zbxprx.psk"
 

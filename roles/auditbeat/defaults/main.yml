@@ -1,6 +1,7 @@
 ---
 auditbeat_elk_host: "{{ elk_host | default('10.9.0.90') }}"
 auditbeat_logstash_port: 5044
+auditbeat_elastic_apt_repo_enabled: true
 auditbeat_elastic_major_version: "8.x"
 auditbeat_apt_key_url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
 auditbeat_apt_key_path: /etc/apt/keyrings/elastic.asc

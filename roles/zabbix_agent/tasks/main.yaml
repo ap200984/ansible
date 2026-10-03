@@ -186,6 +186,18 @@
     - zabbix_agent
     - "zabbix_agent:packages"
 
+- name: Grant Zabbix Agent access to the Docker socket
+  ansible.builtin.user:
+    name: zabbix
+    groups:
+      - "{{ zabbix_agent_docker_group }}"
+    append: true
+  notify: Restart zabbix-agent2
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:docker"
+    - "zabbix_agent:config"
+
 - name: Install Deye monitoring Python dependencies
   ansible.builtin.apt:
     name:

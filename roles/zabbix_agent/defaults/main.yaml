@@ -10,6 +10,7 @@ psk: "{{ zabbix_agent_psk | default('') }}"
 zabbix_agent_psk_file: /etc/zabbix/zabbix_agent2.psk
 zabbix_agent_deya_solar_enabled: false
 zabbix_agent_external_scripts_dir: /usr/local/lib/zabbix/externalscripts
+zabbix_agent_docker_group: docker
 zabbix_agent_use_nexus: "{{ use_nexus | default(false) }}"
 zabbix_agent_upstream_base_url: https://repo.zabbix.com
 zabbix_agent_nexus_base_url: >-

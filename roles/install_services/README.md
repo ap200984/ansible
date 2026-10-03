@@ -63,3 +63,16 @@ of being mounted into the proxy container.
 Its hexadecimal PSK is read from the Vault variable `zabbix_proxy_psk`; the
 role writes the bind-mounted PSK file and recreates the container when it
 changes.
+
+Ejabberd accounts are configured with the Vault-backed `ejabberd_users` list.
+Each list item maps one username to its password:
+
+```yaml
+ejabberd_users:
+  - admin: "password-for-admin"
+  - user1: "password-for-user1"
+  - user2: "password-for-user2"
+```
+
+Every account is registered on both `localhost` and `ejabberd.<domain>`.
+Existing accounts are left unchanged; only missing accounts are registered.

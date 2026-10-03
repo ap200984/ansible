@@ -11,18 +11,28 @@ zabbix_proxy_server_host: 217.144.189.206
 zabbix_proxy_server_port: 10051
 zabbix_proxy_tls_psk_identity: vds1
 zabbix_agent_deya_solar_enabled: true
+auditbeat_elastic_apt_repo_enabled: false
 
 wireguard_enabled: true
 wireguard_interface: wg0
-wireguard_address: 10.250.1.7/32
+wireguard_addresses:
+  - 10.250.1.7/32
+  - 10.250.1.1/32
 wireguard_listen_port: 56685
 wireguard_private_key: "{{ wireguard_server_private_key }}"
 wireguard_peers:
-  - name: vds7
+  - name: mikrotik-vds7
     public_key: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
     endpoint: 62.60.216.73:56697
+    source_address: 10.250.1.7
     allowed_ips:
       - 10.250.7.1/32
+  - name: mikrotik-3Ekipazhnyi64
+    public_key: rUX5DJTmbbehlI6gchyOyWwaZ80nBz6dXI1KdpFlum8=
+    source_address: 10.250.1.1
+    allowed_ips:
+      - 10.250.101.1/32
+      - 10.10.0.0/16
 
 domain: vds1.space
 second_octet: 19

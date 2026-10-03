@@ -1,23 +1,60 @@
 ---
-- name: Register ejabberd accounts
+- name: Validate ejabberd account definitions
+  ansible.builtin.assert:
+    that:
+      - ejabberd_user is mapping
+      - ejabberd_user | length == 1
+      - ejabberd_user.values() | first is string
+      - ejabberd_user.values() | first | length > 0
+    fail_msg: >-
+      Each ejabberd_users entry must contain exactly one username mapped to a
+      non-empty password string.
+  loop: "{{ ejabberd_users }}"
+  loop_control:
+    loop_var: ejabberd_user
+    label: "{{ ejabberd_user.keys() | first | default('invalid entry') }}"
+  no_log: true
+
+- name: Check existing ejabberd accounts
   community.docker.docker_container_exec:
     container: ejabberd
-    command:
+    argv:
       - bin/ejabberdctl
-      - register
-      - "{{ ejabberd_account.0 }}"
+      - check_account
+      - "{{ ejabberd_account.0.key }}"
       - "{{ ejabberd_account.1 }}"
-      - "{{ ejabberd_password }}"
   loop: >-
     {{
-      ['admin', 'user1', 'user2']
+      ejabberd_users
+      | map('dict2items')
+      | flatten(levels=1)
       | product(['localhost', 'ejabberd.' ~ domain])
       | list
     }}
   loop_control:
     loop_var: ejabberd_account
-    label: "{{ ejabberd_account.0 }}@{{ ejabberd_account.1 }}"
-  register: ejabberd_registration
-  changed_when: ejabberd_registration.rc == 0
+    label: "{{ ejabberd_account.0.key }}@{{ ejabberd_account.1 }}"
+  register: ejabberd_account_checks
+  changed_when: false
   failed_when: false
+  no_log: true
+
+- name: Register missing ejabberd accounts
+  community.docker.docker_container_exec:
+    container: ejabberd
+    argv:
+      - bin/ejabberdctl
+      - register
+      - "{{ ejabberd_check.ejabberd_account.0.key }}"
+      - "{{ ejabberd_check.ejabberd_account.1 }}"
+      - "{{ ejabberd_check.ejabberd_account.0.value }}"
+  loop: "{{ ejabberd_account_checks.results }}"
+  loop_control:
+    loop_var: ejabberd_check
+    label: >-
+      {{ ejabberd_check.ejabberd_account.0.key }}@{{
+      ejabberd_check.ejabberd_account.1 }}
+  when: ejabberd_check.rc != 0
+  register: ejabberd_registrations
+  changed_when: true
   no_log: true

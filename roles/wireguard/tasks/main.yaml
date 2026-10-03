@@ -3,7 +3,9 @@
   ansible.builtin.assert:
     that:
       - wireguard_interface is match('^[A-Za-z0-9_=+.-]{1,15}$')
-      - wireguard_address is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$')
+      - >-
+        wireguard_addresses | length > 0 or
+        wireguard_address is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$')
       - wireguard_listen_port | int >= 1
       - wireguard_listen_port | int <= 65535
       - wireguard_private_key is match('^[A-Za-z0-9+/]{43}=$')
@@ -17,13 +19,28 @@
     - "wireguard:validate"
     - "wireguard:config"
 
+- name: Validate WireGuard interface addresses
+  ansible.builtin.assert:
+    that:
+      - item is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$')
+    fail_msg: "WireGuard interface address {{ item }} is invalid."
+  loop: "{{ wireguard_addresses }}"
+  when: wireguard_addresses | length > 0
+  tags:
+    - wireguard
+    - "wireguard:validate"
+    - "wireguard:config"
+
 - name: Validate WireGuard peers
   ansible.builtin.assert:
     that:
       - item.name | default('') | length > 0
       - item.public_key | default('') is match('^[A-Za-z0-9+/]{43}=$')
       - item.allowed_ips | default([]) | length > 0
-      - item.endpoint | default('') is match('^[^:]+:[0-9]+$')
+      - item.endpoint is not defined or item.endpoint is match('^[^:]+:[0-9]+$')
+      - >-
+        item.source_address is not defined or
+        item.source_address is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
       - item.persistent_keepalive | default(0) | int >= 0
       - item.persistent_keepalive | default(0) | int <= 65535
     fail_msg: "WireGuard peer {{ item.name | default('unnamed') }} is invalid."

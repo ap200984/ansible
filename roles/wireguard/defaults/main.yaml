@@ -3,6 +3,7 @@ wireguard_enabled: false
 wireguard_package: wireguard
 wireguard_interface: wg0
 wireguard_address: ""
+wireguard_addresses: []
 wireguard_listen_port: 56685
 wireguard_mtu: 1420
 wireguard_private_key: ""
