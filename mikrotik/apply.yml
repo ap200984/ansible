@@ -1,0 +1,19 @@
+---
+- name: Apply MikroTik configuration using SSH
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    router_identity: Logia_Kitchen
+  vars_files:
+    - "{{ playbook_dir }}/routers/{{ router_identity }}/{{ router_identity }}.yml"
+    - "{{ playbook_dir }}/routers/{{ router_identity }}/secrets/secrets_{{ router_identity }}.yml"
+  tasks:
+    - name: Reconcile exported configuration
+      routeros_ssh:
+        host: "{{ router_host }}"
+        user: "{{ router_user }}"
+        port: "{{ router_port | default(22) }}"
+        identity_file: "{{ router_ssh_key }}"
+        records: "{{ routeros_records }}"
+      no_log: true

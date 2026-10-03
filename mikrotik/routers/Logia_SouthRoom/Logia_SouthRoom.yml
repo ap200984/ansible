@@ -1,0 +1,344 @@
+router_host: 10.9.0.3
+router_user: ansible
+router_ssh_key: /home/user/.ssh/priv/ansible
+routeros_records:
+- path: /interface bridge
+  values:
+    fast-forward: 'no'
+    name: LAN
+    port-cost-mode: short
+    protocol-mode: none
+  selector:
+    name: LAN
+  create: true
+- path: /interface bridge
+  values:
+    name: lo0
+    port-cost-mode: short
+  selector:
+    name: lo0
+  create: true
+- path: /interface ethernet
+  selector:
+    default-name: ether1
+  values:
+    comment: D24_main
+- path: /interface ethernet
+  selector:
+    default-name: ether2
+  values:
+    comment: Server
+- path: /interface ethernet
+  selector:
+    default-name: ether4
+  values:
+    auto-negotiation: 'no'
+    comment: NanoKVM
+    loop-protect: 'off'
+    speed: 100M-baseT-full
+- path: /interface wireless
+  selector:
+    default-name: wlan1
+  values:
+    antenna-gain: '0'
+    band: 2ghz-b/g/n
+    country: united states
+    disabled: 'no'
+    frequency: auto
+    frequency-mode: manual-txpower
+    mode: ap-bridge
+    ssid: Extra
+    station-roaming: enabled
+- path: /interface wireguard
+  values:
+    disabled: 'yes'
+    listen-port: '13231'
+    mtu: '1420'
+    name: wg-client
+    private-key: '{{ routeros_secrets.record_6_private_key }}'
+  selector:
+    name: wg-client
+  create: true
+- path: /interface lte apn
+  selector:
+    default: 'yes'
+  values:
+    ip-type: ipv4
+    use-network-apn: 'no'
+- path: /interface wireless security-profiles
+  selector:
+    default: 'yes'
+  values:
+    authentication-types: wpa2-psk
+    mode: dynamic-keys
+    supplicant-identity: MikroTik
+    wpa2-pre-shared-key: '{{ routeros_secrets.record_8_wpa2_pre_shared_key }}'
+- path: /ip smb users
+  selector:
+    default: 'yes'
+  values:
+    disabled: 'yes'
+- path: /routing bgp template
+  selector:
+    name: default
+  values:
+    disabled: 'no'
+    output.network: bgp-networks
+- path: /routing ospf instance
+  values:
+    disabled: 'no'
+    name: default-v2
+  selector:
+    name: default-v2
+  create: true
+- path: /routing ospf area
+  values:
+    disabled: 'yes'
+    instance: default-v2
+    name: backbone-v2
+  selector:
+    name: backbone-v2
+  create: true
+- path: /system logging action
+  number: 3
+  values:
+    remote: 10.9.0.76
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: ether5
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: ether5
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: wlan1
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: wlan1
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: ether1
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: ether1
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: ether2
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: ether2
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: ether3
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: ether3
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: ether4
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: ether4
+  create: true
+- path: /ip firewall connection tracking
+  values:
+    udp-timeout: 10s
+- path: /ip neighbor discovery-settings
+  values:
+    discover-interface-list: '!dynamic'
+- path: /ip settings
+  values:
+    max-neighbor-entries: '8192'
+- path: /ipv6 settings
+  values:
+    disable-ipv6: 'yes'
+    max-neighbor-entries: '8192'
+- path: /interface ovpn-server server
+  values:
+    auth: sha1,md5
+    mac-address: FE:95:36:10:C1:BC
+    name: ovpn-server1
+  selector:
+    name: ovpn-server1
+  create: true
+- path: /interface wifi cap
+  values:
+    certificate: none
+    discovery-interfaces: LAN
+    slaves-static: 'yes'
+- path: /interface wifi capsman
+  values:
+    package-path: ''
+    require-peer-certificate: 'no'
+    upgrade-policy: none
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: vds4
+    disabled: 'yes'
+    endpoint-address: 69.30.237.130
+    endpoint-port: '56685'
+    interface: wg-client
+    name: peer1
+    persistent-keepalive: 25s
+    preshared-key: '{{ routeros_secrets.record_27_preshared_key }}'
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    name: peer1
+  create: true
+- path: /interface wireless cap
+  values:
+    bridge: LAN
+    discovery-interfaces: LAN
+    enabled: 'yes'
+    interfaces: wlan1
+- path: /ip address
+  values:
+    address: 10.9.0.3/24
+    interface: LAN
+    network: 10.9.0.0
+  selector:
+    address: 10.9.0.3/24
+    interface: LAN
+  create: true
+- path: /ip address
+  values:
+    address: 10.9.99.2
+    interface: lo0
+    network: 10.9.99.2
+  selector:
+    address: 10.9.99.2
+    interface: lo0
+  create: true
+- path: /ip address
+  values:
+    address: 10.66.66.6/24
+    disabled: 'yes'
+    interface: wg-client
+    network: 10.66.66.0
+  selector:
+    address: 10.66.66.6/24
+    interface: wg-client
+  create: true
+- path: /ip dhcp-server network
+  values:
+    address: 192.168.10.0/24
+    gateway: 192.168.10.1
+  selector:
+    address: 192.168.10.0/24
+  create: true
+- path: /ip dhcp-server network
+  values:
+    address: 192.168.20.0/24
+    gateway: 192.168.20.1
+  selector:
+    address: 192.168.20.0/24
+  create: true
+- path: /ip dhcp-server network
+  values:
+    address: 192.168.30.0/24
+    gateway: 192.168.30.1
+  selector:
+    address: 192.168.30.0/24
+  create: true
+- path: /ip dns
+  values:
+    servers: 8.8.8.8
+- path: /ip ipsec profile
+  selector:
+    default: 'yes'
+  values:
+    dpd-interval: 2m
+    dpd-maximum-failures: '5'
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '5'
+    dst-address: 0.0.0.0/0
+    gateway: 10.9.0.1
+  selector:
+    dst-address: 0.0.0.0/0
+  create: true
+- path: /ipv6 nd
+  selector:
+    default: 'yes'
+  values:
+    advertise-dns: 'yes'
+- path: /routing bfd configuration
+  values:
+    disabled: 'no'
+  selector: {}
+  create: true
+- path: /snmp
+  values:
+    contact: mikrotik_k16_k112_loggia_south
+    enabled: 'yes'
+- path: /system clock
+  values:
+    time-zone-name: Europe/Moscow
+- path: /system identity
+  values:
+    name: Logia_SouthRoom
+- path: /system logging
+  values:
+    action: remote
+    topics: critical
+  selector:
+    topics: critical
+  create: true
+- path: /system logging
+  values:
+    action: remote
+    topics: error
+  selector:
+    topics: error
+  create: true
+- path: /system logging
+  values:
+    action: remote
+    topics: info
+  selector:
+    topics: info
+  create: true
+- path: /system logging
+  values:
+    action: remote
+    topics: warning
+  selector:
+    topics: warning
+  create: true
+- path: /system ntp client
+  values:
+    enabled: 'yes'
+- path: /system ntp client servers
+  values:
+    address: 10.9.0.1
+  selector:
+    address: 10.9.0.1
+  create: true
+- path: /system routerboard settings
+  values:
+    silent-boot: 'yes'

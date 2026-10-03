@@ -1,0 +1,697 @@
+router_host: 62.60.216.73
+router_user: ansible
+router_port: 20022
+router_ssh_key: /home/user/.ssh/priv/ansible
+routeros_records:
+- path: /interface ethernet
+  selector:
+    default-name: ether1
+  values:
+    disable-running-check: 'no'
+- path: /interface wireguard
+  values:
+    comment: Server WG
+    listen-port: '51820'
+    mtu: '1340'
+    name: WG-server
+    private-key: '{{ routeros_secrets.record_1_private_key }}'
+  selector:
+    name: WG-server
+  create: true
+- path: /interface wireguard
+  values:
+    comment: vds1_interface
+    listen-port: '56697'
+    mtu: '1420'
+    name: vds1_interface
+    private-key: '{{ routeros_secrets.record_2_private_key }}'
+  selector:
+    name: vds1_interface
+  create: true
+- path: /interface wireguard
+  values:
+    comment: vds2_interface
+    listen-port: '56698'
+    mtu: '1420'
+    name: vds2_interface
+    private-key: '{{ routeros_secrets.record_3_private_key }}'
+  selector:
+    name: vds2_interface
+  create: true
+- path: /interface wireguard
+  values:
+    comment: vds5_interface
+    listen-port: '56695'
+    mtu: '1340'
+    name: vds5_interface
+    private-key: '{{ routeros_secrets.record_4_private_key }}'
+  selector:
+    name: vds5_interface
+  create: true
+- path: /interface wireguard
+  values:
+    comment: vds6_interface
+    listen-port: '56696'
+    mtu: '1340'
+    name: vds6_interface
+    private-key: '{{ routeros_secrets.record_5_private_key }}'
+  selector:
+    name: vds6_interface
+  create: true
+- path: /interface wireguard
+  values:
+    comment: vds8_interface
+    listen-port: '56699'
+    mtu: '1420'
+    name: vds8_interface
+    private-key: '{{ routeros_secrets.record_6_private_key }}'
+  selector:
+    name: vds8_interface
+  create: true
+- path: /interface ovpn-server server
+  values:
+    mac-address: FE:E5:58:AC:D5:7C
+    name: ovpn-server1
+  selector:
+    name: ovpn-server1
+  create: true
+- path: /interface sstp-server server
+  values:
+    authentication: mschap2
+    certificate: local_SSL
+    default-profile: default-encryption
+    enabled: 'yes'
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg_to_vds5
+    endpoint-address: 217.144.189.206
+    endpoint-port: '56695'
+    interface: vds5_interface
+    name: wg_to_vds5
+    public-key: vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks=
+  selector:
+    name: wg_to_vds5
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg_to_vds6
+    endpoint-address: 195.245.239.82
+    endpoint-port: '56696'
+    interface: vds6_interface
+    name: wg_to_vds6
+    public-key: 98Q4AVfqFMBEOcJzrEONA8oMhIZMdoUOYbPaPtDwX34=
+  selector:
+    name: wg_to_vds6
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 10.252.7.2/32
+    comment: Gor iPhone
+    interface: WG-server
+    name: GorPhone
+    public-key: nWXTY1b6OoOVh/EqdjdOQE9Ran4wjew4iD9oM/1SJW0=
+  selector:
+    name: GorPhone
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg_to_vds1
+    endpoint-address: 45.141.102.72
+    endpoint-port: '56685'
+    interface: vds1_interface
+    name: wg_to_vds1
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    name: wg_to_vds1
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg_to_vds8
+    endpoint-address: 194.113.106.136
+    endpoint-port: '56699'
+    interface: vds8_interface
+    name: wg_to_vds8
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    name: wg_to_vds8
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg_to_vds2
+    endpoint-address: 38.247.137.237
+    endpoint-port: '56698'
+    interface: vds2_interface
+    name: wg_to_vds2
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    name: wg_to_vds2
+  create: true
+- path: /ip address
+  values:
+    address: 62.60.216.73
+    interface: ether1
+    network: 10.0.0.1
+  selector:
+    address: 62.60.216.73
+    interface: ether1
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.0.7/24
+    disabled: 'yes'
+    interface: '*3'
+    network: 10.250.0.0
+  selector:
+    address: 10.250.0.7/24
+    interface: '*3'
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.7.5
+    interface: vds5_interface
+    network: 10.250.7.5
+  selector:
+    address: 10.250.7.5
+    interface: vds5_interface
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.7.6
+    interface: vds6_interface
+    network: 10.250.7.6
+  selector:
+    address: 10.250.7.6
+    interface: vds6_interface
+  create: true
+- path: /ip address
+  values:
+    address: 10.252.7.1/24
+    comment: WG server
+    interface: WG-server
+    network: 10.252.7.0
+  selector:
+    address: 10.252.7.1/24
+    interface: WG-server
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.7.1
+    interface: vds1_interface
+    network: 10.250.7.1
+  selector:
+    address: 10.250.7.1
+    interface: vds1_interface
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.7.2
+    interface: vds2_interface
+    network: 10.250.7.2
+  selector:
+    address: 10.250.7.2
+    interface: vds2_interface
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.7.8
+    interface: vds8_interface
+    network: 10.250.7.8
+  selector:
+    address: 10.250.7.8
+    interface: vds8_interface
+  create: true
+- path: /ip dhcp-client
+  values:
+    interface: ether1
+    name: client1
+  selector:
+    name: client1
+  create: true
+- path: /ip dns
+  values:
+    servers: 1.1.1.1,8.8.8.8
+- path: /ip firewall address-list
+  values:
+    address: 195.245.239.82
+    comment: vds6
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 195.245.239.82
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.0.0/16
+    comment: wg_network
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 10.250.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 45.141.102.72
+    comment: vds
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 45.141.102.72
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 217.144.189.206
+    comment: vds5
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 217.144.189.206
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 86.110.170.70
+    comment: k16_k112
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 86.110.170.70
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 38.247.137.237
+    comment: vds2
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 38.247.137.237
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.251.0.0/24
+    comment: SSTP_network
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 10.251.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 194.113.106.136
+    comment: vds8
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 194.113.106.136
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: HTTPs MGMT INPUT
+    dst-port: '1956'
+    protocol: tcp
+  selector:
+    action: accept
+    chain: input
+    comment: HTTPs MGMT INPUT
+    dst-port: '1956'
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: PPP INPUT
+    in-interface: all-ppp
+  selector:
+    action: accept
+    chain: input
+    comment: PPP INPUT
+    in-interface: all-ppp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: PPP FORWARD
+    in-interface: all-ppp
+  selector:
+    action: accept
+    chain: forward
+    comment: PPP FORWARD
+    in-interface: all-ppp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Established_Related INPUT
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: input
+    comment: Established_Related INPUT
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Established_Related FORWARD
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: forward
+    comment: Established_Related FORWARD
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: SSTP INPUT
+    dst-port: '443'
+    protocol: tcp
+  selector:
+    action: accept
+    chain: input
+    comment: SSTP INPUT
+    dst-port: '443'
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Tusted INPUT
+    src-address-list: Trusted
+  selector:
+    action: accept
+    chain: input
+    comment: Tusted INPUT
+    src-address-list: Trusted
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Trusted FORWARD
+    src-address-list: Trusted
+  selector:
+    action: accept
+    chain: forward
+    comment: Trusted FORWARD
+    src-address-list: Trusted
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Allow WG server INPUT
+    dst-port: '51820'
+    protocol: udp
+  selector:
+    action: accept
+    chain: input
+    comment: Allow WG server INPUT
+    dst-port: '51820'
+    protocol: udp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Allow WG Server FORWARD
+    in-interface: WG-server
+  selector:
+    action: accept
+    chain: forward
+    comment: Allow WG Server FORWARD
+    in-interface: WG-server
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+  selector:
+    action: drop
+    chain: input
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+  selector:
+    action: drop
+    chain: forward
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    out-interface: ether1
+  selector:
+    action: masquerade
+    chain: srcnat
+    out-interface: ether1
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    disabled: 'yes'
+  selector:
+    action: masquerade
+    chain: srcnat
+  create: true
+  occurrence: 1
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    src-address: 10.252.7.0/24
+  selector:
+    action: masquerade
+    chain: srcnat
+    src-address: 10.252.7.0/24
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    comment: out SSTP
+    dst-address: 10.251.0.0/24
+  selector:
+    action: masquerade
+    chain: srcnat
+    comment: out SSTP
+    dst-address: 10.251.0.0/24
+  create: true
+- path: /ip route
+  values:
+    dst-address: 0.0.0.0/0
+    gateway: 10.0.0.1
+  selector:
+    dst-address: 0.0.0.0/0
+    gateway: 10.0.0.1
+  create: true
+- path: /ip route
+  values:
+    check-gateway: ping
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.250.0.0/24
+    gateway: 10.250.0.5
+    routing-table: main
+    scope: '30'
+    target-scope: '10'
+  selector:
+    dst-address: 10.250.0.0/24
+    routing-table: main
+    gateway: 10.250.0.5
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    dst-address: 10.250.5.7/32
+    gateway: vds5_interface
+    routing-table: main
+  selector:
+    dst-address: 10.250.5.7/32
+    routing-table: main
+    gateway: vds5_interface
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    dst-address: 10.250.6.7/32
+    gateway: vds6_interface
+    routing-table: main
+  selector:
+    dst-address: 10.250.6.7/32
+    routing-table: main
+    gateway: vds6_interface
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '1'
+    dst-address: 10.250.1.7/32
+    gateway: vds1_interface
+    routing-table: main
+  selector:
+    dst-address: 10.250.1.7/32
+    routing-table: main
+    gateway: vds1_interface
+    distance: '1'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '1'
+    dst-address: 10.250.8.7/32
+    gateway: vds8_interface
+    routing-table: main
+  selector:
+    dst-address: 10.250.8.7/32
+    routing-table: main
+    gateway: vds8_interface
+    distance: '1'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '1'
+    dst-address: 10.250.2.7/32
+    gateway: vds2_interface
+    routing-table: main
+  selector:
+    dst-address: 10.250.2.7/32
+    routing-table: main
+    gateway: vds2_interface
+    distance: '1'
+  create: true
+- path: /ip service
+  selector:
+    name: ftp
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: telnet
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: www
+  values:
+    port: '1955'
+- path: /ip service
+  selector:
+    name: www-ssl
+  values:
+    certificate: local_SSL
+    disabled: 'no'
+    port: '1956'
+- path: /ip service
+  selector:
+    name: winbox
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: api
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: api-ssl
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: ssh
+  values:
+    port: '20022'
+- path: /ip ssh
+  values:
+    forwarding-enabled: both
+- path: /ipv6 nd
+  selector:
+    default: 'yes'
+  values:
+    advertise-dns: 'yes'
+- path: /ppp secret
+  values:
+    local-address: 10.251.0.7
+    name: k16_k112
+    password: '{{ routeros_secrets.record_66_password }}'
+    profile: default-encryption
+    remote-address: 10.251.0.60
+    routes: 10.9.0.0/24
+  selector:
+    name: k16_k112
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.251.0.7
+    name: 3Ekipazhnyi64
+    password: '{{ routeros_secrets.record_67_password }}'
+    profile: default-encryption
+    remote-address: 10.251.0.27
+    routes: 10.10.0.0/24
+  selector:
+    name: 3Ekipazhnyi64
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.251.0.7
+    name: k16_k21
+    password: '{{ routeros_secrets.record_68_password }}'
+    profile: default-encryption
+    remote-address: 10.251.0.28
+    routes: 10.11.0.0/24
+  selector:
+    name: k16_k21
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.251.0.7
+    name: Misha
+    password: '{{ routeros_secrets.record_69_password }}'
+    profile: default-encryption
+    remote-address: 10.251.0.29
+  selector:
+    name: Misha
+  create: true
+- path: /snmp
+  values:
+    contact: vds7
+    enabled: 'yes'
+- path: /system clock
+  values:
+    time-zone-autodetect: 'no'
+    time-zone-name: UTC
+- path: /system identity
+  values:
+    name: vds7_CHR
+- path: /system ntp client
+  values:
+    enabled: 'yes'
+- path: /system ntp client servers
+  values:
+    address: 129.6.15.28
+  selector:
+    address: 129.6.15.28
+  create: true
+- path: /system ntp client servers
+  values:
+    address: 129.6.15.29
+  selector:
+    address: 129.6.15.29
+  create: true

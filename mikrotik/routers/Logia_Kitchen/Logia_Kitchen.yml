@@ -1,0 +1,205 @@
+router_host: 10.9.0.2
+router_user: ansible
+router_ssh_key: /home/user/.ssh/priv/ansible
+routeros_records:
+- path: /caps-man channel
+  values:
+    band: 2ghz-b/g/n
+    name: CAP_Channel
+  selector:
+    name: CAP_Channel
+  create: true
+- path: /interface bridge
+  values:
+    name: LAN
+  selector:
+    name: LAN
+  create: true
+- path: /interface ethernet
+  selector:
+    default-name: ether1
+  values:
+    comment: uplink
+- path: /interface ethernet
+  selector:
+    default-name: ether2
+  values:
+    comment: HP
+- path: /interface ethernet
+  selector:
+    default-name: sfp1
+  values:
+    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
+- path: /interface wireless
+  selector:
+    default-name: wlan1
+  values:
+    band: 2ghz-b/g/n
+    disabled: 'no'
+    frequency: auto
+    installation: indoor
+    mode: ap-bridge
+    ssid: MikroTik
+- path: /caps-man datapath
+  values:
+    bridge: LAN
+    client-to-client-forwarding: 'yes'
+    local-forwarding: 'yes'
+    name: CAP_datapath
+  selector:
+    name: CAP_datapath
+  create: true
+- path: /caps-man security
+  values:
+    authentication-types: wpa2-psk
+    encryption: aes-ccm
+    name: CAP_security
+    passphrase: '{{ routeros_secrets.record_7_passphrase }}'
+  selector:
+    name: CAP_security
+  create: true
+- path: /caps-man configuration
+  values:
+    channel: CAP_Channel
+    country: russia
+    datapath: CAP_datapath
+    installation: indoor
+    mode: ap
+    name: CAP_cfg
+    rx-chains: 0,1,2,3
+    security: CAP_security
+    ssid: Ath0
+    tx-chains: 0,1,2,3
+  selector:
+    name: CAP_cfg
+  create: true
+- path: /interface wireless security-profiles
+  selector:
+    default: 'yes'
+  values:
+    authentication-types: wpa2-psk
+    mode: dynamic-keys
+    supplicant-identity: MikroTik
+    wpa2-pre-shared-key: '{{ routeros_secrets.record_9_wpa2_pre_shared_key }}'
+- path: /caps-man manager
+  values:
+    enabled: 'yes'
+- path: /caps-man provisioning
+  values:
+    action: create-dynamic-enabled
+    master-configuration: CAP_cfg
+    name-format: prefix-identity
+    name-prefix: 2G
+  selector:
+    master-configuration: CAP_cfg
+    name-prefix: 2G
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether1
+  selector:
+    interface: ether1
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether2
+  selector:
+    interface: ether2
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether3
+  selector:
+    interface: ether3
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether4
+  selector:
+    interface: ether4
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether5
+  selector:
+    interface: ether5
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: wlan1
+  selector:
+    interface: wlan1
+  create: true
+- path: /interface ovpn-server server
+  values:
+    mac-address: FE:AC:CF:D3:35:B6
+    name: ovpn-server1
+  selector:
+    name: ovpn-server1
+  create: true
+- path: /interface wifi cap
+  values:
+    certificate: none
+    discovery-interfaces: LAN
+    slaves-static: 'yes'
+- path: /interface wireless cap
+  values:
+    bridge: LAN
+    discovery-interfaces: LAN
+    enabled: 'yes'
+    interfaces: wlan1
+- path: /ip address
+  values:
+    address: 10.9.0.2/24
+    interface: LAN
+    network: 10.9.0.0
+  selector:
+    address: 10.9.0.2/24
+    interface: LAN
+  create: true
+- path: /ip dns
+  values:
+    servers: 10.9.0.1
+- path: /ip ipsec profile
+  selector:
+    default: 'yes'
+  values:
+    dpd-interval: 2m
+    dpd-maximum-failures: '5'
+- path: /ip route
+  values:
+    disabled: 'no'
+    dst-address: 0.0.0.0/0
+    gateway: 10.9.0.1
+    routing-table: main
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: main
+  create: true
+- path: /lcd interface pages
+  number: 0
+  values:
+    interfaces: sfp1,ether1,ether2,ether3,ether4,ether5,ether6,ether7,ether8,ether9,ether10
+- path: /snmp
+  values:
+    contact: mikrotik_k16_k112_loggia_kitchen
+    enabled: 'yes'
+- path: /system clock
+  values:
+    time-zone-name: Europe/Moscow
+- path: /system identity
+  values:
+    name: Logia_Kitchen
+- path: /system routerboard settings
+  values:
+    auto-upgrade: 'yes'
+- path: /user aaa
+  values:
+    default-group: full
+    use-radius: 'yes'

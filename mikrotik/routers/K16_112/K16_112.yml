@@ -1,0 +1,4322 @@
+router_host: 10.9.0.1
+router_user: ansible
+router_ssh_key: /home/user/.ssh/priv/ansible
+routeros_records:
+- path: /interface bridge
+  values:
+    name: LAN
+  selector:
+    name: LAN
+  create: true
+- path: /interface ethernet
+  selector:
+    default-name: ether2
+  values:
+    comment: Loggia_kitchen
+- path: /interface ethernet
+  selector:
+    default-name: ether4
+  values:
+    comment: Beeline
+- path: /interface ethernet
+  selector:
+    default-name: ether5
+  values:
+    comment: TTK
+- path: /interface wifi
+  selector:
+    default-name: wifi2
+  values:
+    channel.band: 2ghz-ax
+    channel.skip-dfs-channels: 10min-cac
+    channel.width: 20/40mhz
+    configuration.country: Spain
+    configuration.mode: ap
+    configuration.ssid: Ath1
+    disabled: 'no'
+    name: wifi_2g
+    security.authentication-types: wpa2-psk,wpa3-psk
+    security.ft: 'yes'
+    security.ft-over-ds: 'yes'
+    security.passphrase: '{{ routeros_secrets.record_4_security_passphrase }}'
+- path: /interface wifi
+  selector:
+    default-name: wifi1
+  values:
+    channel.band: 5ghz-ax
+    channel.skip-dfs-channels: 10min-cac
+    channel.width: 20/40/80mhz
+    configuration.country: Spain
+    configuration.mode: ap
+    configuration.ssid: Ath1
+    disabled: 'no'
+    name: wifi_5g
+    security.authentication-types: wpa2-psk,wpa3-psk
+    security.ft: 'yes'
+    security.ft-over-ds: 'yes'
+    security.passphrase: '{{ routeros_secrets.record_5_security_passphrase }}'
+- path: /interface wireguard
+  values:
+    listen-port: '56685'
+    mtu: '1420'
+    name: wg-server
+    private-key: '{{ routeros_secrets.record_6_private_key }}'
+  selector:
+    name: wg-server
+  create: true
+- path: /interface wireguard
+  values:
+    comment: vds9
+    listen-port: '23086'
+    mtu: '1420'
+    name: wg-vds9
+    private-key: '{{ routeros_secrets.record_7_private_key }}'
+  selector:
+    name: wg-vds9
+  create: true
+- path: /interface wireguard
+  values:
+    comment: wg_main_interface
+    listen-port: '56686'
+    mtu: '1420'
+    name: wg_main_interface
+    private-key: '{{ routeros_secrets.record_8_private_key }}'
+  selector:
+    name: wg_main_interface
+  create: true
+- path: /interface ethernet switch
+  selector:
+    name: switch1
+  values:
+    cpu-flow-control: 'yes'
+- path: /interface list
+  values:
+    comment: defconf
+    name: WAN
+  selector:
+    name: WAN
+  create: true
+- path: /interface list
+  values:
+    name: EXTERNAL
+  selector:
+    name: EXTERNAL
+  create: true
+- path: /interface list
+  values:
+    name: INTERNAL
+  selector:
+    name: INTERNAL
+  create: true
+- path: /ip pool
+  values:
+    name: dhcp_pool2
+    ranges: 10.9.0.100-10.9.0.199
+  selector:
+    name: dhcp_pool2
+  create: true
+- path: /ip dhcp-server
+  values:
+    address-pool: dhcp_pool2
+    bootp-support: none
+    interface: LAN
+    name: dhcp1
+  selector:
+    name: dhcp1
+  create: true
+- path: /ppp profile
+  selector:
+    name: '*0'
+  values:
+    use-encryption: 'yes'
+- path: /ppp profile
+  values:
+    change-tcp-mss: 'yes'
+    name: common_vpn
+    use-encryption: 'yes'
+  selector:
+    name: common_vpn
+  create: true
+- path: /ppp profile
+  selector:
+    name: '*FFFFFFFE'
+  values:
+    only-one: 'no'
+- path: /interface l2tp-client
+  values:
+    connect-to: 45.141.102.72
+    keepalive-timeout: disabled
+    name: l2tp-to-RuVDS
+    password: '{{ routeros_secrets.record_18_password }}'
+    profile: common_vpn
+    user: d24
+  selector:
+    name: l2tp-to-RuVDS
+  create: true
+- path: /interface l2tp-client
+  values:
+    comment: l2tp-to-vds8
+    connect-to: 194.113.106.136
+    name: l2tp-to-vds8
+    password: '{{ routeros_secrets.record_19_password }}'
+    profile: default
+    user: k16k112
+  selector:
+    name: l2tp-to-vds8
+  create: true
+- path: /interface sstp-client
+  values:
+    connect-to: 195.133.196.121
+    http-proxy: 0.0.0.0
+    name: sstp-RuVDS
+    password: '{{ routeros_secrets.record_20_password }}'
+    profile: default-encryption
+    user: k16
+  selector:
+    name: sstp-RuVDS
+  create: true
+- path: /interface sstp-client
+  values:
+    authentication: mschap2
+    connect-to: 62.60.216.73
+    disabled: 'no'
+    http-proxy: 0.0.0.0
+    name: sstp-vds7
+    password: '{{ routeros_secrets.record_21_password }}'
+    profile: default-encryption
+    tls-version: only-1.2
+    user: k16_k112
+  selector:
+    name: sstp-vds7
+  create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: to_ISP2
+  selector:
+    name: to_ISP2
+  create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: to_ISP1
+  selector:
+    name: to_ISP1
+  create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: ISP1_routing_table
+  selector:
+    name: ISP1_routing_table
+  create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: ISP2_routing_table
+  selector:
+    name: ISP2_routing_table
+  create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: wg-routing
+  selector:
+    name: wg-routing
+  create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: SSTP_to_VDS7
+  selector:
+    name: SSTP_to_VDS7
+  create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: L2TP-TO-VDS8
+  selector:
+    name: L2TP-TO-VDS8
+  create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: google_ips_table
+  selector:
+    name: google_ips_table
+  create: true
+- path: /snmp community
+  selector:
+    default: 'yes'
+  values:
+    addresses: 0.0.0.0/0
+- path: /system logging action
+  number: 0
+  values:
+    memory-lines: '2000'
+- path: /system script
+  values:
+    comment: defconf
+    dont-require-permissions: 'no'
+    name: dark-mode
+    owner: '*sys'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_32_source }}'
+  selector:
+    name: dark-mode
+  create: true
+- path: /system script
+  values:
+    comment: defconf
+    dont-require-permissions: 'no'
+    name: wps-accept
+    owner: '*sys'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_33_source }}'
+  selector:
+    name: wps-accept
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: Wake_on_lan_MAIN
+    owner: admin
+    policy: reboot,read,write,test
+    source: '{{ routeros_secrets.record_34_source }}'
+  selector:
+    name: Wake_on_lan_MAIN
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: backup_mail
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive
+    source: '{{ routeros_secrets.record_35_source }}'
+  selector:
+    name: backup_mail
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: addr_lists_remove
+    owner: admin
+    policy: read,write
+    source: '{{ routeros_secrets.record_36_source }}'
+  selector:
+    name: addr_lists_remove
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: ISPs_check_old
+    owner: admin
+    policy: reboot,read,write,test
+    source: '{{ routeros_secrets.record_37_source }}'
+  selector:
+    name: ISPs_check_old
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: add_spark_gw
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_38_source }}'
+  selector:
+    name: add_spark_gw
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'yes'
+    name: ISPs_check
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_39_source }}'
+  selector:
+    name: ISPs_check
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: check_route_both
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_40_source }}'
+  selector:
+    name: check_route_both
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: bgp_peers_check
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_41_source }}'
+  selector:
+    name: bgp_peers_check
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: l2tp_clients_restart
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_42_source }}'
+  selector:
+    name: l2tp_clients_restart
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: add_beeline_gw
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_43_source }}'
+  selector:
+    name: add_beeline_gw
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: ISP1_add_gw
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_44_source }}'
+  selector:
+    name: ISP1_add_gw
+  create: true
+- path: /system script
+  values:
+    comment: Resolve domains to route them into VPN
+    dont-require-permissions: 'no'
+    name: resolveDomains
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_45_source }}'
+  selector:
+    name: resolveDomains
+  create: true
+- path: /system script
+  values:
+    comment: Get all google IP addresses
+    dont-require-permissions: 'no'
+    name: get_google_ips
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_46_source }}'
+  selector:
+    name: get_google_ips
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: BlockBruteForcers
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_47_source }}'
+  selector:
+    name: BlockBruteForcers
+  create: true
+- path: /app
+  selector:
+    name: cinny
+  values:
+    firewall-redirects: 8094:80:tcp:web
+- path: /app
+  selector:
+    name: goaway
+  values:
+    container-command-lines: goaway:none:docker.io/pommee/goaway:latest
+- path: /app
+  selector:
+    name: home-assistant
+  values:
+    container-command-lines: home-assistant:none:lscr.io/linuxserver/homeassistant
+- path: /app
+  selector:
+    name: n8n
+  values:
+    firewall-redirects: 5678:5678:tcp:web
+- path: /app
+  selector:
+    name: nextcloud
+  values:
+    container-command-lines: db:none:docker.io/postgres:17,redis:none:docker.io/valkey/valkey:/bin/sh
+      -c 'valkey-server --port 6379 --appendonly yes --requirepass $VALKEY_PASSWORD',server:none:docker.io/nextcloud:apache
+- path: /app
+  selector:
+    name: redlib
+  values:
+    firewall-redirects: 8087:8080:tcp:web
+- path: /app
+  selector:
+    name: solr
+  values:
+    container-command-lines: solr:none:docker.io/solr:latest
+- path: /app
+  selector:
+    name: uptime-kuma
+  values:
+    container-command-lines: uptime-kuma:none:docker.io/louislam/uptime-kuma:1
+- path: /disk settings
+  values:
+    auto-media-interface: LAN
+    auto-media-sharing: 'yes'
+    auto-smb-sharing: 'yes'
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether1
+  selector:
+    interface: ether1
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether2
+  selector:
+    interface: ether2
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: ether3
+  selector:
+    interface: ether3
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: wifi_2g
+  selector:
+    interface: wifi_2g
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    interface: wifi_5g
+  selector:
+    interface: wifi_5g
+  create: true
+- path: /ip neighbor discovery-settings
+  values:
+    discover-interface-list: '!EXTERNAL'
+- path: /interface l2tp-server server
+  values:
+    authentication: mschap2
+    default-profile: common_vpn
+    enabled: 'yes'
+    ipsec-secret: '{{ routeros_secrets.record_63_ipsec_secret }}'
+    keepalive-timeout: '10'
+- path: /interface list member
+  values:
+    interface: ether4
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: ether4
+  create: true
+- path: /interface list member
+  values:
+    interface: ether5
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: ether5
+  create: true
+- path: /interface list member
+  values:
+    interface: LAN
+    list: INTERNAL
+  selector:
+    list: INTERNAL
+    interface: LAN
+  create: true
+- path: /interface list member
+  values:
+    interface: l2tp-to-vds8
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: l2tp-to-vds8
+  create: true
+- path: /interface list member
+  values:
+    interface: wg-vds9
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: wg-vds9
+  create: true
+- path: /interface ovpn-server server
+  values:
+    mac-address: FE:C6:98:91:C7:D1
+    name: ovpn-server1
+  selector:
+    name: ovpn-server1
+  create: true
+- path: /interface pptp-server server
+  values:
+    authentication: mschap2
+    enabled: 'yes'
+- path: /interface wifi cap
+  values:
+    certificate: none
+    discovery-interfaces: LAN
+    slaves-static: 'yes'
+- path: /interface wifi capsman
+  values:
+    ca-certificate: auto
+    certificate: auto
+    interfaces: LAN
+    package-path: ''
+    require-peer-certificate: 'no'
+    upgrade-policy: none
+- path: /interface wireguard peers
+  values:
+    allowed-address: 10.9.250.2/32
+    comment: ASUS ZenFone7
+    interface: wg-server
+    name: peer2
+    public-key: L+V9o0fNYkMVKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q=
+  selector:
+    name: peer2
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg_to_vds5
+    endpoint-address: 217.144.189.206
+    endpoint-port: '56685'
+    interface: wg_main_interface
+    name: wg_to_vds5
+    persistent-keepalive: 25s
+    preshared-key: '{{ routeros_secrets.record_74_preshared_key }}'
+    public-key: vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks=
+  selector:
+    name: wg_to_vds5
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 0.0.0.0/0
+    comment: wg-vds9
+    endpoint-address: 90.156.218.209
+    endpoint-port: '34182'
+    interface: wg-vds9
+    name: wg-vds9
+    persistent-keepalive: 47s
+    preshared-key: '{{ routeros_secrets.record_75_preshared_key }}'
+    public-key: IuNS/0QsZG2q3yHkAJwyoztBTloeCxf81Szr8vVgogQ=
+  selector:
+    name: wg-vds9
+  create: true
+- path: /ip address
+  values:
+    address: 86.110.170.70/30
+    interface: ether5
+    network: 86.110.170.68
+  selector:
+    address: 86.110.170.70/30
+    interface: ether5
+  create: true
+- path: /ip address
+  values:
+    address: 10.9.0.1/24
+    interface: LAN
+    network: 10.9.0.0
+  selector:
+    address: 10.9.0.1/24
+    interface: LAN
+  create: true
+- path: /ip address
+  values:
+    address: 10.9.250.1/24
+    interface: wg-server
+    network: 10.9.250.0
+  selector:
+    address: 10.9.250.1/24
+    interface: wg-server
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.0.60/24
+    interface: wg_main_interface
+    network: 10.250.0.0
+  selector:
+    address: 10.250.0.60/24
+    interface: wg_main_interface
+  create: true
+- path: /ip address
+  values:
+    address: 10.8.1.2
+    interface: wg-vds9
+    network: 10.8.1.2
+  selector:
+    address: 10.8.1.2
+    interface: wg-vds9
+  create: true
+- path: /ip address
+  values:
+    address: 10.9.1.1/24
+    interface: LAN
+    network: 10.9.1.0
+  selector:
+    address: 10.9.1.1/24
+    interface: LAN
+  create: true
+- path: /ip cloud
+  values:
+    ddns-enabled: 'yes'
+- path: /ip dhcp-client
+  values:
+    default-route-distance: '20'
+    default-route-tables: main
+    disabled: 'yes'
+    interface: ether5
+    name: TTK
+    use-peer-dns: 'no'
+    use-peer-ntp: 'no'
+  selector:
+    name: TTK
+  create: true
+- path: /ip dhcp-client
+  values:
+    default-route-distance: '20'
+    default-route-tables: main
+    interface: ether4
+    name: Beeline
+    use-peer-ntp: 'no'
+  selector:
+    name: Beeline
+  create: true
+- path: /ip dhcp-server lease
+  values:
+    address: 10.9.0.120
+    client-id: ff:29:d8:9:a0:0:1:0:1:2d:50:95:66:0:c:29:d8:9:a0
+    comment: Debian12
+    mac-address: 00:0C:29:D8:09:A0
+    server: dhcp1
+  selector:
+    mac-address: 00:0C:29:D8:09:A0
+    server: dhcp1
+  create: true
+- path: /ip dhcp-server lease
+  values:
+    address: 10.9.0.198
+    client-id: 1:48:da:35:6f:83:e4
+    mac-address: 48:DA:35:6F:83:E4
+    server: dhcp1
+  selector:
+    mac-address: 48:DA:35:6F:83:E4
+    server: dhcp1
+  create: true
+- path: /ip dhcp-server network
+  values:
+    address: 10.9.0.0/24
+    dns-server: 10.9.0.1
+    gateway: 10.9.0.1
+    netmask: '24'
+    next-server: 10.9.0.1
+  selector:
+    address: 10.9.0.0/24
+  create: true
+- path: /ip dns
+  values:
+    address-list-extra-time: 1d
+    allow-remote-requests: 'yes'
+    servers: 1.1.1.1,8.8.8.8
+    use-doh-server: https://1.1.1.1/dns-query
+- path: /ip dns static
+  values:
+    address: 10.9.1.11
+    name: etcd1
+    type: A
+  selector:
+    name: etcd1
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.12
+    name: etcd2
+    type: A
+  selector:
+    name: etcd2
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.13
+    name: etcd3
+    type: A
+  selector:
+    name: etcd3
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.21
+    name: master1
+    type: A
+  selector:
+    name: master1
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.22
+    name: master2
+    type: A
+  selector:
+    name: master2
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.31
+    name: worker1
+    type: A
+  selector:
+    name: worker1
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.32
+    name: worker2
+    type: A
+  selector:
+    name: worker2
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.33
+    name: worker3
+    type: A
+  selector:
+    name: worker3
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.34
+    name: worker4
+    type: A
+  selector:
+    name: worker4
+  create: true
+- path: /ip dns static
+  values:
+    address: 10.9.1.5
+    name: lb1
+    type: A
+  selector:
+    name: lb1
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.0.0/23
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.9.0.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.10.50.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.10.50.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.10.100.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.10.100.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.11.100.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.11.100.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.255.0/29
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.9.255.0/29
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.200.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.9.200.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.255.0/24
+    list: tunnel networks
+  selector:
+    list: tunnel networks
+    address: 10.9.255.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.10.255.0/24
+    list: tunnel networks
+  selector:
+    list: tunnel networks
+    address: 10.10.255.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.11.255.0/24
+    list: tunnel networks
+  selector:
+    list: tunnel networks
+    address: 10.11.255.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.1.0.0/16
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.1.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.19.0.0/16
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.19.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 45.141.102.72
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 45.141.102.72
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 45.141.102.72
+    list: l2tp_servers
+  selector:
+    list: l2tp_servers
+    address: 45.141.102.72
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.20.0.0/16
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.20.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 108.181.172.80
+    comment: Database mart VDS USA (vds2)
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 108.181.172.80
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.2.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.9.2.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 188.133.166.78
+    comment: TV
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 188.133.166.78
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 195.133.196.121
+    comment: Mikrotik_RuVDS
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 195.133.196.121
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.0.0/24
+    comment: wg_network
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.250.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.0.0.0/8
+    list: local
+  selector:
+    list: local
+    address: 10.0.0.0/8
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 172.16.0.0/12
+    list: local
+  selector:
+    list: local
+    address: 172.16.0.0/12
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 192.168.0.0/16
+    list: local
+  selector:
+    list: local
+    address: 192.168.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 192.168.254.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 192.168.254.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 217.144.189.206
+    comment: vds5
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 217.144.189.206
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.0.255.0/24
+    comment: RuVDS SSTP network
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.0.255.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 195.245.239.82
+    comment: vds6
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 195.245.239.82
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: instagram.com
+    list: RouteToVPN
+  selector:
+    list: RouteToVPN
+    address: instagram.com
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: chatgpt.com
+    list: RouteToVPN
+  selector:
+    list: RouteToVPN
+    address: chatgpt.com
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: www.instagram.com
+    list: RouteToVPN
+  selector:
+    list: RouteToVPN
+    address: www.instagram.com
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: static.cdninstagram.com
+    list: RouteToVPN
+  selector:
+    list: RouteToVPN
+    address: static.cdninstagram.com
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: cdninstagram.com
+    list: RouteToVPN
+  selector:
+    list: RouteToVPN
+    address: cdninstagram.com
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.251.0.0/24
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.251.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 62.60.216.73
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 62.60.216.73
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.10.0/24
+    comment: k8s-pod-network
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.9.10.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.20.255.0/24
+    comment: vds8 l2tp
+    list: MGMT Networks
+  selector:
+    list: MGMT Networks
+    address: 10.20.255.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 149.154.160.0/20
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 149.154.160.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.108.4.0/22
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.108.4.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.108.8.0/22
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.108.8.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.108.12.0/22
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.108.12.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.108.16.0/22
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.108.16.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.108.20.0/22
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.108.20.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.108.56.0/22
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.108.56.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 95.161.64.0/20
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 95.161.64.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.76.151.0/24
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 185.76.151.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 91.105.192.0/23
+    comment: telegram-auto
+    list: Telegram prefixes
+  selector:
+    list: Telegram prefixes
+    address: 91.105.192.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 153.138.234.126
+    list: port scanners
+  selector:
+    list: port scanners
+    address: 153.138.234.126
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.8.4.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.8.4.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.8.8.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.8.8.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.34.208.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.34.208.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.35.192.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.35.192.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.228.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.228.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.232.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.232.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 8.236.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 8.236.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 23.236.48.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 23.236.48.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 23.251.128.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 23.251.128.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.0.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.0.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.2.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.2.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.0.0/23
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.0.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.3.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.3.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.4.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.4.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.8.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.8.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.16.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.16.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.32.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.32.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.3.64.0/18
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.3.64.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.4.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.4.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.8.0.0/13
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.8.0.0/13
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.16.0.0/12
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.16.0.0/12
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.32.0.0/11
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.32.0.0/11
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.64.0.0/10
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.64.0.0/10
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 34.128.0.0/10
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 34.128.0.0/10
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.184.0.0/13
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.184.0.0/13
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.192.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.192.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.196.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.196.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.198.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.198.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.199.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.199.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.199.128.0/18
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.199.128.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.200.0.0/13
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.200.0.0/13
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.208.0.0/12
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.208.0.0/12
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.224.0.0/12
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.224.0.0/12
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.240.0.0/13
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.240.0.0/13
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 35.252.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 35.252.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 64.15.112.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 64.15.112.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 64.233.160.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 64.233.160.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 66.102.0.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 66.102.0.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 66.249.64.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 66.249.64.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 70.32.128.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 70.32.128.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 72.14.192.0/18
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 72.14.192.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 74.114.24.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 74.114.24.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 74.125.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 74.125.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 104.154.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 104.154.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 104.196.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 104.196.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 104.237.160.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 104.237.160.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 107.167.160.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 107.167.160.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 107.178.192.0/18
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 107.178.192.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 108.59.80.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 108.59.80.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 108.170.192.0/18
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 108.170.192.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 108.177.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 108.177.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 130.211.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 130.211.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.2.0/23
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.2.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.4.0/23
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.4.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.8.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.8.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.160.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.160.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.176.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.176.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.184.0/23
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.184.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.22.186.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.22.186.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.23.39.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.23.39.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.23.48.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.23.48.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.23.64.0/18
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.23.64.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.64.0.0/11
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.64.0.0/11
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.107.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.107.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.108.0.0/14
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.108.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.112.0.0/13
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.112.0.0/13
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.120.0.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.120.0.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.121.8.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.121.8.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 136.124.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 136.124.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 142.250.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 142.250.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 146.148.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 146.148.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 152.238.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 152.238.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 152.239.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 152.239.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 162.120.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 162.120.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 162.216.148.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 162.216.148.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 162.222.176.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 162.222.176.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 172.110.32.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 172.110.32.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 172.217.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 172.217.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 172.253.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 172.253.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 173.194.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 173.194.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 173.255.112.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 173.255.112.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 177.176.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 177.176.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 177.178.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 177.178.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 177.208.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 177.208.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 179.67.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 179.67.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 179.69.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 179.69.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 179.193.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 179.193.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 179.199.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 179.199.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 186.242.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 186.242.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 186.245.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 186.245.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 187.78.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 187.78.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 187.79.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 187.79.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 187.126.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 187.126.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.24.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.24.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.48.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.48.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.49.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.49.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.70.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.70.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.82.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.82.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.105.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.105.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 189.106.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 189.106.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.0.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.0.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.2.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.2.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.40.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.40.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.44.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.44.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.45.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.45.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.46.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.46.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.212.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.212.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.216.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.216.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.218.0.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.218.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 191.220.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 191.220.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 192.104.160.0/23
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 192.104.160.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 192.158.28.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 192.158.28.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 192.178.0.0/15
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 192.178.0.0/15
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 193.186.4.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 193.186.4.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 199.36.154.0/23
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 199.36.154.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 199.36.156.0/24
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 199.36.156.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 199.192.112.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 199.192.112.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 199.223.232.0/21
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 199.223.232.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 200.226.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 200.226.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 207.175.0.0/16
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 207.175.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 207.223.160.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 207.223.160.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 208.65.152.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 208.65.152.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 208.68.108.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 208.68.108.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 208.81.188.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 208.81.188.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 208.117.224.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 208.117.224.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 209.85.128.0/17
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 209.85.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 216.58.192.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 216.58.192.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 216.73.80.0/20
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 216.73.80.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 216.239.32.0/19
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 216.239.32.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 216.252.220.0/22
+    comment: Added by scheduled script google_ips
+    list: google_ips
+  selector:
+    list: google_ips
+    address: 216.252.220.0/22
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Established & related
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: forward
+    comment: Established & related
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Established & related
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: input
+    comment: Established & related
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Mikrotik remote access
+    dst-port: '22'
+    protocol: tcp
+    src-address-list: MGMT Networks
+  selector:
+    action: accept
+    chain: input
+    comment: Mikrotik remote access
+    dst-port: '22'
+    protocol: tcp
+    src-address-list: MGMT Networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: jump
+    chain: output
+    comment: 'F2B Winbox: Jump to Fail2Ban-Destination-IP chain'
+    content: invalid user name or password
+    jump-target: Fail2Ban-Destination-IP
+    protocol: tcp
+    src-port: '8291'
+  selector:
+    action: jump
+    chain: output
+    comment: 'F2B Winbox: Jump to Fail2Ban-Destination-IP chain'
+    content: invalid user name or password
+    jump-target: Fail2Ban-Destination-IP
+    protocol: tcp
+    src-port: '8291'
+  create: true
+- path: /ip firewall filter
+  values:
+    action: add-dst-to-address-list
+    address-list: BlackList
+    address-list-timeout: 10m
+    chain: Fail2Ban-Destination-IP
+    comment: 3 Attempt --> BlackList
+    dst-address-list: LoginFailure03
+  selector:
+    action: add-dst-to-address-list
+    address-list: BlackList
+    address-list-timeout: 10m
+    chain: Fail2Ban-Destination-IP
+    comment: 3 Attempt --> BlackList
+    dst-address-list: LoginFailure03
+  create: true
+- path: /ip firewall filter
+  values:
+    action: add-dst-to-address-list
+    address-list: LoginFailure03
+    address-list-timeout: 1m
+    chain: Fail2Ban-Destination-IP
+    comment: 3 Attempt --> LoginFailure02
+    dst-address-list: LoginFailure02
+  selector:
+    action: add-dst-to-address-list
+    address-list: LoginFailure03
+    address-list-timeout: 1m
+    chain: Fail2Ban-Destination-IP
+    comment: 3 Attempt --> LoginFailure02
+    dst-address-list: LoginFailure02
+  create: true
+- path: /ip firewall filter
+  values:
+    action: add-dst-to-address-list
+    address-list: LoginFailure02
+    address-list-timeout: 1m
+    chain: Fail2Ban-Destination-IP
+    comment: 2 Attempt --> LoginFailure02
+    dst-address-list: LoginFailure01
+  selector:
+    action: add-dst-to-address-list
+    address-list: LoginFailure02
+    address-list-timeout: 1m
+    chain: Fail2Ban-Destination-IP
+    comment: 2 Attempt --> LoginFailure02
+    dst-address-list: LoginFailure01
+  create: true
+- path: /ip firewall filter
+  values:
+    action: add-dst-to-address-list
+    address-list: LoginFailure01
+    address-list-timeout: 1m
+    chain: Fail2Ban-Destination-IP
+    comment: 1 Attempt --> LoginFailure01
+  selector:
+    action: add-dst-to-address-list
+    address-list: LoginFailure01
+    address-list-timeout: 1m
+    chain: Fail2Ban-Destination-IP
+    comment: 1 Attempt --> LoginFailure01
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    connection-nat-state: ''
+    connection-state: ''
+    in-interface-list: INTERNAL
+  selector:
+    action: accept
+    chain: forward
+    connection-nat-state: ''
+    connection-state: ''
+    in-interface-list: INTERNAL
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    connection-state: ''
+    in-interface-list: INTERNAL
+  selector:
+    action: accept
+    chain: input
+    connection-state: ''
+    in-interface-list: INTERNAL
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: From EXTERNAL
+    dst-port: 1955,1956
+    in-interface-list: EXTERNAL
+    protocol: tcp
+  selector:
+    action: accept
+    chain: input
+    comment: From EXTERNAL
+    dst-port: 1955,1956
+    in-interface-list: EXTERNAL
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Windows10 Remote access
+    dst-port: '3389'
+    in-interface-list: EXTERNAL
+    protocol: tcp
+  selector:
+    action: accept
+    chain: forward
+    comment: Windows10 Remote access
+    dst-port: '3389'
+    in-interface-list: EXTERNAL
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: Deny bad packets
+    connection-state: invalid
+  selector:
+    action: drop
+    chain: forward
+    comment: Deny bad packets
+    connection-state: invalid
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+    comment: Deny bad packets
+    connection-state: invalid
+  selector:
+    action: drop
+    chain: input
+    comment: Deny bad packets
+    connection-state: invalid
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+    comment: dropping port scanners INPUT
+    src-address-list: port scanners
+  selector:
+    action: drop
+    chain: input
+    comment: dropping port scanners INPUT
+    src-address-list: port scanners
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: dropping port scanners FORWARD
+    src-address-list: port scanners
+  selector:
+    action: drop
+    chain: forward
+    comment: dropping port scanners FORWARD
+    src-address-list: port scanners
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: FORWARD. ACCEPT from MGMT Networks
+    src-address-list: MGMT Networks
+  selector:
+    action: accept
+    chain: forward
+    comment: FORWARD. ACCEPT from MGMT Networks
+    src-address-list: MGMT Networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: Drop port scanners FORWARD
+    src-address-list: RDP scanners FORWARD
+  selector:
+    action: drop
+    chain: forward
+    comment: Drop port scanners FORWARD
+    src-address-list: RDP scanners FORWARD
+  create: true
+- path: /ip firewall filter
+  values:
+    action: add-src-to-address-list
+    address-list: port scanners
+    address-list-timeout: 2w
+    chain: input
+    comment: 'Port scanners to list '
+    log: 'yes'
+    protocol: tcp
+    psd: 21,3s,3,1
+  selector:
+    action: add-src-to-address-list
+    address-list: port scanners
+    address-list-timeout: 2w
+    chain: input
+    comment: 'Port scanners to list '
+    protocol: tcp
+    psd: 21,3s,3,1
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: INPUT accept only from MGMT networks
+    src-address-list: MGMT Networks
+  selector:
+    action: accept
+    chain: input
+    comment: INPUT accept only from MGMT networks
+    src-address-list: MGMT Networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: INPUT established & related
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: input
+    comment: INPUT established & related
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: INPUT PPTP, MGMT
+    dst-port: 1723,1955,1956
+    protocol: tcp
+  selector:
+    action: accept
+    chain: input
+    comment: INPUT PPTP, MGMT
+    dst-port: 1723,1955,1956
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: INPUT accept BGP in tunnel networks
+    dst-address-list: tunnel networks
+    dst-port: '179'
+    protocol: tcp
+    src-address-list: tunnel networks
+  selector:
+    action: accept
+    chain: input
+    comment: INPUT accept BGP in tunnel networks
+    dst-address-list: tunnel networks
+    dst-port: '179'
+    protocol: tcp
+    src-address-list: tunnel networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: INPUT L2TP, BFD, WG
+    dst-port: 1701,3784,56685
+    protocol: udp
+  selector:
+    action: accept
+    chain: input
+    comment: INPUT L2TP, BFD, WG
+    dst-port: 1701,3784,56685
+    protocol: udp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    dst-address: 10.9.0.0/24
+  selector:
+    action: accept
+    chain: forward
+    dst-address: 10.9.0.0/24
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: FORWARD drop src !MGMT dst [all vlan]
+    out-interface: all-vlan
+    src-address-list: '!MGMT Networks'
+  selector:
+    action: drop
+    chain: forward
+    comment: FORWARD drop src !MGMT dst [all vlan]
+    out-interface: all-vlan
+    src-address-list: '!MGMT Networks'
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+    log: 'yes'
+    log-prefix: NOT_TCP_UDP_ICMP
+  selector:
+    action: drop
+    chain: forward
+    log-prefix: NOT_TCP_UDP_ICMP
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+    src-address-list: BlackList
+  selector:
+    action: drop
+    chain: input
+    src-address-list: BlackList
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+  selector:
+    action: drop
+    chain: input
+  create: true
+  occurrence: 3
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: prerouting
+    comment: Beeline PRE mark connection as "ISP2_conn" on ether4
+    in-interface: ether4
+    new-connection-mark: ISP2_conn
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Beeline PRE mark connection as "ISP2_conn" on ether4
+    in-interface: ether4
+    new-connection-mark: ISP2_conn
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: prerouting
+    comment: TTK PRE mark connection as "ISP1_conn" on ether5
+    in-interface: ether5
+    new-connection-mark: ISP1_conn
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: TTK PRE mark connection as "ISP1_conn" on ether5
+    in-interface: ether5
+    new-connection-mark: ISP1_conn
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: TTK mark routing with connection mark ISP1_conn as "to_ISP1"
+    connection-mark: ISP1_conn
+    dst-address-type: '!local'
+    new-routing-mark: to_ISP1
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: TTK mark routing with connection mark ISP1_conn as "to_ISP1"
+    connection-mark: ISP1_conn
+    dst-address-type: '!local'
+    new-routing-mark: to_ISP1
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Beeline mark routing with connection mark "ISP2_conn" as "to_ISP2"
+    connection-mark: ISP2_conn
+    dst-address-type: '!local'
+    new-routing-mark: to_ISP2
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Beeline mark routing with connection mark "ISP2_conn" as "to_ISP2"
+    connection-mark: ISP2_conn
+    dst-address-type: '!local'
+    new-routing-mark: to_ISP2
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: TTK OUT mark routing with connection mark "ISP1_conn" as "to_ISP1"
+    connection-mark: ISP1_conn
+    new-routing-mark: to_ISP1
+  selector:
+    action: mark-routing
+    chain: output
+    comment: TTK OUT mark routing with connection mark "ISP1_conn" as "to_ISP1"
+    connection-mark: ISP1_conn
+    new-routing-mark: to_ISP1
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: Beeline OUT mark routing with connection mark "ISP2_conn" as "to_ISP2"
+    connection-mark: ISP2_conn
+    new-routing-mark: to_ISP2
+  selector:
+    action: mark-routing
+    chain: output
+    comment: Beeline OUT mark routing with connection mark "ISP2_conn" as "to_ISP2"
+    connection-mark: ISP2_conn
+    new-routing-mark: to_ISP2
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Google IPS to google_ips_table
+    dst-address-list: google_ips
+    in-interface-list: INTERNAL
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Google IPS to google_ips_table
+    dst-address-list: google_ips
+    in-interface-list: INTERNAL
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: to SSTP VDS7
+    dst-address-list: RouteToVPN
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: to SSTP VDS7
+    dst-address-list: RouteToVPN
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: to SSTP VDS7 Telegram
+    dst-address-list: Telegram prefixes
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: to SSTP VDS7 Telegram
+    dst-address-list: Telegram prefixes
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Incoming connections to WG server
+    disabled: 'yes'
+    in-interface: wg-server
+    new-routing-mark: wg-routing
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Incoming connections to WG server
+    in-interface: wg-server
+    new-routing-mark: wg-routing
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    disabled: 'yes'
+    dst-address-list: google_ips
+    in-interface-list: INTERNAL
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    dst-address-list: google_ips
+    in-interface-list: INTERNAL
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    disabled: 'yes'
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+    src-address: 10.9.0.198
+  selector:
+    action: mark-routing
+    chain: prerouting
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+    src-address: 10.9.0.198
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: vds3 Debian12 ssh
+    dst-address: 86.110.170.70
+    dst-port: '19022'
+    protocol: tcp
+    to-addresses: 10.9.0.120
+    to-ports: '22'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: vds3 Debian12 ssh
+    dst-address: 86.110.170.70
+    dst-port: '19022'
+    protocol: tcp
+    to-addresses: 10.9.0.120
+    to-ports: '22'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    out-interface-list: EXTERNAL
+  selector:
+    action: masquerade
+    chain: srcnat
+    out-interface-list: EXTERNAL
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    dst-address: 86.110.170.70
+    dst-port: '1980'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '1980'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    dst-address: 86.110.170.70
+    dst-port: '1980'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '1980'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    dst-port: '19085'
+    in-interface-list: EXTERNAL
+    protocol: tcp
+    to-addresses: 10.9.0.80
+    to-ports: '3389'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    dst-port: '19085'
+    in-interface-list: EXTERNAL
+    protocol: tcp
+    to-addresses: 10.9.0.80
+    to-ports: '3389'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    comment: Nat loopback. For access from LAN to LAN through external ip (using port
+      forwadring)
+    out-interface: LAN
+    src-address: 10.9.0.0/24
+    src-address-type: ''
+  selector:
+    action: masquerade
+    chain: srcnat
+    comment: Nat loopback. For access from LAN to LAN through external ip (using port
+      forwadring)
+    out-interface: LAN
+    src-address: 10.9.0.0/24
+    src-address-type: ''
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: Access to Server_k16k112 via ssh
+    dst-address: 86.110.170.70
+    dst-port: '19020'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '22'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: Access to Server_k16k112 via ssh
+    dst-address: 86.110.170.70
+    dst-port: '19020'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '22'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: OwnCloud in vds3
+    dst-address: 86.110.170.70
+    dst-port: '1953'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '1953'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: OwnCloud in vds3
+    dst-address: 86.110.170.70
+    dst-port: '1953'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '1953'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: Access to KVM via https
+    dst-address: 86.110.170.70
+    dst-port: '1957'
+    protocol: tcp
+    to-addresses: 10.9.0.198
+    to-ports: '443'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: Access to KVM via https
+    dst-address: 86.110.170.70
+    dst-port: '1957'
+    protocol: tcp
+    to-addresses: 10.9.0.198
+    to-ports: '443'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: Remote SSH access to main mikrotik
+    dst-address: 86.110.170.70
+    dst-port: '20022'
+    protocol: tcp
+    to-addresses: 10.9.0.1
+    to-ports: '22'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: Remote SSH access to main mikrotik
+    dst-address: 86.110.170.70
+    dst-port: '20022'
+    protocol: tcp
+    to-addresses: 10.9.0.1
+    to-ports: '22'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: 10.9.0.3
+    dst-address: 86.110.170.70
+    dst-port: '1958'
+    protocol: tcp
+    to-addresses: 10.9.0.3
+    to-ports: '80'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: 10.9.0.3
+    dst-address: 86.110.170.70
+    dst-port: '1958'
+    protocol: tcp
+    to-addresses: 10.9.0.3
+    to-ports: '80'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: VNC access to 5901
+    disabled: 'yes'
+    dst-address: 86.110.170.70
+    dst-port: '15901'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '5901'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: VNC access to 5901
+    dst-address: 86.110.170.70
+    dst-port: '15901'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '5901'
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
+    comment: KVM server NGINX
+    dst-address: 86.110.170.70
+    dst-port: '443'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '443'
+  selector:
+    action: dst-nat
+    chain: dstnat
+    comment: KVM server NGINX
+    dst-address: 86.110.170.70
+    dst-port: '443'
+    protocol: tcp
+    to-addresses: 10.9.0.70
+    to-ports: '443'
+  create: true
+- path: /ip firewall raw
+  values:
+    action: drop
+    chain: prerouting
+    comment: Drop all
+    disabled: 'yes'
+    src-address-list: BlackList
+  selector:
+    action: drop
+    chain: prerouting
+    comment: Drop all
+    src-address-list: BlackList
+  create: true
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.17.0.0/24
+    gateway: 10.9.255.20
+    routing-table: main
+  selector:
+    dst-address: 10.17.0.0/24
+    routing-table: main
+    gateway: 10.9.255.20
+    distance: '10'
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.10.0.0/24
+    gateway: 10.9.255.27
+    pref-src: ''
+    routing-table: main
+  selector:
+    dst-address: 10.10.0.0/24
+    routing-table: main
+    gateway: 10.9.255.27
+    distance: '10'
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '7'
+    dst-address: 10.12.0.0/16
+    gateway: 10.9.255.4
+    routing-table: main
+  selector:
+    dst-address: 10.12.0.0/16
+    routing-table: main
+    gateway: 10.9.255.4
+    distance: '7'
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.11.0.0/24
+    gateway: 10.9.255.3
+    pref-src: ''
+    routing-table: main
+  selector:
+    dst-address: 10.11.0.0/24
+    routing-table: main
+    gateway: 10.9.255.3
+    distance: '10'
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: vds5 via TTK
+    disabled: 'no'
+    distance: '1'
+    dst-address: 217.144.189.206/32
+    gateway: 86.110.170.69
+    routing-table: main
+  selector:
+    dst-address: 217.144.189.206/32
+    routing-table: main
+    gateway: 86.110.170.69
+    distance: '1'
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    comment: vds7 wg network
+    disabled: 'no'
+    dst-address: 10.250.0.0/24
+    gateway: 10.251.0.7
+    routing-table: main
+  selector:
+    dst-address: 10.250.0.0/24
+    routing-table: main
+    gateway: 10.251.0.7
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    comment: vds6 via vds7-mikrotik
+    disabled: 'no'
+    distance: '1'
+    dst-address: 10.250.6.7/32
+    gateway: 10.251.0.7
+    routing-table: main
+  selector:
+    dst-address: 10.250.6.7/32
+    routing-table: main
+    gateway: 10.251.0.7
+    distance: '1'
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '20'
+    dst-address: 0.0.0.0/0
+    gateway: 86.110.170.69
+    routing-table: main
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: main
+    gateway: 86.110.170.69
+    distance: '20'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.17.0.0/24
+    gateway: 10.9.255.20
+    routing-table: main
+  selector:
+    dst-address: 10.17.0.0/24
+    routing-table: main
+    gateway: 10.9.255.20
+    distance: '10'
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.10.0.0/24
+    gateway: 10.9.255.27
+    pref-src: ''
+    routing-table: main
+  selector:
+    dst-address: 10.10.0.0/24
+    routing-table: main
+    gateway: 10.9.255.27
+    distance: '10'
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '7'
+    dst-address: 10.12.0.0/16
+    gateway: 10.9.255.4
+    routing-table: main
+  selector:
+    dst-address: 10.12.0.0/16
+    routing-table: main
+    gateway: 10.9.255.4
+    distance: '7'
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 10.11.0.0/24
+    gateway: 10.9.255.3
+    pref-src: ''
+    routing-table: main
+  selector:
+    dst-address: 10.11.0.0/24
+    routing-table: main
+    gateway: 10.9.255.3
+    distance: '10'
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: vds5 via TTK
+    disabled: 'no'
+    distance: '1'
+    dst-address: 217.144.189.206/32
+    gateway: 86.110.170.69
+    routing-table: main
+  selector:
+    dst-address: 217.144.189.206/32
+    routing-table: main
+    gateway: 86.110.170.69
+    distance: '1'
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    check-gateway: ping
+    disabled: 'no'
+    distance: '10'
+    dst-address: 0.0.0.0/0
+    gateway: 10.250.0.5
+    routing-table: wg-routing
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: wg-routing
+    gateway: 10.250.0.5
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '5'
+    dst-address: 0.0.0.0/0
+    gateway: 10.251.0.7
+    routing-table: SSTP_to_VDS7
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: SSTP_to_VDS7
+    gateway: 10.251.0.7
+    distance: '5'
+  create: true
+- path: /ip route
+  values:
+    comment: vds7 wg network
+    disabled: 'no'
+    dst-address: 10.250.0.0/24
+    gateway: 10.251.0.7
+    routing-table: main
+  selector:
+    dst-address: 10.250.0.0/24
+    routing-table: main
+    gateway: 10.251.0.7
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    comment: vds6 via vds7-mikrotik
+    disabled: 'no'
+    distance: '1'
+    dst-address: 10.250.6.7/32
+    gateway: 10.251.0.7
+    routing-table: main
+  selector:
+    dst-address: 10.250.6.7/32
+    routing-table: main
+    gateway: 10.251.0.7
+    distance: '1'
+  create: true
+  occurrence: 1
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: google_ips to vds8
+    disabled: 'yes'
+    distance: '11'
+    dst-address: 0.0.0.0/0
+    gateway: 10.20.255.1
+    routing-table: google_ips_table
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: google_ips_table
+    gateway: 10.20.255.1
+    distance: '11'
+  create: true
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: google_ips to vds7
+    disabled: 'no'
+    distance: '10'
+    dst-address: 0.0.0.0/0
+    gateway: 10.251.0.7
+    routing-table: google_ips_table
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: google_ips_table
+    gateway: 10.251.0.7
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    comment: VERY IMPORTANT for routing outgoing packets according to mangle rules
+    disabled: 'no'
+    distance: '10'
+    dst-address: 0.0.0.0/0
+    gateway: 86.110.170.69
+    routing-table: to_ISP1
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: to_ISP1
+    gateway: 86.110.170.69
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'no'
+    distance: '10'
+    dst-address: 10.10.0.0/16
+    gateway: 10.9.255.27
+    routing-table: main
+  selector:
+    dst-address: 10.10.0.0/16
+    routing-table: main
+    gateway: 10.9.255.27
+    distance: '10'
+  create: true
+- path: /ip service
+  selector:
+    name: ftp
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: telnet
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: www
+  values:
+    port: '1955'
+- path: /ip service
+  selector:
+    name: www-ssl
+  values:
+    certificate: Mikrotik_CA
+    disabled: 'no'
+    port: '1956'
+- path: /ip service
+  selector:
+    name: api
+  values:
+    disabled: 'yes'
+- path: /ip service
+  selector:
+    name: api-ssl
+  values:
+    disabled: 'yes'
+- path: /ipv6 firewall address-list
+  values:
+    address: ::/128
+    comment: 'defconf: unspecified address'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: ::/128
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: ::1/128
+    comment: 'defconf: lo'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: ::1/128
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: fec0::/10
+    comment: 'defconf: site-local'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: fec0::/10
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: ::ffff:0.0.0.0/96
+    comment: 'defconf: ipv4-mapped'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: ::ffff:0.0.0.0/96
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: ::/96
+    comment: 'defconf: ipv4 compat'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: ::/96
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: 100::/64
+    comment: 'defconf: discard only '
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: 100::/64
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: 2001:db8::/32
+    comment: 'defconf: documentation'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: 2001:db8::/32
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: 2001:10::/28
+    comment: 'defconf: ORCHID'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: 2001:10::/28
+  create: true
+- path: /ipv6 firewall address-list
+  values:
+    address: 3ffe::/16
+    comment: 'defconf: 6bone'
+    list: bad_ipv6
+  selector:
+    list: bad_ipv6
+    address: 3ffe::/16
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept established,related,untracked'
+    connection-state: established,related,untracked
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept established,related,untracked'
+    connection-state: established,related,untracked
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: input
+    comment: 'defconf: drop invalid'
+    connection-state: invalid
+  selector:
+    action: drop
+    chain: input
+    comment: 'defconf: drop invalid'
+    connection-state: invalid
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept ICMPv6'
+    protocol: icmpv6
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept ICMPv6'
+    protocol: icmpv6
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept UDP traceroute'
+    dst-port: 33434-33534
+    protocol: udp
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept UDP traceroute'
+    dst-port: 33434-33534
+    protocol: udp
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept DHCPv6-Client prefix delegation.'
+    dst-port: '546'
+    protocol: udp
+    src-address: fe80::/10
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept DHCPv6-Client prefix delegation.'
+    dst-port: '546'
+    protocol: udp
+    src-address: fe80::/10
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept IKE'
+    dst-port: 500,4500
+    protocol: udp
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept IKE'
+    dst-port: 500,4500
+    protocol: udp
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept ipsec AH'
+    protocol: ipsec-ah
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept ipsec AH'
+    protocol: ipsec-ah
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept ipsec ESP'
+    protocol: ipsec-esp
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept ipsec ESP'
+    protocol: ipsec-esp
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: 'defconf: accept all that matches ipsec policy'
+    ipsec-policy: in,ipsec
+  selector:
+    action: accept
+    chain: input
+    comment: 'defconf: accept all that matches ipsec policy'
+    ipsec-policy: in,ipsec
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: input
+    comment: 'defconf: drop everything else not coming from LAN'
+    in-interface-list: '!EXTERNAL'
+  selector:
+    action: drop
+    chain: input
+    comment: 'defconf: drop everything else not coming from LAN'
+    in-interface-list: '!EXTERNAL'
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: fasttrack-connection
+    chain: forward
+    comment: 'defconf: fasttrack6'
+    connection-state: established,related
+  selector:
+    action: fasttrack-connection
+    chain: forward
+    comment: 'defconf: fasttrack6'
+    connection-state: established,related
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept established,related,untracked'
+    connection-state: established,related,untracked
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept established,related,untracked'
+    connection-state: established,related,untracked
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop invalid'
+    connection-state: invalid
+  selector:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop invalid'
+    connection-state: invalid
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop packets with bad src ipv6'
+    src-address-list: bad_ipv6
+  selector:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop packets with bad src ipv6'
+    src-address-list: bad_ipv6
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop packets with bad dst ipv6'
+    dst-address-list: bad_ipv6
+  selector:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop packets with bad dst ipv6'
+    dst-address-list: bad_ipv6
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: 'defconf: rfc4890 drop hop-limit=1'
+    hop-limit: equal:1
+    protocol: icmpv6
+  selector:
+    action: drop
+    chain: forward
+    comment: 'defconf: rfc4890 drop hop-limit=1'
+    hop-limit: equal:1
+    protocol: icmpv6
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept ICMPv6'
+    protocol: icmpv6
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept ICMPv6'
+    protocol: icmpv6
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept HIP'
+    protocol: '139'
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept HIP'
+    protocol: '139'
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept IKE'
+    dst-port: 500,4500
+    protocol: udp
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept IKE'
+    dst-port: 500,4500
+    protocol: udp
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept ipsec AH'
+    protocol: ipsec-ah
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept ipsec AH'
+    protocol: ipsec-ah
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept ipsec ESP'
+    protocol: ipsec-esp
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept ipsec ESP'
+    protocol: ipsec-esp
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept all that matches ipsec policy'
+    ipsec-policy: in,ipsec
+  selector:
+    action: accept
+    chain: forward
+    comment: 'defconf: accept all that matches ipsec policy'
+    ipsec-policy: in,ipsec
+  create: true
+- path: /ipv6 firewall filter
+  values:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop everything else not coming from LAN'
+    in-interface-list: '!EXTERNAL'
+  selector:
+    action: drop
+    chain: forward
+    comment: 'defconf: drop everything else not coming from LAN'
+    in-interface-list: '!EXTERNAL'
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: Sergei
+    password: '{{ routeros_secrets.record_388_password }}'
+    remote-address: 10.9.255.8
+  selector:
+    name: Sergei
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: len97
+    password: '{{ routeros_secrets.record_389_password }}'
+    profile: default-encryption
+    remote-address: 10.9.255.26
+    service: l2tp
+  selector:
+    name: len97
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: kan
+    password: '{{ routeros_secrets.record_390_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.4
+    service: l2tp
+  selector:
+    name: kan
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: Studio
+    password: '{{ routeros_secrets.record_391_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.21
+    service: l2tp
+  selector:
+    name: Studio
+  create: true
+- path: /ppp secret
+  values:
+    disabled: 'yes'
+    local-address: 10.9.255.1
+    name: Pozd_1
+    password: '{{ routeros_secrets.record_392_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.10
+    service: l2tp
+  selector:
+    name: Pozd_1
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: trepko_home
+    password: '{{ routeros_secrets.record_393_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.9
+    service: l2tp
+  selector:
+    name: trepko_home
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: m38
+    password: '{{ routeros_secrets.record_394_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.2
+    service: l2tp
+  selector:
+    name: m38
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: azov
+    password: '{{ routeros_secrets.record_395_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.14
+  selector:
+    name: azov
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: kulesh
+    password: '{{ routeros_secrets.record_396_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.15
+    service: l2tp
+  selector:
+    name: kulesh
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: mich
+    password: '{{ routeros_secrets.record_397_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.16
+    service: l2tp
+  selector:
+    name: mich
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: kam_brod
+    password: '{{ routeros_secrets.record_398_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.17
+    service: l2tp
+  selector:
+    name: kam_brod
+  create: true
+- path: /ppp secret
+  values:
+    disabled: 'yes'
+    local-address: 10.9.255.1
+    name: Allog_KO
+    password: '{{ routeros_secrets.record_399_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.19
+  selector:
+    name: Allog_KO
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: pol_280.3_main
+    password: '{{ routeros_secrets.record_400_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.20
+    service: l2tp
+  selector:
+    name: pol_280.3_main
+  create: true
+- path: /ppp secret
+  values:
+    disabled: 'yes'
+    local-address: 10.9.255.1
+    name: arc_s
+    password: '{{ routeros_secrets.record_401_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.5
+  selector:
+    name: arc_s
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: RuVDS
+    password: '{{ routeros_secrets.record_402_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.22
+  selector:
+    name: RuVDS
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: misha
+    password: '{{ routeros_secrets.record_403_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.23
+    service: l2tp
+  selector:
+    name: misha
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: sh209
+    password: '{{ routeros_secrets.record_404_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.24
+    service: l2tp
+  selector:
+    name: sh209
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: Zoo
+    password: '{{ routeros_secrets.record_405_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.25
+    service: l2tp
+  selector:
+    name: Zoo
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: 3Ekipazhnyi64
+    password: '{{ routeros_secrets.record_406_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.27
+  selector:
+    name: 3Ekipazhnyi64
+  create: true
+- path: /ppp secret
+  values:
+    local-address: 10.9.255.1
+    name: k16_21
+    password: '{{ routeros_secrets.record_407_password }}'
+    profile: common_vpn
+    remote-address: 10.9.255.3
+  selector:
+    name: k16_21
+  create: true
+- path: /routing rule
+  values:
+    action: lookup-only-in-table
+    disabled: 'yes'
+    routing-mark: ISP1_routing_table
+    table: ISP1_routing_table
+  selector:
+    routing-mark: ISP1_routing_table
+    table: ISP1_routing_table
+  create: true
+- path: /routing rule
+  values:
+    action: lookup-only-in-table
+    disabled: 'no'
+    routing-mark: ISP2_routing_table
+    table: ISP2_routing_table
+  selector:
+    routing-mark: ISP2_routing_table
+    table: ISP2_routing_table
+  create: true
+- path: /snmp
+  values:
+    contact: Mikrotik_HOME
+    enabled: 'yes'
+    location: D24
+- path: /system clock
+  values:
+    time-zone-autodetect: 'no'
+    time-zone-name: UTC
+- path: /system clock manual
+  values:
+    time-zone: +03:00
+- path: /system identity
+  values:
+    name: K16_112
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: critical
+  selector:
+    topics: critical
+  create: true
+  occurrence: 0
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: error
+  selector:
+    topics: error
+  create: true
+  occurrence: 0
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: info
+  selector:
+    topics: info
+  create: true
+  occurrence: 0
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: warning
+  selector:
+    topics: warning
+  create: true
+  occurrence: 0
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: critical
+  selector:
+    topics: critical
+  create: true
+  occurrence: 1
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: error
+  selector:
+    topics: error
+  create: true
+  occurrence: 1
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: info
+  selector:
+    topics: info
+  create: true
+  occurrence: 1
+- path: /system logging
+  values:
+    action: remote
+    prefix: MikroTik_d24
+    topics: warning
+  selector:
+    topics: warning
+  create: true
+  occurrence: 1
+- path: /system ntp client
+  values:
+    enabled: 'yes'
+- path: /system ntp client servers
+  values:
+    address: 129.6.15.28
+  selector:
+    address: 129.6.15.28
+  create: true
+- path: /system ntp client servers
+  values:
+    address: 129.6.15.29
+  selector:
+    address: 129.6.15.29
+  create: true
+- path: /system routerboard mode-button
+  values:
+    enabled: 'yes'
+    on-event: '{{ routeros_secrets.record_425_on_event }}'
+- path: /system routerboard settings
+  values:
+    auto-upgrade: 'yes'
+- path: /system routerboard wps-button
+  values:
+    enabled: 'yes'
+    on-event: '{{ routeros_secrets.record_427_on_event }}'
+- path: /system scheduler
+  values:
+    days: ''
+    disabled: 'yes'
+    interval: 1w
+    name: backup_mail
+    on-event: '{{ routeros_secrets.record_428_on_event }}'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive
+    start-date: '2015-11-07'
+    start-time: 01:00:00
+  unset:
+  - days
+  selector:
+    name: backup_mail
+  create: true
+- path: /system scheduler
+  values:
+    days: ''
+    disabled: 'yes'
+    interval: 5m
+    name: ISPs_check
+    on-event: '{{ routeros_secrets.record_429_on_event }}'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    start-time: startup
+  unset:
+  - days
+  selector:
+    name: ISPs_check
+  create: true
+- path: /system scheduler
+  values:
+    days: ''
+    disabled: 'yes'
+    interval: 10m
+    name: bgp_peer_check
+    on-event: '{{ routeros_secrets.record_430_on_event }}'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    start-time: startup
+  unset:
+  - days
+  selector:
+    name: bgp_peer_check
+  create: true
+- path: /system scheduler
+  values:
+    days: ''
+    interval: 1d
+    name: get_google_ips
+    on-event: '{{ routeros_secrets.record_431_on_event }}'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    start-date: '2024-11-16'
+    start-time: 01:00:00
+  unset:
+  - days
+  selector:
+    name: get_google_ips
+  create: true
+- path: /system watchdog
+  values:
+    automatic-supout: 'no'
+    send-email-from: popov200984@gmail.com
+    send-email-to: popov200984@gmail.com
+    send-smtp-server: 173.194.65.108
+    watchdog-timer: 'no'
+- path: /tool e-mail
+  values:
+    certificate-verification: 'no'
+    from: apmikrotikmail@gmail.com
+    password: '{{ routeros_secrets.record_433_password }}'
+    port: '587'
+    server: 173.194.65.108
+    tls: starttls
+    user: apmikrotikmail@gmail.com
+- path: /tool mac-server
+  values:
+    allowed-interface-list: EXTERNAL
+- path: /tool mac-server mac-winbox
+  values:
+    allowed-interface-list: EXTERNAL
+- path: /tool mac-server ping
+  values:
+    enabled: 'no'
