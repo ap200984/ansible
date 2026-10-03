@@ -17,7 +17,9 @@ auditbeat_elastic_apt_repo_enabled: false
 
 wireguard_enabled: true
 wireguard_interface: wg0
-wireguard_address: 10.250.8.7/32
+wireguard_addresses:
+  - 10.250.8.7/32
+  - 10.250.8.1/32
 wireguard_listen_port: 56699
 wireguard_private_key: "{{ wireguard_server_private_key }}"
 wireguard_peers:
@@ -26,6 +28,12 @@ wireguard_peers:
     endpoint: 62.60.216.73:56699
     allowed_ips:
       - 10.250.7.8/32
+  - name: mikrotik-3Ekipazhnyi64
+    public_key: rUX5DJTmbbehlI6gchyOyWwaZ80nBz6dXI1KdpFlum8=
+    source_address: 10.250.8.1
+    allowed_ips:
+      - 10.250.108.1/32
+      - 10.10.0.0/16
 
 second_octet: 20
 wg_octet: 253

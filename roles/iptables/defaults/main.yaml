@@ -7,3 +7,7 @@ iptables_trusted_hosts_chains:
 iptables_trusted_hosts_inventory_dir: "{{ inventory_dir | default(playbook_dir ~ '/inventory') }}"
 iptables_ipset_restore_file: /etc/iptables/ipsets
 iptables_ipset_restore_service: ipset-persistent-restore.service
+
+iptables_input_ssh_port: 19022
+iptables_input_wireguard_enabled: "{{ wireguard_enabled | default(false) }}"
+iptables_input_wireguard_port: "{{ wireguard_listen_port | default(56685) }}"

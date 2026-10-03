@@ -219,15 +219,138 @@
     - iptables
     - "iptables:trusted_hosts"
 
+- name: Validate INPUT ports
+  ansible.builtin.assert:
+    that:
+      - iptables_input_ssh_port | int >= 1
+      - iptables_input_ssh_port | int <= 65535
+      - not (iptables_input_wireguard_enabled | bool) or iptables_input_wireguard_port | int >= 1
+      - not (iptables_input_wireguard_enabled | bool) or iptables_input_wireguard_port | int <= 65535
+    fail_msg: INPUT TCP and WireGuard UDP ports must be between 1 and 65535.
+  tags:
+    - iptables
+    - "iptables:input"
+
+- name: Check required INPUT rules
+  ansible.builtin.command:
+    argv: "{{ ['iptables', '-C', 'INPUT'] + item.rule }}"
+  register: iptables_input_rule_checks
+  changed_when: false
+  failed_when: false
+  loop:
+    - name: established and related traffic
+      position: "1"
+      rule:
+        - -m
+        - conntrack
+        - --ctstate
+        - ESTABLISHED,RELATED
+        - -j
+        - ACCEPT
+    - name: SSH
+      position: "2"
+      rule:
+        - -p
+        - tcp
+        - -m
+        - tcp
+        - --dport
+        - "{{ iptables_input_ssh_port | string }}"
+        - -j
+        - ACCEPT
+  loop_control:
+    label: "{{ item.name }}"
+  tags:
+    - iptables
+    - "iptables:input"
+
+- name: Insert required INPUT rules
+  ansible.builtin.command:
+    argv: "{{ ['iptables', '-I', 'INPUT', item.item.position] + item.item.rule }}"
+  loop: "{{ iptables_input_rule_checks.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.rc != 0
+  tags:
+    - iptables
+    - "iptables:input"
+
+- name: Check WireGuard INPUT rule
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -C
+      - INPUT
+      - -p
+      - udp
+      - -m
+      - udp
+      - --dport
+      - "{{ iptables_input_wireguard_port | string }}"
+      - -j
+      - ACCEPT
+  register: iptables_input_wireguard_rule_check
+  changed_when: false
+  failed_when: false
+  when: iptables_input_wireguard_enabled | bool
+  tags:
+    - iptables
+    - "iptables:input"
+
+- name: Insert WireGuard INPUT rule
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -I
+      - INPUT
+      - "3"
+      - -p
+      - udp
+      - -m
+      - udp
+      - --dport
+      - "{{ iptables_input_wireguard_port | string }}"
+      - -j
+      - ACCEPT
+  when:
+    - iptables_input_wireguard_enabled | bool
+    - iptables_input_wireguard_rule_check.rc != 0
+  tags:
+    - iptables
+    - "iptables:input"
+
+- name: Read INPUT policy
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -S
+      - INPUT
+  register: iptables_input_chain
+  changed_when: false
+  tags:
+    - iptables
+    - "iptables:input"
+
+- name: Set INPUT policy to DROP
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -P
+      - INPUT
+      - DROP
+  when: "'-P INPUT DROP' not in iptables_input_chain.stdout_lines"
+  tags:
+    - iptables
+    - "iptables:input"
+
 - name: Save persistent IPv4 iptables rules
   ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
   args:
     executable: /bin/bash
   changed_when: false
-  when: iptables_trusted_hosts_enabled | bool
   tags:
     - iptables
-    - "iptables:trusted_hosts"
+    - "iptables:persistence"
 
 - name: Enable ipset restore at boot
   ansible.builtin.systemd:
