@@ -1,0 +1,19 @@
+graph topology {
+graph [rankdir=LR, bgcolor="white", pad=0.4, nodesep=0.6, ranksep=1.3, fontname="DejaVu Sans", label="Enabled configured tunnels • not live status\nSolid WG = both ends configured; dashed WG = VDS config missing\nRouter icons = MikroTik (including CHR); rack icons = VDS hosts", labelloc=t];
+node [shape=plain, fontname="DejaVu Sans"];
+edge [fontname="DejaVu Sans",fontsize=10];
+"3Ekipazhnyi64" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>3Ekipazhnyi64</B></TD></TR><TR><TD>10.10.0.1/24</TD></TR></TABLE>>];
+"K16_112" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>K16_112</B></TD></TR><TR><TD>86.110.170.70/30 / 10.9.0.1/24 / 10.9.1.1/24</TD></TR></TABLE>>];
+"Logia_Kitchen" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>Logia_Kitchen</B></TD></TR><TR><TD>10.9.0.2/24</TD></TR><TR><TD><BR/><FONT POINT-SIZE="10">No enabled tunnels</FONT></TD></TR></TABLE>>];
+"Logia_SouthRoom" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>Logia_SouthRoom</B></TD></TR><TR><TD>10.9.0.3/24</TD></TR><TR><TD><BR/><FONT POINT-SIZE="10">No enabled tunnels</FONT></TD></TR></TABLE>>];
+"Misha" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>Misha</B></TD></TR><TR><TD>192.168.0.1/24</TD></TR></TABLE>>];
+"k16_21" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>k16_21</B></TD></TR><TR><TD>10.11.0.1/24</TD></TR></TABLE>>];
+"vds7_CHR" [label=<<TABLE BORDER="0" CELLBORDER="0"><TR><TD><IMG SRC="router.png"/></TD></TR><TR><TD><B>vds7_CHR</B></TD></TR><TR><TD>62.60.216.73</TD></TR></TABLE>>];
+"Misha" -- "K16_112" [color="#26744d",fontcolor="#26744d",style="solid",label="L2TP · l2tp-to-d24\nMisha: 10.9.255.23\nK16_112: 10.9.255.1\nendpoint 86.110.170.70"];
+"Misha" -- "vds7_CHR" [color="#8545a0",fontcolor="#8545a0",style="solid",label="SSTP · sstp-vds7\nMisha: 10.251.0.29\nvds7_CHR: 10.251.0.7\nendpoint 62.60.216.73"];
+"K16_112" -- "vds7_CHR" [color="#8545a0",fontcolor="#8545a0",style="solid",label="SSTP · sstp-vds7\nK16_112: 10.251.0.60\nvds7_CHR: 10.251.0.7\nendpoint 62.60.216.73"];
+"k16_21" -- "K16_112" [color="#26744d",fontcolor="#26744d",style="solid",label="L2TP · l2tp-to_k16_k112\nk16_21: 10.9.255.3\nK16_112: 10.9.255.1\nendpoint 86.110.170.70"];
+"k16_21" -- "vds7_CHR" [color="#8545a0",fontcolor="#8545a0",style="solid",label="SSTP · sstp-vds7\nk16_21: 10.251.0.28\nvds7_CHR: 10.251.0.7\nendpoint 62.60.216.73"];
+"3Ekipazhnyi64" -- "K16_112" [color="#26744d",fontcolor="#26744d",style="solid",label="L2TP · l2tp-to-k16\n3Ekipazhnyi64: 10.9.255.27\nK16_112: 10.9.255.1\nendpoint 86.110.170.70"];
+"3Ekipazhnyi64" -- "vds7_CHR" [color="#8545a0",fontcolor="#8545a0",style="solid",label="SSTP · sstp-vds7\n3Ekipazhnyi64: 10.251.0.27\nvds7_CHR: 10.251.0.7\nendpoint 62.60.216.73"];
+}
