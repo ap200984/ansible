@@ -1,6 +1,3 @@
-router_host: 10.9.0.3
-router_user: ansible
-router_ssh_key: /home/user/.ssh/priv/ansible
 routeros_records:
 - path: /interface bridge
   values:

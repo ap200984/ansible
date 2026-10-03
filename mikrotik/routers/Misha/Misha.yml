@@ -1,93 +1,79 @@
 routeros_records:
 - path: /interface bridge
   values:
-    fast-forward: 'no'
     name: LAN
     port-cost-mode: short
+    protocol-mode: none
   selector:
     name: LAN
   create: true
+- path: /interface wireless
+  selector:
+    default-name: wlan2
+  values:
+    band: 2ghz-b/g/n
+    channel-width: 20/40mhz-eC
+    disabled: 'no'
+    frequency: auto
+    mode: ap-bridge
+    name: wlan1
+    ssid: Leming's Wi-fi
+    station-roaming: enabled
+- path: /interface wireless
+  selector:
+    default-name: wlan1
+  values:
+    band: 5ghz-a/n/ac
+    channel-width: 20/40mhz-Ce
+    disabled: 'no'
+    frequency: auto
+    mode: ap-bridge
+    name: wlan2
+    ssid: Leming's Wi-fi 5
+    station-roaming: enabled
 - path: /interface ethernet
   selector:
-    default-name: ether6
+    default-name: ether1
   values:
-    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
+    comment: PK
 - path: /interface ethernet
   selector:
-    default-name: ether7
+    default-name: ether2
   values:
-    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
+    comment: TV
 - path: /interface ethernet
   selector:
-    default-name: ether8
+    default-name: ether4
   values:
-    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
+    comment: ISP1 (Beeline)
+    disabled: 'yes'
 - path: /interface ethernet
   selector:
-    default-name: ether9
+    default-name: ether5
   values:
-    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
-- path: /interface ethernet
-  selector:
-    default-name: ether10
-  values:
-    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
-- path: /interface ethernet
-  selector:
-    default-name: sfp1
-  values:
-    advertise: 10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
+    comment: ISP2 (TTK)
 - path: /interface l2tp-client
   values:
     connect-to: 86.110.170.70
     disabled: 'no'
     keepalive-timeout: disabled
-    name: l2tp-to-k16
+    name: l2tp-to-d24
     password: '{{ routeros_secrets.record_7_password }}'
-    user: 3Ekipazhnyi64
+    user: misha
   selector:
-    name: l2tp-to-k16
+    name: l2tp-to-d24
   create: true
-- path: /interface l2tp-client
+- path: /interface list
   values:
-    comment: l2tp-to-vds8
-    connect-to: 194.113.106.136
-    name: l2tp-to-vds8
-    password: '{{ routeros_secrets.record_8_password }}'
-    user: 3Ekipazhnyi64
+    name: EXTERNAL
   selector:
-    name: l2tp-to-vds8
+    name: EXTERNAL
   create: true
-- path: /interface wireguard
+- path: /interface list
   values:
-    comment: wg_client_vds5
-    disabled: 'yes'
-    listen-port: '56685'
-    mtu: '1420'
-    name: wg_client_vds5
-    private-key: '{{ routeros_secrets.record_9_private_key }}'
+    name: LAN_ALL
   selector:
-    name: wg_client_vds5
-  create: true
-- path: /interface wireguard
-  values:
-    comment: wg_vds1
-    listen-port: '37972'
-    mtu: '1420'
-    name: wg_vds1
-    private-key: '{{ routeros_secrets.record_10_private_key }}'
-  selector:
-    name: wg_vds1
-  create: true
-- path: /interface wireguard
-  values:
-    comment: wg_vds8
-    listen-port: '37973'
-    mtu: '1420'
-    name: wg_vds8
-    private-key: '{{ routeros_secrets.record_11_private_key }}'
-  selector:
-    name: wg_vds8
+    name: LAN_ALL
   create: true
 - path: /interface lte apn
   selector:
@@ -99,56 +85,15 @@ routeros_records:
   selector:
     default: 'yes'
   values:
-    supplicant-identity: MikroTik
-- path: /interface wireless security-profiles
-  values:
     authentication-types: wpa2-psk
+    eap-methods: ''
     mode: dynamic-keys
-    name: Secured
-    supplicant-identity: ''
-    wpa2-pre-shared-key: '{{ routeros_secrets.record_14_wpa2_pre_shared_key }}'
-  selector:
-    name: Secured
-  create: true
-- path: /interface wireless security-profiles
-  values:
-    authentication-types: wpa2-psk
-    mode: dynamic-keys
-    name: Dachia-guest
     supplicant-identity: MikroTik
-    wpa2-pre-shared-key: '{{ routeros_secrets.record_15_wpa2_pre_shared_key }}'
-  selector:
-    name: Dachia-guest
-  create: true
-- path: /interface wireless
-  selector:
-    default-name: wlan1
-  values:
-    antenna-gain: '0'
-    band: 2ghz-b/g/n
-    country: no_country_set
-    disabled: 'no'
-    frequency: auto
-    frequency-mode: manual-txpower
-    mode: ap-bridge
-    security-profile: Secured
-    ssid: Dachya
-    station-roaming: enabled
-- path: /interface wireless
-  values:
-    disabled: 'no'
-    mac-address: 6E:3B:6B:8A:9E:3B
-    master-interface: wlan1
-    name: Dachia-guest
-    security-profile: Dachia-guest
-    ssid: Dachya-Guest
-  selector:
-    name: Dachia-guest
-  create: true
+    wpa2-pre-shared-key: '{{ routeros_secrets.record_11_wpa2_pre_shared_key }}'
 - path: /ip pool
   values:
     name: dhcp_pool0
-    ranges: 10.10.0.100-10.10.0.199
+    ranges: 192.168.0.100-192.168.0.199
   selector:
     name: dhcp_pool0
   create: true
@@ -161,61 +106,107 @@ routeros_records:
   selector:
     name: dhcp1
   create: true
-- path: /ip smb users
-  selector:
-    default: 'yes'
-  values:
-    disabled: 'yes'
 - path: /interface sstp-client
   values:
-    authentication: mschap2
-    comment: sstp-to-vds7
     connect-to: 62.60.216.73
     disabled: 'no'
     http-proxy: 0.0.0.0
     name: sstp-vds7
-    password: '{{ routeros_secrets.record_21_password }}'
+    password: '{{ routeros_secrets.record_14_password }}'
     profile: default-encryption
     tls-version: only-1.2
-    user: 3Ekipazhnyi64
+    user: Misha
   selector:
     name: sstp-vds7
   create: true
 - path: /routing table
   values:
-    disabled: 'no'
     fib: 'yes'
-    name: SSTP_to_vds7
+    name: out_ISP1_only
   selector:
-    name: SSTP_to_vds7
+    name: out_ISP1_only
+  create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: out_ISP2_only
+  selector:
+    name: out_ISP2_only
+  create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: OUT_ISP2
+  selector:
+    name: OUT_ISP2
   create: true
 - path: /routing table
   values:
     disabled: 'no'
     fib: 'yes'
-    name: l2tp-to-vds8
+    name: SSTP_to_VDS7
   selector:
-    name: l2tp-to-vds8
+    name: SSTP_to_VDS7
   create: true
-- path: /routing table
+- path: /system script
   values:
-    disabled: 'no'
-    fib: 'yes'
-    name: to_VPNs
+    dont-require-permissions: 'no'
+    name: ISP1_add_gw
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_19_source }}'
   selector:
-    name: to_VPNs
+    name: ISP1_add_gw
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: ISP2_add_gw
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_20_source }}'
+  selector:
+    name: ISP2_add_gw
+  create: true
+- path: /system script
+  values:
+    dont-require-permissions: 'no'
+    name: ISPs_check
+    owner: admin
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    source: '{{ routeros_secrets.record_21_source }}'
+  selector:
+    name: ISPs_check
   create: true
 - path: /system script
   values:
     comment: Get all google IP addresses
     dont-require-permissions: 'no'
     name: get_google_ips
-    owner: admin
+    owner: tanya
     policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
-    source: '{{ routeros_secrets.record_25_source }}'
+    source: '{{ routeros_secrets.record_22_source }}'
   selector:
     name: get_google_ips
   create: true
+- path: /container config
+  values:
+    registry-url: https://registry-1.docker.io
+    tmpdir: /usb1/docker/pull
+- path: /ip smb
+  values:
+    enabled: 'yes'
+    interfaces: LAN
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: ether1
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: ether1
+  create: true
 - path: /interface bridge port
   values:
     bridge: LAN
@@ -240,81 +231,35 @@ routeros_records:
   values:
     bridge: LAN
     ingress-filtering: 'no'
-    interface: ether4
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether4
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
-    interface: ether5
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether5
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
-    interface: ether6
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether6
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
-    interface: ether7
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether7
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
-    interface: ether8
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether8
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
-    interface: ether9
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether9
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
-    interface: ether10
-    internal-path-cost: '10'
-    path-cost: '10'
-  selector:
-    interface: ether10
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: LAN
-    ingress-filtering: 'no'
     interface: wlan1
     internal-path-cost: '10'
     path-cost: '10'
   selector:
     interface: wlan1
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: LAN
+    ingress-filtering: 'no'
+    interface: wlan2
+    internal-path-cost: '10'
+    path-cost: '10'
+  selector:
+    interface: wlan2
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: '*B'
+    interface: '*C'
+  selector:
+    interface: '*C'
+  create: true
+- path: /interface bridge port
+  values:
+    bridge: '*B'
+    interface: '*D'
+  selector:
+    interface: '*D'
   create: true
 - path: /ip firewall connection tracking
   values:
@@ -327,160 +272,475 @@ routeros_records:
     max-neighbor-entries: '8192'
 - path: /ipv6 settings
   values:
-    disable-ipv6: 'yes'
     max-neighbor-entries: '8192'
+- path: /interface list member
+  values:
+    interface: ether4
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: ether4
+  create: true
+- path: /interface list member
+  values:
+    interface: ether5
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: ether5
+  create: true
+- path: /interface list member
+  values:
+    interface: '*C'
+    list: LAN_ALL
+  selector:
+    list: LAN_ALL
+    interface: '*C'
+  create: true
+- path: /interface list member
+  values:
+    interface: '*D'
+    list: LAN_ALL
+  selector:
+    list: LAN_ALL
+    interface: '*D'
+  create: true
+- path: /interface list member
+  values:
+    interface: LAN
+    list: LAN_ALL
+  selector:
+    list: LAN_ALL
+    interface: LAN
+  create: true
 - path: /interface ovpn-server server
   values:
     auth: sha1,md5
-    mac-address: FE:A3:CF:F3:D6:FE
+    mac-address: FE:D1:0E:18:CE:DD
     name: ovpn-server1
   selector:
     name: ovpn-server1
   create: true
-- path: /interface wireguard peers
+- path: /interface wireless access-list
   values:
-    allowed-address: 0.0.0.0/0
-    comment: wg_client_vds5
-    disabled: 'yes'
-    endpoint-address: 217.144.189.206
-    endpoint-port: '56685'
-    interface: wg_client_vds5
-    name: wg_client_vds5
-    preshared-key: '{{ routeros_secrets.record_41_preshared_key }}'
-    public-key: vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks=
+    comment: "\xD0\_\xD0\xB5\xD0\xBF\xD0\xB8\xD1\x82\xD0\xB5\xD1\x80 TP-Link"
+    interface: wlan2
+    mac-address: 3A:68:95:25:A7:3D
   selector:
-    name: wg_client_vds5
-  create: true
-- path: /interface wireguard peers
-  values:
-    allowed-address: 0.0.0.0/0
-    comment: wg_to_vds1
-    endpoint-address: 45.141.102.72
-    endpoint-port: '56685'
-    interface: wg_vds1
-    name: wg_to_vds1
-    persistent-keepalive: 25s
-    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
-  selector:
-    name: wg_to_vds1
-  create: true
-- path: /interface wireguard peers
-  values:
-    allowed-address: 0.0.0.0/0
-    comment: wg_to_vds8
-    endpoint-address: 194.113.106.136
-    endpoint-port: '56699'
-    interface: wg_vds8
-    name: wg_to_vds8
-    persistent-keepalive: 25s
-    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
-  selector:
-    name: wg_to_vds8
+    comment: "\xD0\_\xD0\xB5\xD0\xBF\xD0\xB8\xD1\x82\xD0\xB5\xD1\x80 TP-Link"
+    interface: wlan2
+    mac-address: 3A:68:95:25:A7:3D
   create: true
 - path: /ip address
   values:
-    address: 10.10.0.1/24
+    address: 192.168.0.1/24
     interface: LAN
-    network: 10.10.0.0
+    network: 192.168.0.0
   selector:
-    address: 10.10.0.1/24
+    address: 192.168.0.1/24
     interface: LAN
   create: true
 - path: /ip address
   values:
-    address: 10.250.0.8/24
-    comment: wg_client_vds5
-    interface: wg_client_vds5
-    network: 10.250.0.0
+    address: 192.168.254.1/24
+    interface: '*B'
+    network: 192.168.254.0
   selector:
-    address: 10.250.0.8/24
-    interface: wg_client_vds5
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.101.1
-    comment: wg_vds1
-    interface: wg_vds1
-    network: 10.250.101.1
-  selector:
-    address: 10.250.101.1
-    interface: wg_vds1
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.108.1
-    comment: wg_vds8
-    interface: wg_vds8
-    network: 10.250.108.1
-  selector:
-    address: 10.250.108.1
-    interface: wg_vds8
+    address: 192.168.254.1/24
+    interface: '*B'
   create: true
 - path: /ip dhcp-client
   values:
-    interface: ether1
-    name: ether1
-    use-peer-dns: 'no'
+    comment: ISP2_dhcp_client
+    default-route-tables: main
+    interface: ether5
+    name: ether5
+    script: ISP2_add_gw
   selector:
-    name: ether1
+    name: ether5
+  create: true
+- path: /ip dhcp-client
+  values:
+    comment: ISP1_dhcp_client
+    default-route-tables: main
+    interface: ether4
+    name: ether4
+    script: ISP1_add_gw
+  selector:
+    name: ether4
   create: true
 - path: /ip dhcp-server lease
   values:
-    address: 10.10.0.175
-    client-id: 1:7c:1c:68:eb:41:59
-    comment: Samsung Phone
-    mac-address: 7C:1C:68:EB:41:59
+    address: 192.168.0.190
+    client-id: 1:70:af:24:c8:2e:c3
+    comment: TV
+    mac-address: 70:AF:24:C8:2E:C3
     server: dhcp1
   selector:
-    mac-address: 7C:1C:68:EB:41:59
-    server: dhcp1
-  create: true
-- path: /ip dhcp-server lease
-  values:
-    address: 10.10.0.201
-    client-id: 1:2c:dd:5f:ef:f3:9a
-    comment: TV1
-    mac-address: 2C:DD:5F:EF:F3:9A
-    server: dhcp1
-  selector:
-    mac-address: 2C:DD:5F:EF:F3:9A
-    server: dhcp1
-  create: true
-- path: /ip dhcp-server lease
-  values:
-    address: 10.10.0.202
-    client-id: 1:ae:48:34:fc:ff:40
-    comment: TV2
-    mac-address: AE:48:34:FC:FF:40
-    server: dhcp1
-  selector:
-    mac-address: AE:48:34:FC:FF:40
-    server: dhcp1
-  create: true
-- path: /ip dhcp-server lease
-  values:
-    address: 10.10.0.196
-    client-id: 1:d4:27:87:13:5a:72
-    comment: Invertor
-    mac-address: D4:27:87:13:5A:72
-    server: dhcp1
-  selector:
-    mac-address: D4:27:87:13:5A:72
+    mac-address: 70:AF:24:C8:2E:C3
     server: dhcp1
   create: true
 - path: /ip dhcp-server network
   values:
-    address: 10.10.0.0/24
-    dns-server: 10.10.0.1,1.1.1.1,8.8.8.8
-    gateway: 10.10.0.1
+    address: 192.168.0.0/24
+    dns-server: 192.168.0.1
+    gateway: 192.168.0.1
   selector:
-    address: 10.10.0.0/24
+    address: 192.168.0.0/24
   create: true
 - path: /ip dns
   values:
+    address-list-extra-time: 1d
     allow-remote-requests: 'yes'
-    servers: 1.1.1.1,8.8.8.8
-    use-doh-server: https://1.1.1.1/dns-query
+    servers: 8.8.8.8
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    regexp: /.*/
+    type: FWD
+  selector:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    regexp: /.*/
+    type: FWD
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: googlevideo.com
+    type: FWD
+  selector:
+    name: googlevideo.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: youtube.com
+    type: FWD
+  selector:
+    name: youtube.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: googleapis.com
+    type: FWD
+  selector:
+    name: googleapis.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: ytimg.com
+    type: FWD
+  selector:
+    name: ytimg.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: youtu.be
+    type: FWD
+  selector:
+    name: youtu.be
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: ggpht.com
+    type: FWD
+  selector:
+    name: ggpht.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: rutracker.org
+    type: FWD
+  selector:
+    name: rutracker.org
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: rutracker.cc
+    type: FWD
+  selector:
+    name: rutracker.cc
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: medium.com
+    type: FWD
+  selector:
+    name: medium.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: nhacmp3youtube.com
+    type: FWD
+  selector:
+    name: nhacmp3youtube.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: fbcdn.net
+    type: FWD
+  selector:
+    name: fbcdn.net
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: yt.be
+    type: FWD
+  selector:
+    name: yt.be
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: gvt1.com
+    type: FWD
+  selector:
+    name: gvt1.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: youtube-nocookie.com
+    type: FWD
+  selector:
+    name: youtube-nocookie.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: youtube-ui.l.google.com
+    type: FWD
+  selector:
+    name: youtube-ui.l.google.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: yt-video-upload.l.google.com
+    type: FWD
+  selector:
+    name: yt-video-upload.l.google.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: wide-youtube.l.google.com
+    type: FWD
+  selector:
+    name: wide-youtube.l.google.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: cdninstagram.com
+    type: FWD
+  selector:
+    name: cdninstagram.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: instagram.com
+    type: FWD
+  selector:
+    name: instagram.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: play.google.com
+    type: FWD
+  selector:
+    name: play.google.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: yt4.ggpht.com
+    type: FWD
+  selector:
+    name: yt4.ggpht.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: ytimg.l.google.com
+    type: FWD
+  selector:
+    name: ytimg.l.google.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: googleusercontent.com
+    type: FWD
+  selector:
+    name: googleusercontent.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: gstatic.com
+    type: FWD
+  selector:
+    name: gstatic.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: i.google.com
+    type: FWD
+  selector:
+    name: i.google.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: facebook.com
+    type: FWD
+  selector:
+    name: facebook.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    regexp: .*googlevideo.*
+    type: FWD
+  selector:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    regexp: .*googlevideo.*
+    type: FWD
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    disabled: 'yes'
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: doubleclick.net
+    type: FWD
+  selector:
+    name: doubleclick.net
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: linkedin.com
+    type: FWD
+  selector:
+    name: linkedin.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: ru.linkedin.com
+    type: FWD
+  selector:
+    name: ru.linkedin.com
+  create: true
+- path: /ip dns static
+  values:
+    address-list: za_dpi_FWD
+    forward-to: localhost
+    match-subdomain: 'yes'
+    name: licdn.com
+    type: FWD
+  selector:
+    name: licdn.com
+  create: true
 - path: /ip firewall address-list
   values:
     address: 10.250.0.0/16
@@ -493,7 +753,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 10.251.0.0/24
-    comment: vds7 sstp network
+    comment: sstp network
     list: Trusted
   selector:
     list: Trusted
@@ -501,96 +761,6 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 149.154.160.0/20
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 149.154.160.0/20
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.108.4.0/22
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.108.4.0/22
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.108.8.0/22
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.108.8.0/22
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.108.12.0/22
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.108.12.0/22
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.108.16.0/22
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.108.16.0/22
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.108.20.0/22
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.108.20.0/22
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.108.56.0/22
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.108.56.0/22
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 95.161.64.0/20
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 95.161.64.0/20
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 185.76.151.0/24
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 185.76.151.0/24
-  create: true
-- path: /ip firewall address-list
-  values:
-    address: 91.105.192.0/23
-    comment: telegram-auto
-    list: Telegram prefixes
-  selector:
-    list: Telegram prefixes
-    address: 91.105.192.0/23
-  create: true
-- path: /ip firewall address-list
-  values:
     address: 8.8.4.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
@@ -1761,189 +1931,181 @@ routeros_records:
   create: true
 - path: /ip firewall filter
   values:
-    action: fasttrack-connection
+    action: accept
     chain: forward
     connection-state: established,related
+  selector:
+    action: accept
+    chain: forward
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: input
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    in-interface: LAN
+  selector:
+    action: accept
+    chain: forward
+    in-interface: LAN
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    in-interface: LAN
+  selector:
+    action: accept
+    chain: input
+    in-interface: LAN
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    in-interface: l2tp-to-d24
+  selector:
+    action: accept
+    chain: input
+    in-interface: l2tp-to-d24
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    src-address: 192.168.254.0/24
+  selector:
+    action: accept
+    chain: input
+    src-address: 192.168.254.0/24
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    src-address: 192.168.254.0/24
+  selector:
+    action: accept
+    chain: forward
+    src-address: 192.168.254.0/24
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Trusted IMPORT
+  selector:
+    action: accept
+    chain: input
+    comment: Trusted IMPORT
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Trusted FORWARD
+  selector:
+    action: accept
+    chain: forward
+    comment: Trusted FORWARD
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+  selector:
+    action: drop
+    chain: input
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+  selector:
+    action: drop
+    chain: forward
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    src-address: 10.9.255.1
+  selector:
+    action: accept
+    chain: input
+    src-address: 10.9.255.1
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: to_SSTP_to_VDS7 (TV only)
+    dst-address-list: google_ips
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+    src-address: 192.168.0.190
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: to_SSTP_to_VDS7 (TV only)
+    dst-address-list: google_ips
+    new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+    src-address: 192.168.0.190
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: VPN through ISP2 prefered route
+    dst-port: 22,5228
+    new-routing-mark: OUT_ISP2
+    passthrough: 'no'
+    protocol: tcp
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: VPN through ISP2 prefered route
+    dst-port: 22,5228
+    new-routing-mark: OUT_ISP2
+    passthrough: 'no'
+    protocol: tcp
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+  selector:
+    action: masquerade
+    chain: srcnat
+  create: true
+  occurrence: 0
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
     disabled: 'yes'
-  selector:
-    action: fasttrack-connection
-    chain: forward
-    connection-state: established,related
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    connection-state: established,related
-    in-interface: ether1
-  selector:
-    action: accept
-    chain: input
-    connection-state: established,related
-    in-interface: ether1
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: forward
-    connection-state: established,related
-  selector:
-    action: accept
-    chain: forward
-    connection-state: established,related
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    comment: Trusted INPUT
-    src-address-list: Trusted
-  selector:
-    action: accept
-    chain: input
-    comment: Trusted INPUT
-    src-address-list: Trusted
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: forward
-    comment: Trusted FORWARD
-    src-address-list: Trusted
-  selector:
-    action: accept
-    chain: forward
-    comment: Trusted FORWARD
-    src-address-list: Trusted
-  create: true
-- path: /ip firewall filter
-  values:
-    action: drop
-    chain: forward
-    in-interface: ether1
-  selector:
-    action: drop
-    chain: forward
-    in-interface: ether1
-  create: true
-- path: /ip firewall filter
-  values:
-    action: drop
-    chain: input
-    in-interface: ether1
-  selector:
-    action: drop
-    chain: input
-    in-interface: ether1
-  create: true
-- path: /ip firewall mangle
-  values:
-    action: mark-routing
-    chain: prerouting
-    comment: TVs
-    new-routing-mark: to_VPNs
-    passthrough: 'no'
-    src-address: 10.10.0.200/30
-  selector:
-    action: mark-routing
-    chain: prerouting
-    comment: TVs
-    new-routing-mark: to_VPNs
-    passthrough: 'no'
-    src-address: 10.10.0.200/30
-  create: true
-- path: /ip firewall mangle
-  values:
-    action: mark-routing
-    chain: prerouting
-    comment: google ips
-    dst-address-list: google_ips
-    new-routing-mark: to_VPNs
-    passthrough: 'no'
-  selector:
-    action: mark-routing
-    chain: prerouting
-    comment: google ips
-    dst-address-list: google_ips
-    new-routing-mark: to_VPNs
-    passthrough: 'no'
-  create: true
-- path: /ip firewall mangle
-  values:
-    action: mark-routing
-    chain: prerouting
-    comment: Telegram prefixes
-    dst-address-list: Telegram prefixes
-    new-routing-mark: to_VPNs
-    passthrough: 'no'
-  selector:
-    action: mark-routing
-    chain: prerouting
-    comment: Telegram prefixes
-    dst-address-list: Telegram prefixes
-    new-routing-mark: to_VPNs
-    passthrough: 'no'
-  create: true
-- path: /ip firewall mangle
-  values:
-    action: mark-routing
-    chain: prerouting
-    comment: google ips to vds7
-    dst-address-list: google_ips
-    new-routing-mark: SSTP_to_vds7
-    passthrough: 'no'
-  selector:
-    action: mark-routing
-    chain: prerouting
-    comment: google ips to vds7
-    dst-address-list: google_ips
-    new-routing-mark: SSTP_to_vds7
-    passthrough: 'no'
-  create: true
-- path: /ip firewall mangle
-  values:
-    action: mark-routing
-    chain: output
-    dst-address-list: google_ips
-    new-routing-mark: SSTP_to_vds7
-    passthrough: 'no'
-  selector:
-    action: mark-routing
-    chain: output
-    dst-address-list: google_ips
-    new-routing-mark: SSTP_to_vds7
-    passthrough: 'no'
-  create: true
-- path: /ip firewall nat
-  values:
-    action: masquerade
-    chain: srcnat
-    out-interface: ether1
-  selector:
-    action: masquerade
-    chain: srcnat
-    out-interface: ether1
-  create: true
-- path: /ip firewall nat
-  values:
-    action: masquerade
-    chain: srcnat
     out-interface: sstp-vds7
   selector:
     action: masquerade
     chain: srcnat
     out-interface: sstp-vds7
   create: true
-- path: /ip firewall nat
-  values:
-    action: masquerade
-    chain: srcnat
-    out-interface: l2tp-to-vds8
+- path: /ip hotspot profile
   selector:
-    action: masquerade
-    chain: srcnat
-    out-interface: l2tp-to-vds8
-  create: true
+    default: 'yes'
+  values:
+    html-directory: hotspot
 - path: /ip ipsec profile
   selector:
     default: 'yes'
@@ -1952,34 +2114,129 @@ routeros_records:
     dpd-maximum-failures: '5'
 - path: /ip route
   values:
-    disabled: 'no'
-    dst-address: 10.9.0.0/24
-    gateway: 10.9.255.1
+    comment: ISP2 prefered route
+    disabled: 'yes'
+    distance: '10'
+    dst-address: 0.0.0.0/0
+    gateway: 10.66.124.225
+    routing-table: OUT_ISP2
   selector:
-    dst-address: 10.9.0.0/24
-    gateway: 10.9.255.1
+    dst-address: 0.0.0.0/0
+    routing-table: OUT_ISP2
+    gateway: 10.66.124.225
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    comment: out_ISP1_only
+    disabled: 'yes'
+    distance: '7'
+    dst-address: 0.0.0.0/0
+    gateway: 100.119.0.1
+    routing-table: out_ISP1_only
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: out_ISP1_only
+    gateway: 100.119.0.1
+    distance: '7'
+  create: true
+- path: /ip route
+  values:
+    comment: out_ISP2_only
+    disabled: 'yes'
+    distance: '7'
+    dst-address: 0.0.0.0/0
+    gateway: 10.66.124.225
+    routing-table: out_ISP2_only
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: out_ISP2_only
+    gateway: 10.66.124.225
+    distance: '7'
+  create: true
+- path: /ip route
+  values:
+    comment: All
+    disabled: 'yes'
+    distance: '109'
+    dst-address: 0.0.0.0/0
+    gateway: 100.119.0.1
+  selector:
+    dst-address: 0.0.0.0/0
+    gateway: 100.119.0.1
+    distance: '109'
+  create: true
+- path: /ip route
+  values:
+    comment: All
+    disabled: 'yes'
+    distance: '109'
+    dst-address: 0.0.0.0/0
+    gateway: 10.66.124.225
+  selector:
+    dst-address: 0.0.0.0/0
+    gateway: 10.66.124.225
+    distance: '109'
+  create: true
+- path: /ip route
+  values:
+    comment: ISP1_default_gw
+    disabled: 'no'
+    distance: '10'
+    dst-address: 0.0.0.0/0
+    gateway: 100.92.176.1
+    routing-table: main
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: main
+    gateway: 100.92.176.1
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    comment: ISP2_default_gw
+    disabled: 'no'
+    distance: '111'
+    dst-address: 0.0.0.0/0
+    gateway: 10.66.124.225
+    routing-table: main
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: main
+    gateway: 10.66.124.225
+    distance: '111'
   create: true
 - path: /ip route
   values:
     disabled: 'yes'
-    distance: '1'
-    dst-address: 217.144.189.206/32
+    distance: '10'
+    dst-address: 10.9.0.0/24
     gateway: 10.9.255.1
-    routing-table: main
+  selector:
+    dst-address: 10.9.0.0/24
+    gateway: 10.9.255.1
+    distance: '10'
+  create: true
+- path: /ip route
+  values:
+    disabled: 'yes'
+    distance: '22'
+    dst-address: 0.0.0.0/0
+    gateway: 192.168.254.2%
+    pref-src: ''
+    routing-table: '*403'
     scope: '30'
     target-scope: '10'
   selector:
-    dst-address: 217.144.189.206/32
-    routing-table: main
-    gateway: 10.9.255.1
-    distance: '1'
+    dst-address: 0.0.0.0/0
+    routing-table: '*403'
+    gateway: 192.168.254.2%
+    distance: '22'
   create: true
 - path: /ip route
   values:
-    check-gateway: ping
     comment: vds7 wg network
-    disabled: 'no'
-    distance: '1'
+    disabled: 'yes'
     dst-address: 10.250.0.0/16
     gateway: 10.251.0.7
     routing-table: main
@@ -1987,57 +2244,31 @@ routeros_records:
     dst-address: 10.250.0.0/16
     routing-table: main
     gateway: 10.251.0.7
+  create: true
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: SSTP_to_VDS7
+    disabled: 'yes'
+    distance: '1'
+    dst-address: 0.0.0.0/0
+    gateway: 10.251.0.7
+    routing-table: SSTP_to_VDS7
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: SSTP_to_VDS7
+    gateway: 10.251.0.7
     distance: '1'
   create: true
 - path: /ip route
   values:
-    check-gateway: ping
-    comment: sstp-to-vds7
-    disabled: 'no'
     distance: '10'
-    dst-address: 0.0.0.0/0
-    gateway: 10.251.0.7
-    routing-table: to_VPNs
+    dst-address: 10.9.0.0/16
+    gateway: 10.9.255.1
   selector:
-    dst-address: 0.0.0.0/0
-    routing-table: to_VPNs
-    gateway: 10.251.0.7
+    dst-address: 10.9.0.0/16
+    gateway: 10.9.255.1
     distance: '10'
-  create: true
-- path: /ip route
-  values:
-    check-gateway: ping
-    comment: l2tp-to-vds8
-    disabled: 'no'
-    distance: '11'
-    dst-address: 0.0.0.0/0
-    gateway: 10.20.255.1
-    routing-table: to_VPNs
-  selector:
-    dst-address: 0.0.0.0/0
-    routing-table: to_VPNs
-    gateway: 10.20.255.1
-    distance: '11'
-  create: true
-- path: /ip route
-  values:
-    disabled: 'no'
-    dst-address: 10.250.1.1/32
-    gateway: wg_vds1
-    routing-table: main
-  selector:
-    dst-address: 10.250.1.1/32
-    routing-table: main
-    gateway: wg_vds1
-  create: true
-- path: /ip route
-  values:
-    comment: vds8 wg network
-    dst-address: 10.250.8.1/32
-    gateway: wg_vds8
-  selector:
-    dst-address: 10.250.8.1/32
-    gateway: wg_vds8
   create: true
 - path: /ip service
   selector:
@@ -2064,6 +2295,13 @@ routeros_records:
     name: ssh
   values:
     port: '20022'
+- path: /ip smb shares
+  values:
+    directory: /usb1
+    name: flash
+  selector:
+    name: flash
+  create: true
 - path: /ipv6 nd
   selector:
     default: 'yes'
@@ -2078,42 +2316,61 @@ routeros_records:
     multiplier: '5'
   selector: {}
   create: true
-- path: /routing igmp-proxy
+- path: /routing rule
   values:
-    quick-leave: 'yes'
-- path: /routing igmp-proxy interface
-  values:
-    alternative-subnets: 0.0.0.0/0
-    interface: ether1
-    upstream: 'yes'
+    action: lookup-only-in-table
+    disabled: 'no'
+    routing-mark: out_ISP1_only
+    table: out_ISP1_only
   selector:
-    alternative-subnets: 0.0.0.0/0
-    interface: ether1
-    upstream: 'yes'
+    routing-mark: out_ISP1_only
+    table: out_ISP1_only
   create: true
-- path: /routing igmp-proxy interface
+- path: /routing rule
   values:
-    interface: LAN
+    action: lookup-only-in-table
+    disabled: 'no'
+    routing-mark: out_ISP2_only
+    table: out_ISP2_only
   selector:
-    interface: LAN
+    routing-mark: out_ISP2_only
+    table: out_ISP2_only
   create: true
 - path: /snmp
   values:
-    contact: mikrotik_3Ekipazhnyi64
     enabled: 'yes'
-    location: 3Ekipazhnyi64
 - path: /system clock
   values:
     time-zone-name: Europe/Moscow
 - path: /system identity
   values:
-    name: 3Ekipazhnyi64
+    name: Misha
+- path: /system ntp client
+  values:
+    mode: broadcast
+- path: /system routerboard settings
+  values:
+    auto-upgrade: 'yes'
+- path: /system scheduler
+  values:
+    days: ''
+    disabled: 'yes'
+    interval: 30s
+    name: ISPs_check
+    on-event: '{{ routeros_secrets.record_259_on_event }}'
+    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    start-time: startup
+  unset:
+  - days
+  selector:
+    name: ISPs_check
+  create: true
 - path: /system scheduler
   values:
     days: ''
     interval: 1d
     name: get_google_ips
-    on-event: '{{ routeros_secrets.record_234_on_event }}'
+    on-event: '{{ routeros_secrets.record_260_on_event }}'
     policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
     start-date: '2024-11-16'
     start-time: 01:00:00

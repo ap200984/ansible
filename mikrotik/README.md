@@ -2,8 +2,11 @@
 
 Each router has a directory under `routers/<identity>/`: `Logia_Kitchen` is
 10.9.0.2, `Logia_SouthRoom` is 10.9.0.3, and `K16_112` is 10.9.0.1.
-`vds7_CHR` is 62.60.216.73 and uses SSH port 20022, saved as `router_port`
-in its configuration. Configurations without `router_port` use port 22.
+`vds7_CHR` is 62.60.216.73 and uses SSH port 20022. Connection settings for
+every router are stored in `host_vars/<identity>.yml`, including an explicit
+`router_port` of either 22 or 20022.
+`3Ekipazhnyi64` is 10.9.255.27, `k16_21` is 10.9.255.3, and `Misha` is
+10.9.255.23; all three use SSH port 20022.
 `<identity>.yml` contains its desired settings and `<identity>.rsc` is the export
 with sensitive fields hidden. The matching `secrets/secrets_<identity>.yml` holds secret values and the
 complete `show-sensitive` export. The repository already ignores `secrets/`
@@ -21,10 +24,13 @@ ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/ap
 ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/apply.yml -e router_identity=K16_112
 ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/apply.yml -e router_identity=vds7_CHR --check
 ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/apply.yml -e router_identity=vds7_CHR
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/apply.yml -e router_identity=k16_21 --check
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/apply.yml -e router_identity=Misha --check
 ```
 
-Use `-e router_identity=Logia_Kitchen` to select a configuration. SSH uses the
-key in `router_ssh_key` and your existing OpenSSH ProxyJump configuration.
+Use `-e router_identity=Logia_Kitchen` to select a configuration. The playbook
+loads its address, user, port, and key from `host_vars/Logia_Kitchen.yml`; SSH
+also uses your existing OpenSSH ProxyJump configuration.
 Edit the YAML records and secrets to change desired settings. Each record has
 a RouterOS menu `path`, a stable `selector` for list entries, and `values`.
 `create: true` allows adding missing entries; built-in entries must exist.
@@ -52,13 +58,14 @@ PyYAML (already present with this Ansible installation). A RouterOS command
 module alone does not provide reconciliation; the bundled module implements it.
 
 `python3 mikrotik/capture.py 10.9.0.3` refreshes both exports and generated YAML
-in the directory named after the router identity. `--user` and `--key` override
-SSH credentials. This overwrites local desired state and secrets; only run it
+in the directory named after the router identity and writes connection details
+to `host_vars/<identity>.yml`. `--user`, `--key`, and `--port` override SSH
+credentials. This overwrites local desired state and secrets; only run it
 when intentionally taking a fresh snapshot. Review the generated selectors
 before using captures from other routers. The parser covers this router's
 export syntax, not every possible RouterOS script or command.
 Use `python3 mikrotik/capture.py 62.60.216.73 --port 20022` for a router on a
-non-default SSH port. Captures save the selected port in the router variables.
+non-default SSH port. Captures save the selected port in `host_vars`.
 Script `source` and scheduler `on-event` values are always stored in secrets,
 including bodies that RouterOS leaves visible in a non-sensitive export. The
 public `.rsc` replaces them with placeholders; use the encrypted original for

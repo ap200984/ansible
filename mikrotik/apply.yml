@@ -6,6 +6,7 @@
   vars:
     router_identity: Logia_Kitchen
   vars_files:
+    - "{{ playbook_dir }}/host_vars/{{ router_identity }}.yml"
     - "{{ playbook_dir }}/routers/{{ router_identity }}/{{ router_identity }}.yml"
     - "{{ playbook_dir }}/routers/{{ router_identity }}/secrets/secrets_{{ router_identity }}.yml"
   tasks:

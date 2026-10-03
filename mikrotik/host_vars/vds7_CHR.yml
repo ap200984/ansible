@@ -1,0 +1,5 @@
+---
+router_host: 62.60.216.73
+router_user: ansible
+router_port: 20022
+router_ssh_key: /home/user/.ssh/priv/ansible

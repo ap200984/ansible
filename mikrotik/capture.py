@@ -77,8 +77,10 @@ if __name__ == '__main__':
     if '#error' in sensitive or '#error' in public:
         raise RuntimeError('RouterOS reported an incomplete export')
     router_dir = ROOT / 'routers' / identity
+    host_vars_dir = ROOT / 'host_vars'
     secrets = router_dir / 'secrets'
     secrets.mkdir(parents=True, exist_ok=True)
+    host_vars_dir.mkdir(exist_ok=True)
     desired = records(sensitive)
     redacted = records(public)
     if len(desired) != len(redacted) or any(
@@ -95,10 +97,12 @@ if __name__ == '__main__':
     (secrets / f'secrets_{identity}.yml').write_text(yaml.safe_dump({
         'routeros_secrets': secret_values, 'routeros_sensitive_export': sensitive,
     }, sort_keys=False))
-    (router_dir / f'{identity}.yml').write_text(yaml.safe_dump({
+    (host_vars_dir / f'{identity}.yml').write_text(yaml.safe_dump({
         'router_host': options.host, 'router_user': options.user,
         'router_port': options.port,
         'router_ssh_key': options.key,
+    }, sort_keys=False))
+    (router_dir / f'{identity}.yml').write_text(yaml.safe_dump({
         'routeros_records': desired,
     }, sort_keys=False))
     # Script bodies can contain credentials that RouterOS does not classify as
