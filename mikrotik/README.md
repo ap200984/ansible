@@ -8,8 +8,8 @@ every router are stored in `host_vars/<identity>.yml`, including an explicit
 `3Ekipazhnyi64` is 10.9.255.27, `k16_21` is 10.9.255.3, and `Misha` is
 10.9.255.23; all three use SSH port 20022.
 `<identity>.yml` contains its desired settings and `<identity>.rsc` is the export
-with sensitive fields hidden. The matching `secrets/secrets_<identity>.yml` holds secret values and the
-complete `show-sensitive` export. The repository already ignores `secrets/`
+with sensitive fields hidden. The matching `vault/secrets_<identity>.yml` holds secret values and the
+complete `show-sensitive` export. The repository already ignores `vault/`
 directories. The delivered secrets file is Ansible Vault encrypted using the
 repository's configured Vault password and has mode 0600.
 
@@ -92,7 +92,7 @@ After refreshing a capture, encrypt its new plaintext secrets file using the
 configured Vault password:
 
 ```sh
-ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-vault encrypt mikrotik/routers/Logia_SouthRoom/secrets/secrets_Logia_SouthRoom.yml
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-vault encrypt mikrotik/routers/Logia_SouthRoom/vault/secrets_Logia_SouthRoom.yml
 ```
 
 The playbook loads either plaintext or Vault-encrypted secrets and uses

@@ -6,10 +6,35 @@
   vars:
     router_identity: Logia_Kitchen
   vars_files:
+    - "{{ playbook_dir }}/vault/common.yml"
     - "{{ playbook_dir }}/host_vars/{{ router_identity }}.yml"
     - "{{ playbook_dir }}/routers/{{ router_identity }}/{{ router_identity }}.yml"
-    - "{{ playbook_dir }}/routers/{{ router_identity }}/secrets/secrets_{{ router_identity }}.yml"
+    - "{{ playbook_dir }}/routers/{{ router_identity }}/vault/secrets_{{ router_identity }}.yml"
   tasks:
+    - name: Ensure bandwidth-test group and user exist
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - "{{ router_ssh_key | expanduser }}"
+          - -p
+          - "{{ router_port | default(22) | string }}"
+          - -o
+          - BatchMode=yes
+          - "{{ router_user }}@{{ router_host }}"
+          - >-
+            :local g [/user group find where name="bandwidth-test"];
+            :if ([:len $g] = 0) do={/user group add name="bandwidth-test" policy=test,winbox}
+            else={/user group set $g policy=test,winbox};
+            :local u [/user find where name="bandwidth-test"];
+            :if ([:len $u] = 0) do={/user add name="bandwidth-test"
+            group="bandwidth-test" password="{{ bandwidth_test_password }}" disabled=no}
+            else={/user set $u group="bandwidth-test"
+            password="{{ bandwidth_test_password }}" disabled=no}
+      no_log: true
+      tags:
+        - bandwidth_test_user
+
     - name: Reconcile exported configuration
       routeros_ssh:
         host: "{{ router_host }}"

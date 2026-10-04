@@ -119,8 +119,8 @@ if __name__ == '__main__':
         raise RuntimeError('RouterOS reported an incomplete export')
     router_dir = ROOT / 'routers' / identity
     host_vars_dir = ROOT / 'host_vars'
-    secrets = router_dir / 'secrets'
-    secrets.mkdir(parents=True, exist_ok=True)
+    vault = router_dir / 'vault'
+    vault.mkdir(parents=True, exist_ok=True)
     host_vars_dir.mkdir(exist_ok=True)
     desired = records(sensitive)
     redacted = records(public)
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     desired_file = router_dir / f'{identity}.yml'
     previous = yaml.safe_load(desired_file.read_text())['routeros_records'] if desired_file.exists() else []
     secret_values = extract_secrets(desired, redacted, previous)
-    secret_file = secrets / f'secrets_{identity}.yml'
+    secret_file = vault / f'secrets_{identity}.yml'
     secret_data = {
         'routeros_secrets': secret_values, 'routeros_sensitive_export': sensitive,
     }
