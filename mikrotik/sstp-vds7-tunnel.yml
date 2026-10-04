@@ -1,0 +1,69 @@
+---
+- name: Load client connection settings
+  ansible.builtin.include_vars:
+    file: "host_vars/{{ tunnel.identity }}.yml"
+
+- name: Set vds7 PPP account password and endpoint addresses
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - '20022'
+      - -o
+      - BatchMode=yes
+      - ansible@62.60.216.73
+      - >-
+        :local ids [/ppp secret find where name="{{ tunnel.user }}"];
+        :if ([:len $ids] != 1) do={:error "Expected one PPP account"};
+        /ppp secret set $ids local-address=10.251.0.7
+        remote-address={{ tunnel.address }} service=sstp disabled=no
+        password="{{ sstp_vds7_password }}"
+  no_log: true
+
+- name: Update client and reconnect only its SSTP interface
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - "{{ router_port | string }}"
+      - -o
+      - BatchMode=yes
+      - "{{ router_user }}@{{ router_host }}"
+      - >-
+        :local ids [/interface sstp-client find where name="sstp-vds7"];
+        :if ([:len $ids] != 1) do={:error "Expected one SSTP client"};
+        /interface sstp-client set $ids connect-to=62.60.216.73
+        user="{{ tunnel.user }}" password="{{ sstp_vds7_password }}" disabled=no;
+        /interface sstp-client disable $ids; /interface sstp-client enable $ids
+  no_log: true
+
+- name: Verify negotiated client and server addresses
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - "{{ router_port | string }}"
+      - -o
+      - BatchMode=yes
+      - "{{ router_user }}@{{ router_host }}"
+      - >-
+        :local a [/ip address find where interface="sstp-vds7"];
+        :if ([:len $a] != 1) do={:error "SSTP address not ready"};
+        :if ([/ip address get $a address] != "{{ tunnel.address }}/32") do={:error "Unexpected client address"};
+        :if ([/ip address get $a network] != "10.251.0.7") do={:error "Unexpected server address"};
+        :put "VERIFIED {{ tunnel.identity }} {{ tunnel.address }}/32 peer=10.251.0.7"
+  register: tunnel_check
+  until: "'VERIFIED' in tunnel_check.stdout"
+  retries: 12
+  delay: 5
+  changed_when: false
+
+- name: Report verified tunnel
+  ansible.builtin.debug:
+    msg: "{{ tunnel_check.stdout }}"

@@ -1,0 +1,74 @@
+---
+- ansible.builtin.include_vars:
+    file: "host_vars/{{ client.identity }}.yml"
+- name: Load saved router keys
+  ansible.builtin.include_vars:
+    file: "routers/{{ client.identity }}/vault/secrets_{{ client.identity }}.yml"
+    name: saved_router
+  no_log: true
+- name: Ensure dedicated interface exists with its saved key
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - "{{ router_port | string }}"
+      - -o
+      - BatchMode=yes
+      - "{{ router_user }}@{{ router_host }}"
+      - >-
+        :if ([:len [/interface wireguard find where name="wg_vds8"]] = 0)
+        do={/interface wireguard add name=wg_vds8 listen-port=37973 mtu=1420
+        private-key="{{ saved_router.routeros_secrets.record_11_private_key if client.identity == '3Ekipazhnyi64' else vars['wg_vds8_private_key_' + client.identity] }}"}
+  no_log: true
+- name: Apply vds8 peer and tunnel address
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - "{{ router_port | string }}"
+      - -o
+      - BatchMode=yes
+      - "{{ router_user }}@{{ router_host }}"
+      - >-
+        :local w [/interface wireguard find where name="wg_vds8"];
+        :if ([:len $w] != 1) do={:error "Expected one wg_vds8 interface"};
+        /interface wireguard set $w disabled=no;
+        :local p [/interface wireguard peers find where interface=wg_vds8 and public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="];
+        :if ([:len $p] > 1) do={:error "Ambiguous peer"};
+        :if ([:len $p] = 0) do={/interface wireguard peers add interface=wg_vds8 name=wg_to_vds8
+        public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
+        endpoint-address=194.113.106.136 endpoint-port=56699
+        allowed-address=10.250.1.8/32 persistent-keepalive={{ client.keepalive }}}
+        else={/interface wireguard peers set $p endpoint-address=194.113.106.136 endpoint-port=56699
+        persistent-keepalive={{ client.keepalive }} disabled=no};
+        :local a [/ip address find where interface=wg_vds8];
+        :if ([:len $a] > 1) do={:error "Ambiguous interface address"};
+        :if ([:len $a] = 0) do={/ip address add address={{ client.address }}/32 interface=wg_vds8}
+        else={/ip address set $a address={{ client.address }}/32 network={{ client.address }}};
+        :if ([:len [/ip route find where dst-address="10.250.1.8/32" and gateway="wg_vds8"]] = 0)
+        do={/ip route add dst-address=10.250.1.8/32 gateway=wg_vds8 comment="vds8 WireGuard server"}
+
+- name: Pin K16_112 endpoint to the public ISP and accept vds8 UDP
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - "{{ router_port | string }}"
+      - "{{ router_user }}@{{ router_host }}"
+      - >-
+        :if ([:len [/ip route find where comment="vds8 WireGuard public ISP"]] = 0)
+        do={/ip route add dst-address=194.113.106.136/32 gateway=86.110.170.69
+        pref-src=86.110.170.70 comment="vds8 WireGuard public ISP"};
+        :if ([:len [/ip firewall filter find where comment="vds8 WireGuard UDP"]] = 0)
+        do={/ip firewall filter add chain=input action=accept protocol=udp src-address=194.113.106.136
+        dst-port=37973 comment="vds8 WireGuard UDP" place-before=0};
+        :if ([:len [/ip firewall filter find where comment="vds8 WireGuard input"]] = 0)
+        do={/ip firewall filter add chain=input action=accept in-interface=wg_vds8
+        src-address=10.250.1.8 comment="vds8 WireGuard input" place-before=0}
+  when: client.identity == 'K16_112'

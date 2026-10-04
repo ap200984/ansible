@@ -1,0 +1,20 @@
+---
+- name: Configure main router SSTP tunnels to vds7
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vault/common.yml
+  vars:
+    tunnels:
+      - {identity: 3Ekipazhnyi64, user: 3Ekipazhnyi64, address: 10.250.0.64}
+      - {identity: k16_21, user: k16_k21, address: 10.250.0.21}
+      - {identity: K16_112, user: k16_k112, address: 10.250.0.112}
+      - {identity: Misha, user: Misha, address: 10.250.0.24}
+  tasks:
+    - name: Configure and verify one tunnel at a time
+      ansible.builtin.include_tasks: sstp-vds7-tunnel.yml
+      loop: "{{ tunnels }}"
+      loop_control:
+        loop_var: tunnel
+        label: "{{ tunnel.identity }}"

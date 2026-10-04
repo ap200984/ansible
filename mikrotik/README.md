@@ -1,12 +1,60 @@
 # MikroTik configuration
 
+vds8's existing `wg0` listens on UDP `56699` and uses `10.250.1.8/32`
+for the four main routers. Each router uses `wg_vds8` with its own `/32`:
+`10.250.1.112` (K16_112), `10.250.1.64` (3Ekipazhnyi64),
+`10.250.1.21` (k16_21), and `10.250.1.24` (Misha).
+K16_112 uses public endpoint `86.110.170.70:37973` and has no persistent
+keepalive on either end. The other router peers send keepalives every 25 seconds.
+The additional vds8 addresses for existing peers are preserved.
+New router private keys are encrypted in `vault/common.yml`; 3Ekipazhnyi64
+retains its existing key in its router vault.
+
+Apply the server and clients using these focused playbooks:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i inventory/vds8 wireguard-vds8.yml
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/wireguard-vds8.yml
+```
+
+The main L2TP clients connect to K16_112 (`86.110.170.70`) with their existing
+MPPE128 encryption and `use-ipsec=no`. The server endpoint is
+`10.251.3.112/32` on each tunnel; clients are `10.251.3.64/32`
+(`3Ekipazhnyi64`), `10.251.3.21/32` (`k16_21`), and `10.251.3.24/32` (`Misha`).
+Their shared password is the encrypted `l2tp_k16_password` variable in
+`vault/common.yml`. Ansible uses these client addresses for management.
+
+To reapply these settings sequentially:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/l2tp-k16.yml
+```
+
+For an initial migration from the old `10.9.255.*` addresses, add
+`-e migrate_from_old=true`. Each run reconnects the selected L2TP interfaces.
+
+The four main SSTP clients connect to `62.60.216.73` using the common
+`sstp_vds7_password` encrypted variable in `vault/common.yml`. vds7 uses
+`10.251.0.7/32` on each tunnel. Client addresses are `10.250.0.64/32`
+(`3Ekipazhnyi64`), `10.250.0.21/32` (`k16_k21` on `k16_21`),
+`10.250.0.112/32` (`k16_k112` on `K16_112`), and `10.250.0.24/32` (`Misha`).
+
+To apply only these SSTP settings and verify each tunnel sequentially:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/sstp-vds7.yml
+```
+
+This operation reconnects each SSTP interface. Existing PPP LAN routes are
+preserved. It does not reconcile unrelated exported configuration.
+
 Each router has a directory under `routers/<identity>/`: `Logia_Kitchen` is
 10.9.0.2, `Logia_SouthRoom` is 10.9.0.3, and `K16_112` is 10.9.0.1.
 `vds7_CHR` is 62.60.216.73 and uses SSH port 20022. Connection settings for
 every router are stored in `host_vars/<identity>.yml`, including an explicit
 `router_port` of either 22 or 20022.
-`3Ekipazhnyi64` is 10.9.255.27, `k16_21` is 10.9.255.3, and `Misha` is
-10.9.255.23; all three use SSH port 20022.
+`3Ekipazhnyi64` is 10.251.3.64, `k16_21` is 10.251.3.21, and `Misha` is
+10.251.3.24; all three use SSH port 20022.
 `<identity>.yml` contains its desired settings and `<identity>.rsc` is the export
 with sensitive fields hidden. The matching `vault/secrets_<identity>.yml` holds secret values and the
 complete `show-sensitive` export. The repository already ignores `vault/`

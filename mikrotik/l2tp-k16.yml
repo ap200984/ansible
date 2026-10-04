@@ -1,0 +1,31 @@
+---
+- name: Configure L2TP to K16_112 with existing MPPE encryption
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vault/common.yml
+  vars:
+    clients:
+      - {identity: 3Ekipazhnyi64, user: 3Ekipazhnyi64, interface: l2tp-to-k16, old: 10.9.255.27, address: 10.251.3.64}
+      - {identity: k16_21, user: k16_21, interface: l2tp-to_k16_k112, old: 10.9.255.3, address: 10.251.3.21}
+      - {identity: Misha, user: misha, interface: l2tp-to-d24, old: 10.9.255.23, address: 10.251.3.24}
+  tasks:
+    - name: Allow new tunnel addresses through existing management lists
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - /home/user/.ssh/priv/ansible
+          - -p
+          - '22'
+          - ansible@10.9.0.1
+          - >-
+            :foreach list in={"MGMT Networks";"tunnel networks"} do={
+            :if ([:len [/ip firewall address-list find where list=$list and address="10.251.3.0/24"]] = 0)
+            do={/ip firewall address-list add list=$list address=10.251.3.0/24 comment="L2TP main routers"}}
+    - name: Migrate one tunnel at a time
+      ansible.builtin.include_tasks: l2tp-k16-client.yml
+      loop: "{{ clients | rejectattr('identity', 'in', skip_clients | default([])) | list }}"
+      loop_control:
+        loop_var: client

@@ -626,9 +626,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: k16_k112
-    password: '{{ routeros_secrets.record_66_password }}'
+    service: sstp
+    disabled: 'no'
+    password: '{{ sstp_vds7_password }}'
     profile: default-encryption
-    remote-address: 10.251.0.60
+    remote-address: 10.250.0.112
     routes: 10.9.0.0/24
   selector:
     name: k16_k112
@@ -637,9 +639,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: 3Ekipazhnyi64
-    password: '{{ routeros_secrets.record_67_password }}'
+    service: sstp
+    disabled: 'no'
+    password: '{{ sstp_vds7_password }}'
     profile: default-encryption
-    remote-address: 10.251.0.27
+    remote-address: 10.250.0.64
     routes: 10.10.0.0/24
   selector:
     name: 3Ekipazhnyi64
@@ -648,9 +652,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: k16_k21
-    password: '{{ routeros_secrets.record_68_password }}'
+    service: sstp
+    disabled: 'no'
+    password: '{{ sstp_vds7_password }}'
     profile: default-encryption
-    remote-address: 10.251.0.28
+    remote-address: 10.250.0.21
     routes: 10.11.0.0/24
   selector:
     name: k16_k21
@@ -659,9 +665,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: Misha
-    password: '{{ routeros_secrets.record_69_password }}'
+    service: sstp
+    disabled: 'no'
+    password: '{{ sstp_vds7_password }}'
     profile: default-encryption
-    remote-address: 10.251.0.29
+    remote-address: 10.250.0.24
   selector:
     name: Misha
   create: true

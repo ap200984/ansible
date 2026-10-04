@@ -1,4 +1,50 @@
 routeros_records:
+- path: /interface wireguard
+  values:
+    name: wg_vds8
+    listen-port: '37973'
+    mtu: '1420'
+    private-key: '{{ wg_vds8_private_key_Misha }}'
+  selector:
+    name: wg_vds8
+  create: true
+- path: /interface wireguard peers
+  values:
+    interface: wg_vds8
+    name: wg_to_vds8
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+    endpoint-address: 194.113.106.136
+    endpoint-port: '56699'
+    allowed-address: 10.250.1.8/32
+    persistent-keepalive: 25s
+  selector:
+    name: wg_to_vds8
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.1.24/32
+    interface: wg_vds8
+  selector:
+    interface: wg_vds8
+  create: true
+- path: /ip route
+  values:
+    dst-address: 10.250.1.8/32
+    gateway: wg_vds8
+    comment: vds8 WireGuard server
+  selector:
+    dst-address: 10.250.1.8/32
+    gateway: wg_vds8
+  create: true
+- path: /ip firewall address-list
+  values:
+    list: 'Trusted'
+    address: 10.251.3.0/24
+    comment: L2TP main routers
+  selector:
+    list: 'Trusted'
+    address: 10.251.3.0/24
+  create: true
 - path: /interface bridge
   values:
     name: LAN
@@ -58,7 +104,8 @@ routeros_records:
     disabled: 'no'
     keepalive-timeout: disabled
     name: l2tp-to-d24
-    password: '{{ routeros_secrets.record_7_password }}'
+    use-ipsec: 'no'
+    password: '{{ l2tp_k16_password }}'
     user: misha
   selector:
     name: l2tp-to-d24
@@ -112,7 +159,7 @@ routeros_records:
     disabled: 'no'
     http-proxy: 0.0.0.0
     name: sstp-vds7
-    password: '{{ routeros_secrets.record_14_password }}'
+    password: '{{ sstp_vds7_password }}'
     profile: default-encryption
     tls-version: only-1.2
     user: Misha
@@ -2039,11 +2086,11 @@ routeros_records:
   values:
     action: accept
     chain: input
-    src-address: 10.9.255.1
+    src-address: 10.251.3.112
   selector:
     action: accept
     chain: input
-    src-address: 10.9.255.1
+    src-address: 10.251.3.112
   create: true
 - path: /ip firewall mangle
   values:
@@ -2211,10 +2258,10 @@ routeros_records:
     disabled: 'yes'
     distance: '10'
     dst-address: 10.9.0.0/24
-    gateway: 10.9.255.1
+    gateway: 10.251.3.112
   selector:
     dst-address: 10.9.0.0/24
-    gateway: 10.9.255.1
+    gateway: 10.251.3.112
     distance: '10'
   create: true
 - path: /ip route
@@ -2264,10 +2311,10 @@ routeros_records:
   values:
     distance: '10'
     dst-address: 10.9.0.0/16
-    gateway: 10.9.255.1
+    gateway: 10.251.3.112
   selector:
     dst-address: 10.9.0.0/16
-    gateway: 10.9.255.1
+    gateway: 10.251.3.112
     distance: '10'
   create: true
 - path: /ip service

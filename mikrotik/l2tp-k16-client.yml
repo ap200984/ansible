@@ -1,0 +1,69 @@
+---
+- name: Set fixed server and client addresses and shared password
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - /home/user/.ssh/priv/ansible
+      - -p
+      - '22'
+      - ansible@10.9.0.1
+      - >-
+        :local s [/ppp secret find where name="{{ client.user }}"];
+        :if ([:len $s] != 1) do={:error "Expected one PPP secret"};
+        /ppp secret set $s local-address=10.251.3.112 remote-address={{ client.address }}
+        service=l2tp profile=common_vpn disabled=no password="{{ l2tp_k16_password }}";
+        /ip route set [find where gateway="{{ client.old }}"] gateway={{ client.address }}
+  no_log: true
+- name: Configure client and schedule reconnection after SSH returns
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - /home/user/.ssh/priv/ansible
+      - -p
+      - '20022'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ServerAliveInterval=5
+      - -o
+      - ServerAliveCountMax=2
+      - "ansible@{{ client.old if migrate_from_old | default(false) | bool else client.address }}"
+      - >-
+        :local c [/interface l2tp-client find where name="{{ client.interface }}"];
+        :if ([:len $c] != 1) do={:error "Expected one L2TP client"};
+        /interface l2tp-client set $c password="{{ l2tp_k16_password }}" use-ipsec=no;
+        /ip route set [find where gateway="10.9.255.1"] gateway=10.251.3.112;
+        /ip firewall filter set [find where src-address="10.9.255.1"] src-address=10.251.3.112;
+        :if ([:len [/ip firewall address-list find where list="Trusted" and address="10.251.3.0/24"]] = 0)
+        do={/ip firewall address-list add list=Trusted address=10.251.3.0/24 comment="L2TP main routers"};
+        :execute {:delay 3s; /interface l2tp-client disable [find where name="{{ client.interface }}"];
+        :delay 1s; /interface l2tp-client enable [find where name="{{ client.interface }}"]}
+  no_log: true
+  register: reconnect_result
+  failed_when: false
+- name: Verify new management address and L2TP negotiation
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - /home/user/.ssh/priv/ansible
+      - -p
+      - '20022'
+      - -o
+      - ConnectTimeout=5
+      - "ansible@{{ client.address }}"
+      - >-
+        :local a [/ip address find where interface="{{ client.interface }}"];
+        :if ([:len $a] != 1) do={:error "Address not ready"};
+        :if ([/ip address get $a address] != "{{ client.address }}/32") do={:error "Wrong client address"};
+        :if ([/ip address get $a network] != "10.251.3.112") do={:error "Wrong server address"};
+        :put "VERIFIED {{ client.identity }} {{ client.address }}/32 peer=10.251.3.112"
+  register: verification
+  until: "'VERIFIED' in verification.stdout"
+  retries: 10
+  delay: 5
+  changed_when: false
+- ansible.builtin.debug:
+    msg: "{{ verification.stdout }}"

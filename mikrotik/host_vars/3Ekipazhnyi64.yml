@@ -1,5 +1,5 @@
 ---
-router_host: 10.9.255.27
+router_host: 10.251.3.64
 router_user: ansible
 router_port: 20022
 router_ssh_key: ~/.ssh/priv/ansible
