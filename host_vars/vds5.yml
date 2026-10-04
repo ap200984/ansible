@@ -16,3 +16,12 @@ wg_octet: 253
 gre_octet: 254
 l2tp_octet: 255
 domain: vds05.space
+
+wireguard_vds7:
+  interface: wg1
+  address: 10.250.1.5/32
+  old_address: 10.250.5.7/32
+  old_remote_address: 10.250.7.5
+  remote_address: 10.250.1.7
+  public_key: xC+UM4Y6WxSwIq5C7Sq5rnOatQPSj+qDNIN2SOD2gz0=
+  port: 56695

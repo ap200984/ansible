@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    fallbacks:
+      - {identity: K16_112, prefix: 10.10.0.0/16, gateway: 10.250.3.64}
+      - {identity: Misha, prefix: 10.9.0.0/16, gateway: 10.250.3.112}
+  tasks:
+    - ansible.builtin.include_tasks: ospf-static-fallback-router.yml
+      loop: '{{ fallbacks }}'
+      loop_control: {loop_var: fallback}

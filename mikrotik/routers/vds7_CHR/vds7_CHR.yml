@@ -22,6 +22,7 @@ routeros_records:
     disable-running-check: 'no'
 - path: /interface wireguard
   values:
+    disabled: 'yes'
     comment: Server WG
     listen-port: '51820'
     mtu: '1340'
@@ -117,19 +118,10 @@ routeros_records:
   selector:
     name: wg_to_vds6
   create: true
+
 - path: /interface wireguard peers
   values:
-    allowed-address: 10.252.7.2/32
-    comment: Gor iPhone
-    interface: WG-server
-    name: GorPhone
-    public-key: nWXTY1b6OoOVh/EqdjdOQE9Ran4wjew4iD9oM/1SJW0=
-  selector:
-    name: GorPhone
-  create: true
-- path: /interface wireguard peers
-  values:
-    allowed-address: 0.0.0.0/0
+    allowed-address: 10.250.0.0/16,10.255.0.0/16
     comment: wg_to_vds1
     endpoint-address: 45.141.102.72
     endpoint-port: '56685'
@@ -141,7 +133,7 @@ routeros_records:
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 0.0.0.0/0
+    allowed-address: 10.250.0.0/16,10.255.0.0/16
     comment: wg_to_vds8
     endpoint-address: 194.113.106.136
     endpoint-port: '56699'
@@ -172,69 +164,46 @@ routeros_records:
     address: 62.60.216.73
     interface: ether1
   create: true
+
 - path: /ip address
   values:
-    address: 10.250.0.7/24
-    disabled: 'yes'
-    interface: '*3'
-    network: 10.250.0.0
-  selector:
-    address: 10.250.0.7/24
-    interface: '*3'
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.7.5
+    address: 10.250.1.7/32
     interface: vds5_interface
-    network: 10.250.7.5
+    network: 10.250.1.5
   selector:
-    address: 10.250.7.5
     interface: vds5_interface
   create: true
 - path: /ip address
   values:
-    address: 10.250.7.6
+    address: 10.250.1.7/32
     interface: vds6_interface
-    network: 10.250.7.6
+    network: 10.250.1.6
   selector:
-    address: 10.250.7.6
     interface: vds6_interface
   create: true
+
 - path: /ip address
   values:
-    address: 10.252.7.1/24
-    comment: WG server
-    interface: WG-server
-    network: 10.252.7.0
-  selector:
-    address: 10.252.7.1/24
-    interface: WG-server
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.7.1
+    address: 10.250.1.7/24
     interface: vds1_interface
-    network: 10.250.7.1
+    network: 10.250.1.0
   selector:
-    address: 10.250.7.1
     interface: vds1_interface
   create: true
 - path: /ip address
   values:
-    address: 10.250.7.2
+    address: 10.250.1.7/32
     interface: vds2_interface
-    network: 10.250.7.2
+    network: 10.250.1.2
   selector:
-    address: 10.250.7.2
     interface: vds2_interface
   create: true
 - path: /ip address
   values:
-    address: 10.250.7.8
+    address: 10.250.1.7/24
     interface: vds8_interface
-    network: 10.250.7.8
+    network: 10.250.1.0
   selector:
-    address: 10.250.7.8
     interface: vds8_interface
   create: true
 - path: /ip dhcp-client
@@ -481,16 +450,7 @@ routeros_records:
     chain: srcnat
   create: true
   occurrence: 1
-- path: /ip firewall nat
-  values:
-    action: masquerade
-    chain: srcnat
-    src-address: 10.252.7.0/24
-  selector:
-    action: masquerade
-    chain: srcnat
-    src-address: 10.252.7.0/24
-  create: true
+
 - path: /ip firewall nat
   values:
     action: masquerade
@@ -530,22 +490,22 @@ routeros_records:
 - path: /ip route
   values:
     disabled: 'no'
-    dst-address: 10.250.5.7/32
+    dst-address: 10.250.1.5/32
     gateway: vds5_interface
     routing-table: main
   selector:
-    dst-address: 10.250.5.7/32
+    dst-address: 10.250.1.5/32
     routing-table: main
     gateway: vds5_interface
   create: true
 - path: /ip route
   values:
     disabled: 'no'
-    dst-address: 10.250.6.7/32
+    dst-address: 10.250.1.6/32
     gateway: vds6_interface
     routing-table: main
   selector:
-    dst-address: 10.250.6.7/32
+    dst-address: 10.250.1.6/32
     routing-table: main
     gateway: vds6_interface
   create: true
@@ -553,11 +513,11 @@ routeros_records:
   values:
     disabled: 'no'
     distance: '1'
-    dst-address: 10.250.1.7/32
+    dst-address: 10.250.1.1/32
     gateway: vds1_interface
     routing-table: main
   selector:
-    dst-address: 10.250.1.7/32
+    dst-address: 10.250.1.1/32
     routing-table: main
     gateway: vds1_interface
     distance: '1'
@@ -566,11 +526,11 @@ routeros_records:
   values:
     disabled: 'no'
     distance: '1'
-    dst-address: 10.250.8.7/32
+    dst-address: 10.250.1.8/32
     gateway: vds8_interface
     routing-table: main
   selector:
-    dst-address: 10.250.8.7/32
+    dst-address: 10.250.1.8/32
     routing-table: main
     gateway: vds8_interface
     distance: '1'
@@ -579,11 +539,11 @@ routeros_records:
   values:
     disabled: 'no'
     distance: '1'
-    dst-address: 10.250.2.7/32
+    dst-address: 10.250.1.2/32
     gateway: vds2_interface
     routing-table: main
   selector:
-    dst-address: 10.250.2.7/32
+    dst-address: 10.250.1.2/32
     routing-table: main
     gateway: vds2_interface
     distance: '1'

@@ -61,14 +61,14 @@ routeros_records:
     public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
     endpoint-address: 194.113.106.136
     endpoint-port: '56699'
-    allowed-address: 10.250.1.8/32
+    allowed-address: 10.250.0.0/16,10.255.0.0/16
     persistent-keepalive: 0s
   selector:
     name: wg_to_vds8
   create: true
 - path: /ip address
   values:
-    address: 10.250.1.112/32
+    address: 10.250.1.112/24
     interface: wg_vds8
   selector:
     interface: wg_vds8
@@ -155,6 +155,7 @@ routeros_records:
     security.passphrase: '{{ routeros_secrets.record_5_security_passphrase }}'
 - path: /interface wireguard
   values:
+    disabled: 'yes'
     listen-port: '56685'
     mtu: '1420'
     name: wg-server
@@ -164,6 +165,7 @@ routeros_records:
   create: true
 - path: /interface wireguard
   values:
+    disabled: 'yes'
     comment: wg_main_interface
     listen-port: '56686'
     mtu: '1420'
@@ -667,44 +669,9 @@ routeros_records:
     package-path: ''
     require-peer-certificate: 'no'
     upgrade-policy: none
-- path: /interface wireguard peers
-  values:
-    allowed-address: 10.9.250.2/32
-    comment: ASUS ZenFone7
-    interface: wg-server
-    name: peer2
-    public-key: L+V9o0fNYkMVKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q=
-  selector:
-    name: peer2
-  create: true
-- path: /interface wireguard peers
-  values:
-    allowed-address: 0.0.0.0/0
-    comment: wg_to_vds5
-    endpoint-address: 217.144.189.206
-    endpoint-port: '56685'
-    interface: wg_main_interface
-    name: wg_to_vds5
-    persistent-keepalive: 25s
-    preshared-key: '{{ routeros_secrets.record_74_preshared_key }}'
-    public-key: vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks=
-  selector:
-    name: wg_to_vds5
-  create: true
-- path: /interface wireguard peers
-  values:
-    allowed-address: 0.0.0.0/0
-    comment: wg-vds9
-    endpoint-address: 90.156.218.209
-    endpoint-port: '34182'
-    interface: '*13'
-    name: wg-vds9
-    persistent-keepalive: 47s
-    preshared-key: '{{ routeros_secrets.record_75_preshared_key }}'
-    public-key: IuNS/0QsZG2q3yHkAJwyoztBTloeCxf81Szr8vVgogQ=
-  selector:
-    name: wg-vds9
-  create: true
+
+
+
 - path: /ip address
   values:
     address: 86.110.170.70/30
@@ -723,33 +690,9 @@ routeros_records:
     address: 10.9.0.1/24
     interface: LAN
   create: true
-- path: /ip address
-  values:
-    address: 10.9.250.1/24
-    interface: wg-server
-    network: 10.9.250.0
-  selector:
-    address: 10.9.250.1/24
-    interface: wg-server
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.0.60/24
-    interface: wg_main_interface
-    network: 10.250.0.0
-  selector:
-    address: 10.250.0.60/24
-    interface: wg_main_interface
-  create: true
-- path: /ip address
-  values:
-    address: 10.8.1.2
-    interface: '*13'
-    network: 10.8.1.2
-  selector:
-    address: 10.8.1.2
-    interface: '*13'
-  create: true
+
+
+
 - path: /ip address
   values:
     address: 10.9.1.1/24
@@ -1416,12 +1359,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 34.3.8.0/21
+    address: 34.3.8.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 34.3.8.0/21
+    address: 34.3.8.0/24
   create: true
 - path: /ip firewall address-list
   values:
@@ -1659,12 +1602,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 74.114.24.0/21
+    address: 74.114.24.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 74.114.24.0/21
+    address: 74.114.24.0/24
   create: true
 - path: /ip firewall address-list
   values:
@@ -1794,12 +1737,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 136.22.176.0/21
+    address: 136.22.176.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 136.22.176.0/21
+    address: 136.22.176.0/24
   create: true
 - path: /ip firewall address-list
   values:
@@ -1893,12 +1836,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 136.121.8.0/21
+    address: 136.121.8.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 136.121.8.0/21
+    address: 136.121.8.0/24
   create: true
 - path: /ip firewall address-list
   values:
@@ -1965,21 +1908,21 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 162.222.176.0/21
+    address: 162.222.176.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 162.222.176.0/21
+    address: 162.222.176.0/24
   create: true
 - path: /ip firewall address-list
   values:
-    address: 172.110.32.0/21
+    address: 172.110.32.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 172.110.32.0/21
+    address: 172.110.32.0/24
   create: true
 - path: /ip firewall address-list
   values:
@@ -2343,12 +2286,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 199.223.232.0/21
+    address: 199.223.232.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 199.223.232.0/21
+    address: 199.223.232.0/24
   create: true
 - path: /ip firewall address-list
   values:
@@ -3567,7 +3510,7 @@ routeros_records:
 - path: /ip route
   values:
     disabled: 'no'
-    distance: '10'
+    distance: '250'
     dst-address: 10.10.0.0/16
     gateway: 10.250.3.64
     routing-table: main
@@ -3575,7 +3518,6 @@ routeros_records:
     dst-address: 10.10.0.0/16
     routing-table: main
     gateway: 10.250.3.64
-    distance: '10'
   create: true
 - path: /ip service
   selector:

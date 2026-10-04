@@ -1,0 +1,102 @@
+---
+- ansible.builtin.import_playbook: mikrotik/wireguard-network.yml
+- name: Renumber existing vds2 vds5 and vds6 links to vds7
+  hosts: vds2:vds5:vds6
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install focused WireGuard migration helper
+      ansible.builtin.copy:
+        src: roles/wireguard/files/migrate-network.py
+        dest: /usr/local/sbin/wireguard-network-migrate
+        mode: '0755'
+    - name: Persist the requested address and broad routed permissions
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/wireguard-network-migrate
+          - --interface
+          - '{{ wireguard_vds7.interface }}'
+          - --address
+          - '{{ wireguard_vds7.address }}'
+          - --peer-key
+          - '{{ wireguard_vds7.public_key }}'
+          - --old-remote
+          - '{{ wireguard_vds7.old_remote_address }}'
+          - --port
+          - "{{ wireguard_vds7.port | string }}"
+          - --client
+      register: link_config
+      changed_when: "'CONFIG_CHANGED' in link_config.stdout"
+    - name: Apply only the existing link to vds7
+      ansible.builtin.systemd_service:
+        name: 'wg-quick@{{ wireguard_vds7.interface }}'
+        enabled: true
+        state: '{{ "restarted" if link_config.changed else "started" }}'
+    - name: Verify the vds7 transport address through the migrated link
+      ansible.builtin.command:
+        argv: [ping, -I, '{{ wireguard_vds7.interface }}', -c, '3', -W, '3', '10.250.1.7']
+      changed_when: false
+      register: link_ping
+      until: link_ping.rc == 0
+      retries: 5
+      delay: 5
+
+- name: Retire the obsolete parallel vds5 mesh after verifying its vds7 link
+  hosts: vds5
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop the legacy interface without changing wg1
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg0
+        enabled: false
+        state: stopped
+    - name: Check whether the legacy configuration remains active
+      ansible.builtin.stat:
+        path: /etc/wireguard/wg0.conf
+      register: legacy_wg
+    - name: Archive the legacy configuration outside wg-quick startup
+      ansible.builtin.command: mv /etc/wireguard/wg0.conf /etc/wireguard/wg0.conf.retired
+      when: legacy_wg.stat.exists
+
+- name: Consolidate existing WireGuard hubs into the common subnet
+  hosts: vds1:vds8
+  become: true
+  gather_facts: false
+  vars:
+    hub_key: '{{ "/COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=" if inventory_hostname == "vds1" else "WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=" }}'
+    hub_old_remote: '{{ "10.250.7.1" if inventory_hostname == "vds1" else "10.250.7.8" }}'
+    hub_address: '{{ "10.250.1.1/24" if inventory_hostname == "vds1" else "10.250.1.8/24" }}'
+  tasks:
+    - name: Install focused WireGuard migration helper
+      ansible.builtin.copy:
+        src: roles/wireguard/files/migrate-network.py
+        dest: /usr/local/sbin/wireguard-network-migrate
+        mode: '0755'
+    - name: Preserve peer ownership while replacing vds7 transport prefixes
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/wireguard-network-migrate
+          - --interface
+          - wg0
+          - --address
+          - '{{ hub_address }}'
+          - --peer-key
+          - '{{ hub_key }}'
+          - --old-remote
+          - '{{ hub_old_remote }}'
+          - --remote-prefix
+          - 10.250.1.0/28
+          - --old-prefix
+          - 10.250.7.0/24
+          - --old-prefix
+          - 10.252.7.0/24
+      register: hub_config
+      changed_when: "'CONFIG_CHANGED' in hub_config.stdout"
+    - name: Apply the common subnet on the existing hub interface
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg0
+        enabled: true
+        state: '{{ "restarted" if hub_config.changed else "started" }}'
+
+- ansible.builtin.import_playbook: ospf.yml

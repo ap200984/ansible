@@ -7,7 +7,7 @@ service_containers:
 
 wireguard_enabled: true
 wireguard_interface: wg0
-wireguard_address: 10.250.2.7/32
+wireguard_address: 10.250.1.2/32
 wireguard_listen_port: 56698
 wireguard_private_key: "{{ wireguard_server_private_key }}"
 wireguard_peers:
@@ -15,10 +15,20 @@ wireguard_peers:
     public_key: av7eQozol6pfxpvssX76FB7Omc0Dp1anKr4JC9GpZSg=
     endpoint: 62.60.216.73:56698
     allowed_ips:
-      - 10.250.7.2/32
+      - 10.250.0.0/16
+      - 10.255.0.0/16
 
 grey_address: 10.20.0.1
 second_octet: 20
 gre_octet: 254
 l2tp_octet: 255
 domain: vds2.space
+
+wireguard_vds7:
+  interface: wg0
+  address: 10.250.1.2/32
+  old_address: 10.250.2.7/32
+  old_remote_address: 10.250.7.2
+  remote_address: 10.250.1.7
+  public_key: av7eQozol6pfxpvssX76FB7Omc0Dp1anKr4JC9GpZSg=
+  port: 56698

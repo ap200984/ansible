@@ -1,0 +1,16 @@
+---
+- name: Enable direct OSPF on existing MikroTik WireGuard interfaces
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ospf_wireguard_enabled: true
+    ospf_routers: '{{ (lookup("file", playbook_dir + "/ospf.yml") | from_yaml)[0].vars.ospf_routers }}'
+  tasks:
+    - ansible.builtin.include_tasks: ospf-wireguard-enable-router.yml
+      loop: '{{ ospf_routers }}'
+      loop_control: {loop_var: ospf_router, label: '{{ ospf_router.identity }}'}
+    - name: Verify all tunnel neighbors and MikroTik loopbacks
+      ansible.builtin.include_tasks: ospf-verify.yml
+      loop: '{{ ospf_routers }}'
+      loop_control: {loop_var: ospf_router, label: '{{ ospf_router.identity }}'}

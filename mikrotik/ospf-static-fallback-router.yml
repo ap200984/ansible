@@ -1,0 +1,24 @@
+---
+- ansible.builtin.include_vars:
+    file: 'host_vars/{{ fallback.identity }}.yml'
+- name: Prefer OSPF while keeping the old static LAN route as a fallback
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - '{{ router_user }}@{{ router_host }}'
+      - >-
+        :if ([:len [/ip route find where dst-address="{{ fallback.prefix }}" and ospf]] = 0)
+        do={:error "OSPF summary not ready"};
+        :local r [/ip route find where dst-address="{{ fallback.prefix }}" and gateway="{{ fallback.gateway }}" and dynamic=no];
+        :if ([:len $r] > 1) do={:error "Ambiguous static summary"};
+        :if ([:len $r] = 1) do={/ip route set $r distance=250};
+        :put "OSPF_PREFERRED_VERIFIED"
+  register: fallback_result
+  failed_when: fallback_result.rc != 0 or 'OSPF_PREFERRED_VERIFIED' not in fallback_result.stdout
+  changed_when: true

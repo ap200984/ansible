@@ -1,0 +1,16 @@
+---
+- name: Apply broad trusted prefixes to existing single-peer WireGuard interfaces
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    clients:
+      - {identity: vds7_CHR, interfaces: [vds1_interface, vds8_interface]}
+      - {identity: K16_112, interfaces: [wg_vds1, wg_vds8]}
+      - {identity: 3Ekipazhnyi64, interfaces: [wg_vds1, wg_vds8]}
+      - {identity: k16_21, interfaces: [wg_vds1, wg_vds8]}
+      - {identity: Misha, interfaces: [wg_vds1, wg_vds8]}
+  tasks:
+    - ansible.builtin.include_tasks: wireguard-trust-client.yml
+      loop: '{{ clients }}'
+      loop_control: {loop_var: client, label: '{{ client.identity }}'}

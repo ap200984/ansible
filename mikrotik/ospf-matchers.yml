@@ -1,0 +1,20 @@
+---
+- ansible.builtin.include_vars:
+    file: 'host_vars/{{ ospf_router.identity }}.yml'
+- name: Clear unused PPP interface or network constraints
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - '{{ router_user }}@{{ router_host }}'
+      - >-
+        {% for link in ospf_router.links %}
+        /routing ospf interface-template set [find where comment="OSPF existing {{ link.name }}"]
+        {{ '!networks' if link.interfaces is defined else '!interfaces' }};
+        {% endfor %}
+  changed_when: false

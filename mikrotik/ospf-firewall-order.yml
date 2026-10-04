@@ -1,0 +1,70 @@
+---
+- ansible.builtin.include_vars:
+    file: host_vars/{{ ospf_router.identity }}.yml
+- name: Order only managed OSPF rules ahead of static firewall rules
+  ansible.builtin.command:
+    argv:
+    - ssh
+    - -i
+    - '{{ router_ssh_key | expanduser }}'
+    - -p
+    - '{{ router_port | string }}'
+    - -o
+    - BatchMode=yes
+    - '{{ router_user }}@{{ router_host }}'
+    - :local src0 [/ip firewall filter find where comment="OSPF existing PPP hello"];
+      :local dst0 [/ip firewall filter find where chain=input and action=drop]; :local
+      order0 [/ip firewall filter find]; :if ([:len $src0] = 1 and [:len $dst0] >
+      0) do={:if ([:find $order0 [:pick $src0 0]] > [:find $order0 [:pick $dst0 0]])
+      do={/ip firewall filter move [/ip firewall filter find where comment="OSPF existing
+      PPP hello"] destination=[:pick [/ip firewall filter find where chain=input and
+      action=drop] 0]}}; :local src1 [/ip firewall filter find where comment="OSPF
+      existing PPP routed input"]; :local dst1 [/ip firewall filter find where chain=input
+      and action=drop]; :local order1 [/ip firewall filter find]; :if ([:len $src1]
+      = 1 and [:len $dst1] > 0) do={:if ([:find $order1 [:pick $src1 0]] > [:find
+      $order1 [:pick $dst1 0]]) do={/ip firewall filter move [/ip firewall filter
+      find where comment="OSPF existing PPP routed input"] destination=[:pick [/ip
+      firewall filter find where chain=input and action=drop] 0]}}; :local src2 [/ip
+      firewall filter find where comment="OSPF existing PPP routed forward"]; :local
+      dst2 [/ip firewall filter find where chain=forward and action=drop]; :local
+      order2 [/ip firewall filter find]; :if ([:len $src2] = 1 and [:len $dst2] >
+      0) do={:if ([:find $order2 [:pick $src2 0]] > [:find $order2 [:pick $dst2 0]])
+      do={/ip firewall filter move [/ip firewall filter find where comment="OSPF existing
+      PPP routed forward"] destination=[:pick [/ip firewall filter find where chain=forward
+      and action=drop] 0]}}; :local src3 [/ip firewall filter find where comment="OSPF
+      trusted input 10.250.0.0/16"]; :local dst3 [/ip firewall filter find where chain=input
+      and action=drop]; :local order3 [/ip firewall filter find]; :if ([:len $src3]
+      = 1 and [:len $dst3] > 0) do={:if ([:find $order3 [:pick $src3 0]] > [:find
+      $order3 [:pick $dst3 0]]) do={/ip firewall filter move [/ip firewall filter
+      find where comment="OSPF trusted input 10.250.0.0/16"] destination=[:pick [/ip
+      firewall filter find where chain=input and action=drop] 0]}}; :local src4 [/ip
+      firewall filter find where comment="OSPF trusted forward 10.250.0.0/16"]; :local
+      dst4 [/ip firewall filter find where chain=forward and action=drop]; :local
+      order4 [/ip firewall filter find]; :if ([:len $src4] = 1 and [:len $dst4] >
+      0) do={:if ([:find $order4 [:pick $src4 0]] > [:find $order4 [:pick $dst4 0]])
+      do={/ip firewall filter move [/ip firewall filter find where comment="OSPF trusted
+      forward 10.250.0.0/16"] destination=[:pick [/ip firewall filter find where chain=forward
+      and action=drop] 0]}}; :local src5 [/ip firewall filter find where comment="OSPF
+      trusted input 10.255.0.0/16"]; :local dst5 [/ip firewall filter find where chain=input
+      and action=drop]; :local order5 [/ip firewall filter find]; :if ([:len $src5]
+      = 1 and [:len $dst5] > 0) do={:if ([:find $order5 [:pick $src5 0]] > [:find
+      $order5 [:pick $dst5 0]]) do={/ip firewall filter move [/ip firewall filter
+      find where comment="OSPF trusted input 10.255.0.0/16"] destination=[:pick [/ip
+      firewall filter find where chain=input and action=drop] 0]}}; :local src6 [/ip
+      firewall filter find where comment="OSPF trusted forward 10.255.0.0/16"]; :local
+      dst6 [/ip firewall filter find where chain=forward and action=drop]; :local
+      order6 [/ip firewall filter find]; :if ([:len $src6] = 1 and [:len $dst6] >
+      0) do={:if ([:find $order6 [:pick $src6 0]] > [:find $order6 [:pick $dst6 0]])
+      do={/ip firewall filter move [/ip firewall filter find where comment="OSPF trusted
+      forward 10.255.0.0/16"] destination=[:pick [/ip firewall filter find where chain=forward
+      and action=drop] 0]}}; :local nat0 [/ip firewall nat find where action=masquerade
+      or action=src-nat]; :if ([:len $nat0] > 0) do={/ip firewall nat move [/ip firewall
+      nat find where comment="OSPF routed networks no NAT"] destination=[:pick [/ip
+      firewall nat find where action=masquerade or action=src-nat] 0]}; :local nat1
+      [/ip firewall nat find where action=masquerade or action=src-nat]; :if ([:len
+      $nat1] > 0) do={/ip firewall nat move [/ip firewall nat find where comment="OSPF
+      protocol no NAT"] destination=[:pick [/ip firewall nat find where action=masquerade
+      or action=src-nat] 0]}; :put "OSPF_RULE_ORDER_VERIFIED"
+  register: ospf_order
+  failed_when: ospf_order.rc != 0 or 'OSPF_RULE_ORDER_VERIFIED' not in ospf_order.stdout
+  changed_when: true

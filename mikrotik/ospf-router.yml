@@ -1,0 +1,221 @@
+---
+- name: Load router connection settings
+  ansible.builtin.include_vars:
+    file: host_vars/{{ ospf_router.identity }}.yml
+- name: Configure owned summary with a discard route and exact export filter
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /ip route
+      flags:
+      - blackhole
+      selector:
+        comment: OSPF owned LAN summary
+      create: true
+      values:
+        comment: OSPF owned LAN summary
+        dst-address: '{{ ospf_router.summary }}'
+        blackhole: 'yes'
+        distance: '254'
+        disabled: 'no'
+    - path: /routing filter rule
+      selector:
+        comment: OSPF owned summary export
+      create: true
+      values:
+        comment: OSPF owned summary export
+        chain: tunnel-ospf-export
+        rule: if (dst == {{ ospf_router.summary }}) { accept } else { reject }
+        disabled: 'no'
+  when: ospf_router.summary | length > 0
+- name: Export only owned WireGuard peer transport addresses
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /routing filter rule
+      selector: {comment: OSPF connected WireGuard export}
+      create: true
+      values:
+        comment: OSPF connected WireGuard export
+        chain: tunnel-ospf-connected-export
+        rule: 'if (dst == 10.250.1.2/32 || dst == 10.250.1.5/32 || dst == 10.250.1.6/32) { accept } else { reject }'
+        disabled: 'no'
+  when: ospf_router.connected_exports | default([]) | length > 0
+- name: Configure OSPF instance, backbone and loopback
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /routing ospf instance
+      selector:
+        name: tunnel-ospf
+      create: true
+      values:
+        name: tunnel-ospf
+        version: '2'
+        router-id: '{{ ospf_router.loopback }}'
+        originate-default: never
+        redistribute: '{{ "static" if ospf_router.summary else "connected" if ospf_router.connected_exports | default([]) | length > 0 else "" }}'
+        out-filter-chain: '{{ "tunnel-ospf-export" if ospf_router.summary else "tunnel-ospf-connected-export" if ospf_router.connected_exports | default([]) | length > 0 else ""
+          }}'
+        disabled: 'no'
+    - path: /routing ospf area
+      selector:
+        name: tunnel-backbone
+      create: true
+      values:
+        name: tunnel-backbone
+        instance: tunnel-ospf
+        area-id: 0.0.0.0
+        disabled: 'no'
+    - path: /routing ospf interface-template
+      flags:
+      - passive
+      selector:
+        comment: OSPF loopback
+      create: true
+      values:
+        comment: OSPF loopback
+        area: tunnel-backbone
+        interfaces: loopback
+        passive: 'yes'
+        use-bfd: 'no'
+        disabled: 'no'
+- name: Configure OSPF on existing PPP links
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /routing ospf interface-template
+      selector:
+        comment: OSPF existing {{ link.name }}
+      create: true
+      values: "{{ {'comment': 'OSPF existing ' + link.name, 'area': 'tunnel-backbone',\n\
+        \    'type': 'ptp', 'cost': link.cost | string, 'hello-interval': '1m',\n\
+        \    'dead-interval': '4m', 'use-bfd': 'no', 'disabled': 'no'} |\n    combine({'interfaces':\
+        \ link.interfaces} if link.interfaces is defined\n            else {'networks':\
+        \ link.networks}) }}"
+  loop: '{{ ospf_router.links }}'
+  loop_control:
+    loop_var: link
+    label: '{{ link.name }}'
+- name: Define networks that must be routed without NAT
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /ip firewall address-list
+      selector:
+        list: ospf-routed-networks
+        address: '{{ prefix }}'
+      create: true
+      values:
+        list: ospf-routed-networks
+        address: '{{ prefix }}'
+        disabled: 'no'
+  loop: '{{ ospf_routed_networks }}'
+  loop_control:
+    loop_var: prefix
+- name: Permit PPP OSPF and routed traffic without masquerading
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /ip firewall filter
+      selector:
+        comment: OSPF existing PPP hello
+      create: true
+      values:
+        comment: OSPF existing PPP hello
+        chain: input
+        action: accept
+        protocol: ospf
+        in-interface: all-ppp
+        disabled: 'no'
+    - path: /ip firewall filter
+      selector:
+        comment: OSPF existing PPP routed input
+      create: true
+      values:
+        comment: OSPF existing PPP routed input
+        chain: input
+        action: accept
+        in-interface: all-ppp
+        src-address-list: ospf-routed-networks
+        dst-address-list: ospf-routed-networks
+        disabled: 'no'
+    - path: /ip firewall filter
+      selector:
+        comment: OSPF existing PPP routed forward
+      create: true
+      values:
+        comment: OSPF existing PPP routed forward
+        chain: forward
+        action: accept
+        in-interface: all-ppp
+        src-address-list: ospf-routed-networks
+        dst-address-list: ospf-routed-networks
+        disabled: 'no'
+    - path: /ip firewall nat
+      selector:
+        comment: OSPF routed networks no NAT
+      create: true
+      values:
+        comment: OSPF routed networks no NAT
+        chain: srcnat
+        action: accept
+        src-address-list: ospf-routed-networks
+        dst-address-list: ospf-routed-networks
+        disabled: 'no'
+    - path: /ip firewall nat
+      selector:
+        comment: OSPF protocol no NAT
+      create: true
+      values:
+        comment: OSPF protocol no NAT
+        chain: srcnat
+        action: accept
+        protocol: ospf
+        disabled: 'no'
+- name: Put scoped OSPF permits and NAT exceptions before existing rules
+  ansible.builtin.include_tasks: ospf-firewall-order.yml
+- name: Advertise other existing WireGuard interface networks passively
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+    - path: /routing ospf interface-template
+      flags:
+      - passive
+      selector:
+        comment: OSPF existing WireGuard addresses
+      create: true
+      values: '{{ {"comment": "OSPF existing WireGuard addresses", "area": "tunnel-backbone",
+        "passive": "yes", "use-bfd": "no", "disabled": "no" if passive_interfaces
+        | length > 0 else "yes"} | combine({"interfaces": passive_interfaces | join(",")}
+        if passive_interfaces | length > 0 else {}) }}'
+  vars:
+    passive_interfaces: '{{ ospf_router.wireguard_interfaces | difference(ospf_router.wg_links
+      | map(attribute="interface") | list) if ospf_wireguard_enabled | default(false)
+      else ospf_router.wireguard_interfaces }}'
+- name: Configure direct WireGuard OSPF
+  ansible.builtin.include_tasks: ospf-wireguard-enable-router.yml
+  when: ospf_wireguard_enabled | default(false) | bool
+- name: Clear unused PPP template constraints
+  ansible.builtin.include_tasks: ospf-matchers.yml

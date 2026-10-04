@@ -1,0 +1,24 @@
+---
+- ansible.builtin.include_vars:
+    file: 'host_vars/{{ client.identity }}.yml'
+- name: Set only the requested broad prefixes on existing single-peer interfaces
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - '{{ router_user }}@{{ router_host }}'
+      - >-
+        {% for interface_name in client.interfaces %}
+        :local p{{ loop.index }} [/interface wireguard peers find where interface="{{ interface_name }}"];
+        :if ([:len $p{{ loop.index }}] != 1) do={:error "Expected exactly one existing WireGuard peer"};
+        /interface wireguard peers set $p{{ loop.index }} allowed-address=10.250.0.0/16,10.255.0.0/16;
+        {% endfor %}
+        :put "WIREGUARD_TRUST_VERIFIED"
+  register: wireguard_trust_result
+  failed_when: wireguard_trust_result.rc != 0 or 'WIREGUARD_TRUST_VERIFIED' not in wireguard_trust_result.stdout
+  changed_when: true

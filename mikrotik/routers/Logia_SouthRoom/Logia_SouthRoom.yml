@@ -230,16 +230,7 @@ routeros_records:
     address: 10.9.99.2
     interface: lo0
   create: true
-- path: /ip address
-  values:
-    address: 10.66.66.6/24
-    disabled: 'yes'
-    interface: wg-client
-    network: 10.66.66.0
-  selector:
-    address: 10.66.66.6/24
-    interface: wg-client
-  create: true
+
 - path: /ip dhcp-server network
   values:
     address: 192.168.10.0/24

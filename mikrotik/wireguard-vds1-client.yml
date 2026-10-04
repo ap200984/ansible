@@ -46,14 +46,14 @@
         :if ([:len $p] = 0) do={/interface wireguard peers add interface=wg_vds1 name=wg_to_vds1
         public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
         endpoint-address=45.141.102.72 endpoint-port=56685
-        allowed-address=10.250.1.1/32 persistent-keepalive={{ client.keepalive }}}
+        allowed-address=10.250.0.0/16,10.255.0.0/16 persistent-keepalive={{ client.keepalive }}}
         else={/interface wireguard peers set $p public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
-        endpoint-address=45.141.102.72 endpoint-port=56685 allowed-address=10.250.1.1/32
+        endpoint-address=45.141.102.72 endpoint-port=56685 allowed-address=10.250.0.0/16,10.255.0.0/16
         persistent-keepalive={{ client.keepalive }} disabled=no};
         :local a [/ip address find where interface=wg_vds1];
         :if ([:len $a] > 1) do={:error "Ambiguous interface address"};
-        :if ([:len $a] = 0) do={/ip address add address={{ client.address }}/32 interface=wg_vds1}
-        else={/ip address set $a address={{ client.address }}/32 network={{ client.address }}};
+        :if ([:len $a] = 0) do={/ip address add address={{ client.address }}/24 network=10.250.1.0 interface=wg_vds1}
+        else={/ip address set $a address={{ client.address }}/24 network=10.250.1.0 network={{ client.address }}};
         :if ([:len [/ip route find where dst-address="10.250.1.1/32" and gateway="wg_vds1"]] = 0)
         do={/ip route add dst-address=10.250.1.1/32 gateway=wg_vds1 comment="vds1 WireGuard server"}
 

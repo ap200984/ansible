@@ -1,0 +1,32 @@
+---
+- ansible.builtin.include_vars:
+    file: host_vars/{{ ospf_router.identity }}.yml
+- name: Add broad prefixes to the existing trusted lists and allow their traffic
+  ansible.builtin.command:
+    argv:
+    - ssh
+    - -i
+    - '{{ router_ssh_key | expanduser }}'
+    - -p
+    - '{{ router_port | string }}'
+    - -o
+    - BatchMode=yes
+    - '{{ router_user }}@{{ router_host }}'
+    - '{{ trusted_script.splitlines() | join('' '') }}'
+  register: trusted_result
+  failed_when: trusted_result.rc != 0 or 'TRUST_VERIFIED' not in trusted_result.stdout
+  changed_when: true
+  vars:
+    trusted_script: '{% for prefix in [''10.250.0.0/16'', ''10.255.0.0/16''] %} {%
+      for trusted_list in ospf_router.trusted_lists %} :if ([:len [/ip firewall address-list
+      find where list="{{ trusted_list }}" and address="{{ prefix }}"]] = 0) do={/ip
+      firewall address-list add list="{{ trusted_list }}" address={{ prefix }} comment="OSPF
+      trusted routed networks"}; {% endfor %} {% for chain in [''input'', ''forward'']
+      %} :local r{{ loop.index }}{{ prefix.split(''.'')[1] }} [/ip firewall filter
+      find where comment="OSPF trusted {{ chain }} {{ prefix }}"]; :if ([:len $r{{
+      loop.index }}{{ prefix.split(''.'')[1] }}] > 1) do={:error "Ambiguous trusted
+      rule"}; :if ([:len $r{{ loop.index }}{{ prefix.split(''.'')[1] }}] = 0) do={/ip
+      firewall filter add chain={{ chain }} action=accept src-address={{ prefix }}
+      comment="OSPF trusted {{ chain }} {{ prefix }}"} else={/ip firewall filter set
+      $r{{ loop.index }}{{ prefix.split(''.'')[1] }} disabled=no action=accept;};
+      {% endfor %} {% endfor %} :put "TRUST_VERIFIED"'

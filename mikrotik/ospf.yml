@@ -1,0 +1,172 @@
+---
+- name: OSPF on existing MikroTik tunnels only
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ospf_routers:
+    - identity: vds7_CHR
+      loopback: 10.255.0.7
+      links:
+      - name: sstp-112
+        networks: 10.250.0.112/32
+        cost: 10
+      - name: sstp-64
+        networks: 10.250.0.64/32
+        cost: 10
+      - name: sstp-21
+        networks: 10.250.0.21/32
+        cost: 10
+      - name: sstp-24
+        networks: 10.250.0.24/32
+        cost: 10
+      wireguard_interfaces:
+      - vds2_interface
+      - vds5_interface
+      - vds6_interface
+      - vds1_interface
+      - vds8_interface
+      summary: ''
+      connected_exports: [10.250.1.2/32, 10.250.1.5/32, 10.250.1.6/32]
+      wg_links:
+      - interface: vds1_interface
+        peer: wg_to_vds1
+        remote: 10.250.1.1
+        cost: 1000
+      - interface: vds8_interface
+        peer: wg_to_vds8
+        remote: 10.250.1.8
+        cost: 30000
+      trusted_lists:
+      - Trusted
+    - identity: K16_112
+      loopback: 10.255.0.112
+      links:
+      - name: sstp
+        interfaces: sstp-vds7
+        cost: 10
+      - name: l2tp-64
+        networks: 10.250.3.64/32
+        cost: 100
+      - name: l2tp-21
+        networks: 10.250.3.21/32
+        cost: 100
+      - name: l2tp-24
+        networks: 10.250.3.24/32
+        cost: 100
+      wireguard_interfaces:
+      - wg_vds1
+      - wg_vds8
+      summary: 10.9.0.0/16
+      wg_links:
+      - interface: wg_vds1
+        peer: wg_to_vds1
+        remote: 10.250.1.1
+        cost: 1000
+      - interface: wg_vds8
+        peer: wg_to_vds8
+        remote: 10.250.1.8
+        cost: 30000
+      trusted_lists:
+      - MGMT Networks
+      - tunnel networks
+    - identity: 3Ekipazhnyi64
+      loopback: 10.255.0.64
+      links:
+      - name: sstp
+        interfaces: sstp-vds7
+        cost: 10
+      - name: l2tp
+        interfaces: l2tp-to-k16
+        cost: 100
+      wireguard_interfaces:
+      - wg_vds1
+      - wg_vds8
+      summary: 10.10.0.0/16
+      wg_links:
+      - interface: wg_vds1
+        peer: wg_to_vds1
+        remote: 10.250.1.1
+        cost: 1000
+      - interface: wg_vds8
+        peer: wg_to_vds8
+        remote: 10.250.1.8
+        cost: 30000
+      trusted_lists:
+      - Trusted
+    - identity: k16_21
+      loopback: 10.255.0.21
+      links:
+      - name: sstp
+        interfaces: sstp-vds7
+        cost: 10
+      - name: l2tp
+        interfaces: l2tp-to_k16_k112
+        cost: 100
+      wireguard_interfaces:
+      - wg_vds1
+      - wg_vds8
+      summary: ''
+      wg_links:
+      - interface: wg_vds1
+        peer: wg_to_vds1
+        remote: 10.250.1.1
+        cost: 1000
+      - interface: wg_vds8
+        peer: wg_to_vds8
+        remote: 10.250.1.8
+        cost: 30000
+      trusted_lists:
+      - Trusted
+    - identity: Misha
+      loopback: 10.255.0.24
+      links:
+      - name: sstp
+        interfaces: sstp-vds7
+        cost: 10
+      - name: l2tp
+        interfaces: l2tp-to-d24
+        cost: 100
+      wireguard_interfaces:
+      - wg_vds1
+      - wg_vds8
+      summary: ''
+      wg_links:
+      - interface: wg_vds1
+        peer: wg_to_vds1
+        remote: 10.250.1.1
+        cost: 1000
+      - interface: wg_vds8
+        peer: wg_to_vds8
+        remote: 10.250.1.8
+        cost: 30000
+      trusted_lists:
+      - Trusted
+    ospf_routed_networks:
+    - 10.250.0.0/16
+    - 10.251.0.0/24
+    - 10.255.0.0/16
+    - 10.9.0.0/16
+    - 10.10.0.0/16
+    ospf_wireguard_enabled: true
+  tasks:
+  - name: Trust the requested routed networks
+    ansible.builtin.include_tasks: ospf-trusted.yml
+    loop: '{{ ospf_routers }}'
+    loop_control:
+      loop_var: ospf_router
+      label: '{{ ospf_router.identity }}'
+  - name: Configure each MikroTik
+    ansible.builtin.include_tasks: ospf-router.yml
+    loop: '{{ ospf_routers | rejectattr("identity", "in", skip_ospf_routers | default([]))
+      | list }}'
+    loop_control:
+      loop_var: ospf_router
+      label: '{{ ospf_router.identity }}'
+  - name: Verify OSPF neighbors and advertised destinations
+    ansible.builtin.include_tasks: ospf-verify.yml
+    loop: '{{ ospf_routers }}'
+    loop_control:
+      loop_var: ospf_router
+      label: '{{ ospf_router.identity }}'
+- ansible.builtin.import_playbook: ospf-static-fallback.yml

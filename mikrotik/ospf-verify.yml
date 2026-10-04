@@ -1,0 +1,47 @@
+---
+- name: Load router connection settings
+  ansible.builtin.include_vars:
+    file: 'host_vars/{{ ospf_router.identity }}.yml'
+- name: Wait for all existing tunnel neighbors to become Full
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - '{{ router_user }}@{{ router_host }}'
+      - >-
+        :local full 0;
+        :foreach n in=[/routing ospf neighbor find where instance="tunnel-ospf"] do={
+        :if ([/routing ospf neighbor get $n state] = "Full") do={:set full ($full + 1)}};
+        :if ($full < {{ (ospf_router.links | length) + ((ospf_router.wg_links | length) if ospf_wireguard_enabled | default(false) else 0) }}) do={:error "Waiting for existing tunnel OSPF neighbors"};
+        :put "OSPF_NEIGHBORS_VERIFIED";
+        /ip route print terse where ospf
+  changed_when: false
+  register: ospf_state
+  until: "'OSPF_NEIGHBORS_VERIFIED' in ospf_state.stdout"
+  retries: 12
+  delay: 15
+- name: Verify every MikroTik loopback from the local loopback source
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - '{{ router_user }}@{{ router_host }}'
+      - >-
+        {% for other in ospf_routers if other.identity != ospf_router.identity %}
+        :if ([/ping {{ other.loopback }} src-address={{ ospf_router.loopback }} count=2] = 0)
+        do={:error "Unreachable loopback {{ other.loopback }}"};
+        {% endfor %}
+        :put "LOOPBACKS_VERIFIED"
+  changed_when: false
+  register: loopback_verify
+  failed_when: loopback_verify.rc != 0 or 'LOOPBACKS_VERIFIED' not in loopback_verify.stdout

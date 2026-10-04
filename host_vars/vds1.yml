@@ -13,10 +13,11 @@ zabbix_proxy_tls_psk_identity: vds1
 zabbix_agent_deya_solar_enabled: true
 auditbeat_elastic_apt_repo_enabled: false
 
+wireguard_ospf: true
 wireguard_enabled: true
 wireguard_interface: wg0
 wireguard_addresses:
-  - 10.250.1.1/32
+  - 10.250.1.1/24
 wireguard_listen_port: 56685
 wireguard_private_key: "{{ wireguard_server_private_key }}"
 wireguard_peers:
@@ -42,6 +43,12 @@ wireguard_peers:
     source_address: 10.250.1.1
     allowed_ips:
       - 10.250.1.24/32
+
+  - name: vds7
+    public_key: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
+    endpoint: 62.60.216.73:56697
+    source_address: 10.250.1.1
+    allowed_ips: [10.250.1.0/28]
 
 domain: vds1.space
 # second_octet: 19

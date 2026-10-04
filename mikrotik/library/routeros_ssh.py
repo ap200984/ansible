@@ -26,7 +26,8 @@ def comparable(key, value):
 
 
 def arguments(record):
-    return ' '.join('!' + key if key in record.get('unset', []) and value == ''
+    return ' '.join((key if value == 'yes' else '!' + key) if key in record.get('flags', [])
+                    else '!' + key if key in record.get('unset', []) and value == ''
                     else key + '=' + quote(value) for key, value in record['values'].items())
 
 

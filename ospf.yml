@@ -1,0 +1,177 @@
+---
+- name: Configure direct OSPF on existing Linux WireGuard hubs
+  hosts: vds1:vds8
+  become: true
+  gather_facts: false
+  vars:
+    wireguard_mtu: 1420
+    ospf_hub: '{{ 1 if inventory_hostname == "vds1" else 8 }}'
+    ospf_transport: 10.250.1.{{ ospf_hub }}
+    ospf_router_id: 10.255.1.{{ ospf_hub }}
+    ospf_cost: '{{ 1000 if inventory_hostname == "vds1" else 30000 }}'
+    ospf_neighbors:
+    - 10.250.1.112
+    - 10.250.1.64
+    - 10.250.1.21
+    - 10.250.1.24
+    - 10.250.1.7
+    ospf_wireguard_enabled: true
+  tasks:
+  - name: Check for existing FRR configuration
+    ansible.builtin.stat:
+      path: /etc/frr/frr.conf
+    register: frr_stat
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Read existing FRR configuration
+    ansible.builtin.slurp:
+      src: /etc/frr/frr.conf
+    register: frr_existing
+    when:
+    - ospf_wireguard_enabled | default(false) | bool
+    - frr_stat.stat.exists
+  - name: Preserve unrelated FRR configuration
+    ansible.builtin.assert:
+      that: not frr_stat.stat.exists or 'Managed OSPF on existing WireGuard' in (frr_existing.content
+        | default('') | b64decode)
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Install FRR
+    ansible.builtin.apt:
+      name:
+      - frr
+      - ipset
+      - iptables
+      state: present
+      update_cache: true
+      cache_valid_time: 3600
+    tags:
+    - firewall
+  - name: Persist WireGuard peer permissions without adding interfaces
+    ansible.builtin.template:
+      src: roles/wireguard/templates/wg.conf.j2
+      dest: /etc/wireguard/wg0.conf
+      owner: root
+      group: root
+      mode: '0600'
+      backup: true
+    no_log: true
+    when: ospf_wireguard_manage_peers | default(false) | bool
+  - name: Synchronize existing WireGuard peers without reconnecting
+    ansible.builtin.shell: wg syncconf wg0 <(wg-quick strip wg0)
+    args:
+      executable: /bin/bash
+    no_log: true
+    when: ospf_wireguard_manage_peers | default(false) | bool
+  - name: Persist numbered WireGuard prefix for unicast OSPF neighbor matching
+    ansible.builtin.replace:
+      path: /etc/wireguard/wg0.conf
+      regexp: '(?m)^(Address\s*=.*){{ ospf_transport | regex_escape }}/(?:21|32)'
+      replace: '\g<1>{{ ospf_transport }}/24'
+      backup: true
+    no_log: true
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Remove superseded connected-route suppression
+    ansible.builtin.lineinfile:
+      path: /etc/wireguard/wg0.conf
+      regexp: '^PostUp = ip route del 10\.250\.0\.0/24 dev %i 2>/dev/null \|\| true$'
+      state: absent
+    no_log: true
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Apply numbered WireGuard prefix for OSPF next-hop resolution
+    ansible.builtin.shell: |
+      set -e
+      if ip -4 -o address show dev wg0 | grep -F 'inet {{ ospf_transport }}/24 ' | grep -qv noprefixroute; then
+        echo PREFIX_UNCHANGED
+      else
+        ip address del {{ ospf_transport }}/24 dev wg0 2>/dev/null || true
+        ip address add {{ ospf_transport }}/24 dev wg0
+        ip address del {{ ospf_transport }}/32 dev wg0 2>/dev/null || true
+        ip address del {{ ospf_transport }}/21 dev wg0 2>/dev/null || true
+        echo PREFIX_CHANGED
+      fi
+    register: ospf_prefix
+    changed_when: "'PREFIX_CHANGED' in ospf_prefix.stdout"
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Keep neighbor transport routes independent from OSPF
+    ansible.builtin.command:
+      argv:
+      - ip
+      - route
+      - replace
+      - '{{ item }}/32'
+      - dev
+      - wg0
+      - src
+      - '{{ ospf_transport }}'
+    loop: '{{ ospf_neighbors }}'
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Enable IP forwarding for the requested routed networks
+    ansible.builtin.copy:
+      dest: /etc/sysctl.d/90-ospf-forwarding.conf
+      content: 'net.ipv4.ip_forward=1
+
+        '
+      mode: '0644'
+    when: ospf_wireguard_enabled | default(false) | bool
+  - ansible.builtin.command: sysctl -p /etc/sysctl.d/90-ospf-forwarding.conf
+    changed_when: false
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Permit direct WireGuard OSPF packets
+    ansible.builtin.shell: iptables -C INPUT -i wg0 -s {{ item }}/32 -p ospf -j ACCEPT
+      || iptables -I INPUT 1 -i wg0 -s {{ item }}/32 -p ospf -j ACCEPT
+    loop: '{{ ospf_neighbors }}'
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Persist scoped routing firewall rules
+    ansible.builtin.copy:
+      src: roles/ospf/files/firewall.sh
+      dest: /usr/local/sbin/ospf-firewall
+      owner: root
+      group: root
+      mode: '0755'
+    tags:
+    - firewall
+  - name: Persist firewall startup service
+    ansible.builtin.copy:
+      src: roles/ospf/files/ospf-firewall.service
+      dest: /etc/systemd/system/ospf-firewall.service
+      mode: '0644'
+    tags:
+    - firewall
+  - name: Apply scoped routing permits
+    ansible.builtin.systemd_service:
+      name: ospf-firewall
+      daemon_reload: true
+      enabled: true
+      state: restarted
+    tags:
+    - firewall
+  - name: Remove the old static LAN route so OSPF can select it
+    ansible.builtin.command: ip route del 10.10.0.0/16 dev wg0
+    register: old_summary
+    failed_when: old_summary.rc != 0 and 'No such process' not in old_summary.stderr
+    changed_when: old_summary.rc == 0
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Enable OSPF daemon
+    ansible.builtin.lineinfile:
+      path: /etc/frr/daemons
+      regexp: ^ospfd=
+      line: ospfd=yes
+    register: daemon_config
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Configure direct unicast OSPF
+    ansible.builtin.template:
+      src: roles/ospf/templates/frr.conf.j2
+      dest: /etc/frr/frr.conf
+      owner: frr
+      group: frr
+      mode: '0640'
+      backup: true
+    register: ospf_config
+    when: ospf_wireguard_enabled | default(false) | bool
+  - name: Start OSPF daemon
+    ansible.builtin.systemd_service:
+      name: frr
+      enabled: true
+      state: '{{ "restarted" if daemon_config.changed or ospf_config.changed or ospf_prefix.changed else
+        "started" }}'
+    when: ospf_wireguard_enabled | default(false) | bool
+- ansible.builtin.import_playbook: mikrotik/ospf.yml

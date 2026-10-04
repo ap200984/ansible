@@ -1,0 +1,76 @@
+---
+- name: Consolidate existing MikroTik WireGuard router links
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ospf_routers: '{{ (lookup("file", playbook_dir + "/ospf.yml") | from_yaml)[0].vars.ospf_routers }}'
+    ospf_wireguard_enabled: true
+  tasks:
+    - ansible.builtin.include_vars:
+        file: host_vars/vds7_CHR.yml
+    - name: Renumber existing vds7 links and remove the phone VPN
+      vars:
+        migration_script: >-
+          {% for n in [1,2,5,6,8] %}
+          :local a{{ n }} [/ip address find where interface="vds{{ n }}_interface"];
+          :if ([:len $a{{ n }}] != 1) do={:error "Expected one existing vds7 tunnel address"};
+          /ip address set $a{{ n }} address=10.250.1.7/{{ 24 if n in [1,8] else 32 }} network={{ '10.250.1.0' if n in [1,8] else '10.250.1.' ~ n }};
+          {% endfor %}
+          /interface wireguard peers disable [find where name="GorPhone"];
+          /interface wireguard peers remove [find where name="GorPhone"];
+          /interface wireguard disable [find where name="WG-server"];
+          /ip address remove [find where interface="WG-server"];
+          /ip address remove [find where address="10.250.0.7/24"];
+          /ip firewall nat remove [find where src-address="10.252.7.0/24"];
+          /ip firewall address-list remove [find where address="10.252.7.0/24"];
+          {% for old in ['10.250.2.7/32','10.250.5.7/32','10.250.6.7/32','10.250.8.7/32','10.250.1.7/32'] %}
+          /ip route remove [find where dst-address="{{ old }}" and static];
+          {% endfor %}
+          :local exportRule [/routing filter rule find where comment="OSPF connected WireGuard export"];
+          :if ([:len $exportRule] = 0) do={/routing filter rule add comment="OSPF connected WireGuard export" chain=tunnel-ospf-connected-export
+          rule="if (dst == 10.250.1.2/32 || dst == 10.250.1.5/32 || dst == 10.250.1.6/32) { accept } else { reject }"};
+          /routing ospf instance set [find where name="tunnel-ospf"] redistribute=connected out-filter-chain=tunnel-ospf-connected-export;
+          :put "WIREGUARD_NETWORK_MIGRATED"
+      ansible.builtin.command:
+        argv: [ssh, -i, '{{ router_ssh_key | expanduser }}', -p, '{{ router_port | string }}', -o, BatchMode=yes, '{{ router_user }}@{{ router_host }}', '{{ migration_script.splitlines() | join(" ") }}']
+      register: migration
+      failed_when: migration.rc != 0 or 'WIREGUARD_NETWORK_MIGRATED' not in migration.stdout
+      changed_when: true
+    - ansible.builtin.include_vars:
+        file: host_vars/K16_112.yml
+    - name: Remove unused K16 WireGuard mesh addresses
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - '{{ router_ssh_key | expanduser }}'
+          - -p
+          - '{{ router_port | string }}'
+          - -o
+          - BatchMode=yes
+          - '{{ router_user }}@{{ router_host }}'
+          - >-
+            /interface wireguard disable [find where name="wg_main_interface"];
+            /ip address remove [find where interface="wg_main_interface"];
+            /interface wireguard disable [find where name="wg-server"];
+            /ip address remove [find where interface="wg-server"];
+            /ip address remove [find where address="10.8.1.2/32"];
+            /interface wireguard peers remove [find where name="wg-vds9"];
+            /interface wireguard remove [find where name="wg-vds9"];
+            :put "LEGACY_WG_RETIRED"
+      register: legacy_cleanup
+      failed_when: legacy_cleanup.rc != 0 or 'LEGACY_WG_RETIRED' not in legacy_cleanup.stdout
+      changed_when: true
+    - ansible.builtin.include_vars:
+        file: host_vars/3Ekipazhnyi64.yml
+    - name: Remove only the obsolete vds8 transport route
+      ansible.builtin.command:
+        argv: [ssh, -i, '{{ router_ssh_key | expanduser }}', -p, '{{ router_port | string }}', -o, BatchMode=yes, '{{ router_user }}@{{ router_host }}', '/ip route remove [find where dst-address="10.250.8.1/32" and gateway="wg_vds8" and static]; :put "OLD_VDS8_ROUTE_REMOVED"']
+      register: old_hub_route
+      failed_when: old_hub_route.rc != 0 or 'OLD_VDS8_ROUTE_REMOVED' not in old_hub_route.stdout
+      changed_when: true
+    - name: Apply /24 prefixes to active OSPF WireGuard links
+      ansible.builtin.include_tasks: ospf-wireguard-enable-router.yml
+      loop: '{{ ospf_routers }}'
+      loop_control: {loop_var: ospf_router, label: '{{ ospf_router.identity }}'}

@@ -3,9 +3,16 @@ Address = {{ (wireguard_addresses | join(', ')) if wireguard_addresses | length 
 PrivateKey = {{ wireguard_private_key }}
 ListenPort = {{ wireguard_listen_port }}
 MTU = {{ wireguard_mtu }}
-{% for peer in wireguard_peers if peer.source_address is defined %}
-{% for allowed_ip in peer.allowed_ips %}
+{% if wireguard_ospf | default(false) %}
+Table = off
+{% endif %}
+{% for peer in wireguard_peers if peer.source_address is defined or wireguard_ospf | default(false) %}
+{% for allowed_ip in (peer.allowed_ips[:1] if wireguard_ospf | default(false) else peer.allowed_ips) %}
+{% if peer.source_address is defined %}
 PostUp = ip route replace {{ allowed_ip }} dev %i src {{ peer.source_address }}
+{% else %}
+PostUp = ip route replace {{ allowed_ip }} dev %i
+{% endif %}
 {% endfor %}
 {% endfor %}
 

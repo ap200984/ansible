@@ -1,5 +1,7 @@
 # Tunnel topology
 
+Historical snapshot from 2026-10-03. These diagrams predate the WireGuard consolidation on 2026-10-05; see [current configuration](../README.md) for the active addressing.
+
 Repository configuration analysis, 2026-10-03. All seven MikroTik exports and desired YAML configurations, host variables, inventories, and the WireGuard role were inspected. This describes enabled configuration, not current reachability or successful handshakes. Secrets are omitted.
 
 [Combined tunnel diagram](all-tunnels.svg)

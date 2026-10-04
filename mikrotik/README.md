@@ -1,5 +1,45 @@
 # MikroTik configuration
 
+## OSPF on existing tunnels
+
+`ospf.yml` configures OSPFv2 area `0.0.0.0` on the existing SSTP and L2TP
+links and hub-bound WireGuard links of the five main MikroTiks. It does not create tunnel interfaces.
+SSTP costs 10 and L2TP costs 100. Active links use 60-second Hellos and a
+240-second dead interval, with BFD disabled. Loopbacks and other existing WireGuard interface addresses are advertised
+passively; links to vds1/vds8 run active OSPF. Public uplinks and unrelated
+LANs are excluded. Only K16_112 originates `10.9.0.0/16`, and only
+3Ekipazhnyi64 originates `10.10.0.0/16`, through explicit discard summaries
+and exact external export filters. More-specific local LAN routes take
+precedence over the discard routes.
+
+Both `10.250.0.0/16` and `10.255.0.0/16` are trusted in existing MikroTik
+lists and allowed in input/forward chains. NAT exceptions preserve addresses
+between the configured tunnel, loopback and LAN networks. The old LAN static
+routes become distance-250 fallbacks only after OSPF advertisements exist.
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/ospf.yml
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/wireguard-trust.yml
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i inventory/vds1 -i inventory/vds8 ospf.yml
+```
+
+The WireGuard trust playbook updates only existing single-peer MikroTik
+interfaces to `allowed-address=10.250.0.0/16,10.255.0.0/16`. It never creates
+interfaces or peers. Direct WireGuard OSPF is enabled with unicast neighbors on existing
+interfaces: vds1 costs 1,000 and vds8 costs 30,000. Linux hub peer permissions
+are preserved by default (`ospf_wireguard_manage_peers: false`). Shared Linux
+`wg0` interfaces require distinct destination ownership, so both `/16`
+prefixes must not be assigned to every hub peer. The MikroTik single-peer
+interfaces retain exactly the two broad prefixes above. These prefixes do
+not include the `10.9.0.0/16` and `10.10.0.0/16` LANs: their advertisements
+can cross WireGuard OSPF, but their data traffic is permitted only on PPP
+unless WireGuard permissions are expanded explicitly.
+
+Direct WireGuard OSPF uses unicast point-to-multipoint neighbors. The existing hub-bound addresses use `/24` prefixes (`10.250.1.0/24`) so FRR and RouterOS can bind those neighbors. No new addresses or tunnels are created. Linux keeps explicit peer transport `/32` routes alongside the connected prefix; OSPF advertises point-to-multipoint addresses as host routes. Peer AllowedIPs are preserved by default.
+
+
+Management targets in `mikrotik/host_vars` use these loopbacks for the five main routers. The two Logia routers retain their LAN management addresses because they have no configured loopbacks.
+
 The five main routers use a dedicated `loopback` bridge with stable `/32`
 addresses: `10.255.0.7` (vds7_CHR), `10.255.0.112` (K16_112),
 `10.255.0.64` (3Ekipazhnyi64), `10.255.0.21` (k16_21), and `10.255.0.24`
@@ -164,3 +204,5 @@ ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-vault encrypt mikrotik/routers/Log
 
 The playbook loads either plaintext or Vault-encrypted secrets and uses
 `no_log: true`. Do not use `--diff` or print the sensitive export.
+
+WireGuard router addresses are consolidated in `10.250.1.0/24`: Linux vds1/vds2/vds5/vds6/vds8 use `.1/.2/.5/.6/.8`, vds7 uses `.7`, and MikroTik clients use `.21/.24/.64/.112`. Active OSPF interfaces use `/24`; the existing vds2/vds5/vds6 links use `/32` addresses. Run `wireguard-network.yml` with all five Linux inventories and localhost to migrate the existing links. The obsolete vds5 wg0 mesh and K16 legacy WireGuard interfaces are retired; the phone VPN is disabled and its old range removed. PPP address ranges remain separate.

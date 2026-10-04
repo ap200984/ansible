@@ -1,0 +1,18 @@
+! Managed OSPF on existing WireGuard
+frr defaults traditional
+hostname {{ inventory_hostname }}
+service integrated-vtysh-config
+interface wg0
+ ip ospf area 0.0.0.0 {{ ospf_transport }}
+ ip ospf network point-to-multipoint non-broadcast
+ ip ospf cost {{ ospf_cost }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+!
+router ospf
+ ospf router-id {{ ospf_router_id }}
+ maximum-paths 1
+{% for peer in ospf_neighbors %}
+ neighbor {{ peer }} poll-interval 60
+{% endfor %}
+!

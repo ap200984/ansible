@@ -1,0 +1,12 @@
+[Unit]
+Description=Firewall permits for OSPF over existing WireGuard
+After=wg-quick@wg0.service
+Before=frr.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ospf-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
