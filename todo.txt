@@ -74,3 +74,76 @@ Add kvm_server service_containers:
     - certbot
     - nexus
     - owncloud
+
+
+
+server:
+    - soks5 proxy +
+    - zabbix proxy +
+    - zabbix agents +
+    - kvm ubuntu setip with zabbix agent
+        - jenins job
+    - k8s cluster
+    - 4k downloader
+    - win10 backup
+    - ubuntu23 backup
+
+
+zabbix:
+  - telegram mentioning
+  - max mentioning
+
+  - modify alert for battery discharging - consider current capacity. If 99% ot more - do not launch trigger
+
+
+
+  <authorizationStrategy class="hudson.security.ProjectMatrixAuthorizationStrategy">
+    <permission>USER:hudson.model.Hudson.Administer:admin</permission>
+  </authorizationStrategy>
+
+
+atop, htop, iftop, iotop, zabbix_agent2, whois, traceroute, mtr, dns-utils, whois, bgpq3, docker.io, curl, wget, ntp
+docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+sudo apt update
+sudo apt install ca-certificates curl gnupg
+
+sudo install -m 0755 -d /etc/apt/keyrings
+
+curl -fsSL https://download.docker.com/linux/debian/gpg | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/debian trixie stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  
+
+
+root        4669  0.0  1.1  19200 11292 ?        Ss   12:46   0:00  \_ sshd-session: amnezia [priv]
+amnezia     4678  0.0  0.7  19716  7392 ?        S    12:46   0:00      \_ sshd-session: amnezia@notty
+root        4843  0.0  0.7  17260  7328 ?        Ss   12:46   0:00          \_ sudo docker build --no-cache --pull -t amnezia-awg2 /opt/amnezia/amnezia-awg2
+root        4845  0.0  3.1 1698936 30912 ?       Sl   12:46   0:00              \_ docker build --no-cache --pull -t amnezia-awg2 /opt/amnezia/amnezia-awg2
+root        4859  0.3  5.9 1663156 58808 ?       Sl   12:46   0:00                  \_ /usr/libexec/docker/cli-plugins/docker-buildx buildx build --no-cache --pull -t amnezia-awg2 /opt/amnezia/amnezia-awg2
+amnezia     1203  0.0  1.2  21760 12112 ?        Ss   12:28   0:00 /usr/lib/systemd/systemd --user
+
+
+amnezia     5776  0.0  0.4   6844  4204 pts/2    R+   12:48   0:00  |                       \_ ps auxf -www
+amnezia     5777  0.0  0.1   3052  1940 pts/2    S+   12:48   0:00  |                       \_ tail -50
+root        4669  0.0  1.1  19200 11292 ?        Ss   12:46   0:00  \_ sshd-session: amnezia [priv]
+amnezia     4678  0.0  0.7  19716  7392 ?        S    12:46   0:00      \_ sshd-session: amnezia@notty
+amnezia     1203  0.0  1.2  21760 12116 ?        Ss   12:28   0:00 /usr/lib/systemd/systemd --user
+amnezia     1205  0.0  0.3  22380  3692 ?        S    12:28   0:00  \_ (sd-pam)
+root        4354  0.1  4.8 1724848 48524 ?       Ssl  12:46   0:00 /usr/bin/containerd
+root        4497  1.1 11.8 1940384 116936 ?      Ssl  12:46   0:01 /usr/sbin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+root        5419  0.0  0.6 1523444 6020 ?        Sl   12:47   0:00  \_ /usr/sbin/docker-proxy -proto udp -host-ip 0.0.0.0 -host-port 32037 -container-ip 172.29.172.2 -container-port 32037
+root        5424  0.0  0.6 1523444 6104 ?        Sl   12:47   0:00  \_ /usr/sbin/docker-proxy -proto udp -host-ip :: -host-port 32037 -container-ip 172.29.172.2 -container-port 32037
+root        5337  0.3  2.4 1863136 23960 ?       Sl   12:47   0:00 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 7c0b71f940cbfed6777962f298a1c4ba61fbc8f064b335e2b9e247f5f8ca4a9a -address /run/containerd/containerd.sock
+root        5360  0.0  0.0    220    72 ?        Ss   12:47   0:00  \_ dumb-init /opt/amnezia/start.sh
+root        5383  0.0  0.1   2308  1692 ?        Ss   12:47   0:00  |   \_ /bin/bash /opt/amnezia/start.sh
+root        5384  0.0  0.0   1616   844 ?        S    12:47   0:00  |   |   \_ tail -f /dev/null
+root        5718  0.0  0.9 1818748 9728 ?        Sl   12:48   0:00  |   \_ amneziawg-go awg0
+root        5686  0.8  0.1   2312  1676 ?        Ss   12:48   0:00  \_ /bin/bash /opt/amnezia/start.sh
+root        5747  0.0  0.0   1616   904 ?        S    12:48   0:00      \_ tail -f /dev/null
+
