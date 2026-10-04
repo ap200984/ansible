@@ -106,7 +106,7 @@
       wireguard_interfaces:
       - wg_vds1
       - wg_vds8
-      summary: ''
+      summary: 10.11.0.0/16
       wg_links:
       - interface: wg_vds1
         peer: wg_to_vds1
@@ -148,6 +148,7 @@
     - 10.255.0.0/16
     - 10.9.0.0/16
     - 10.10.0.0/16
+    - 10.11.0.0/16
     ospf_wireguard_enabled: true
   tasks:
   - name: Trust the requested routed networks

@@ -1,0 +1,19 @@
+---
+- ansible.builtin.include_vars:
+    file: 'host_vars/{{ summary_peer.identity }}.yml'
+- name: Permit NAT-free routing of the advertised summary
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    records:
+      - path: /ip firewall address-list
+        selector:
+          list: ospf-routed-networks
+          address: '{{ owner.summary }}'
+        create: true
+        values:
+          list: ospf-routed-networks
+          address: '{{ owner.summary }}'
+          comment: OSPF routed LAN summary

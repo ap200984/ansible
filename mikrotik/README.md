@@ -8,7 +8,7 @@ SSTP costs 10 and L2TP costs 100. Active links use 60-second Hellos and a
 240-second dead interval, with BFD disabled. Loopbacks and other existing WireGuard interface addresses are advertised
 passively; links to vds1/vds8 run active OSPF. Public uplinks and unrelated
 LANs are excluded. Only K16_112 originates `10.9.0.0/16`, and only
-3Ekipazhnyi64 originates `10.10.0.0/16`, through explicit discard summaries
+3Ekipazhnyi64 originates `10.10.0.0/16`, and k16_21 originates `10.11.0.0/16`, through explicit discard summaries
 and exact external export filters. More-specific local LAN routes take
 precedence over the discard routes.
 

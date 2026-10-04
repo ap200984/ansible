@@ -1,0 +1,53 @@
+---
+- name: Advertise the selected MikroTik LAN summary
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    summary_router: k16_21
+    ospf_routers: '{{ (lookup("file", playbook_dir + "/ospf.yml") | from_yaml)[0].vars.ospf_routers }}'
+    owner: '{{ ospf_routers | selectattr("identity", "equalto", summary_router) | first }}'
+  tasks:
+    - ansible.builtin.include_vars:
+        file: 'host_vars/{{ owner.identity }}.yml'
+    - name: Confirm SSH reaches the intended router
+      ansible.builtin.command:
+        argv: [ssh, -i, '{{ router_ssh_key | expanduser }}', -p, '{{ router_port | string }}', -o, BatchMode=yes, '{{ router_user }}@{{ router_host }}', ':if ([/system identity get name] != "{{ owner.identity }}") do={:error "Wrong router identity"}; :put "IDENTITY_VERIFIED"']
+      changed_when: false
+      register: router_identity
+      failed_when: router_identity.rc != 0 or 'IDENTITY_VERIFIED' not in router_identity.stdout
+    - name: Originate only the owned LAN summary
+      routeros_ssh:
+        host: '{{ router_host }}'
+        user: '{{ router_user }}'
+        port: '{{ router_port }}'
+        identity_file: '{{ router_ssh_key }}'
+        records:
+          - path: /ip route
+            flags: [blackhole]
+            selector: {comment: OSPF owned LAN summary}
+            create: true
+            values:
+              comment: OSPF owned LAN summary
+              dst-address: '{{ owner.summary }}'
+              blackhole: 'yes'
+              distance: '254'
+              disabled: 'no'
+          - path: /routing filter rule
+            selector: {comment: OSPF owned summary export}
+            create: true
+            values:
+              comment: OSPF owned summary export
+              chain: tunnel-ospf-export
+              rule: 'if (dst == {{ owner.summary }}) { accept } else { reject }'
+              disabled: 'no'
+          - path: /routing ospf instance
+            selector: {name: tunnel-ospf}
+            create: false
+            values:
+              redistribute: static
+              out-filter-chain: tunnel-ospf-export
+    - name: Update routed-network lists for the new summary
+      ansible.builtin.include_tasks: ospf-summary-network.yml
+      loop: '{{ ospf_routers }}'
+      loop_control: {loop_var: summary_peer, label: '{{ summary_peer.identity }}'}

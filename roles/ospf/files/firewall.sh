@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 ipset create ospf-routed hash:net -exist
-for prefix in 10.250.0.0/16 10.251.0.0/24 10.255.0.0/16 10.9.0.0/16 10.10.0.0/16; do
+for prefix in 10.250.0.0/16 10.251.0.0/24 10.255.0.0/16 10.9.0.0/16 10.10.0.0/16 10.11.0.0/16; do
     ipset add ospf-routed "$prefix" -exist
 done
 iptables -C INPUT -i wg0 -p ospf -s 10.250.0.0/16 -j ACCEPT 2>/dev/null ||
