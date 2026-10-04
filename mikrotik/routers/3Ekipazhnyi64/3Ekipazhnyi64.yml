@@ -11,11 +11,11 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     list: 'Trusted'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
     comment: L2TP main routers
   selector:
     list: 'Trusted'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
   create: true
 - path: /interface bridge
   values:
@@ -1972,24 +1972,24 @@ routeros_records:
   values:
     disabled: 'no'
     dst-address: 10.9.0.0/24
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
   selector:
     dst-address: 10.9.0.0/24
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
   create: true
 - path: /ip route
   values:
     disabled: 'yes'
     distance: '1'
     dst-address: 217.144.189.206/32
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
     routing-table: main
     scope: '30'
     target-scope: '10'
   selector:
     dst-address: 217.144.189.206/32
     routing-table: main
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
     distance: '1'
   create: true
 - path: /ip route

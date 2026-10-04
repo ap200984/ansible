@@ -19,8 +19,8 @@ ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/wi
 
 The main L2TP clients connect to K16_112 (`86.110.170.70`) with their existing
 MPPE128 encryption and `use-ipsec=no`. The server endpoint is
-`10.251.3.112/32` on each tunnel; clients are `10.251.3.64/32`
-(`3Ekipazhnyi64`), `10.251.3.21/32` (`k16_21`), and `10.251.3.24/32` (`Misha`).
+`10.250.3.112/32` on each tunnel; clients are `10.250.3.64/32`
+(`3Ekipazhnyi64`), `10.250.3.21/32` (`k16_21`), and `10.250.3.24/32` (`Misha`).
 Their shared password is the encrypted `l2tp_k16_password` variable in
 `vault/common.yml`. Ansible uses these client addresses for management.
 
@@ -53,8 +53,8 @@ Each router has a directory under `routers/<identity>/`: `Logia_Kitchen` is
 `vds7_CHR` is 62.60.216.73 and uses SSH port 20022. Connection settings for
 every router are stored in `host_vars/<identity>.yml`, including an explicit
 `router_port` of either 22 or 20022.
-`3Ekipazhnyi64` is 10.251.3.64, `k16_21` is 10.251.3.21, and `Misha` is
-10.251.3.24; all three use SSH port 20022.
+`3Ekipazhnyi64` is 10.250.3.64, `k16_21` is 10.250.3.21, and `Misha` is
+10.250.3.24; all three use SSH port 20022.
 `<identity>.yml` contains its desired settings and `<identity>.rsc` is the export
 with sensitive fields hidden. The matching `vault/secrets_<identity>.yml` holds secret values and the
 complete `show-sensitive` export. The repository already ignores `vault/`

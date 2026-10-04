@@ -69,20 +69,20 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     list: 'MGMT Networks'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
     comment: L2TP main routers
   selector:
     list: 'MGMT Networks'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
   create: true
 - path: /ip firewall address-list
   values:
     list: 'tunnel networks'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
     comment: L2TP main routers
   selector:
     list: 'tunnel networks'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
   create: true
 - path: /interface bridge
   values:
@@ -3279,13 +3279,13 @@ routeros_records:
     disabled: 'yes'
     distance: '10'
     dst-address: 10.10.0.0/24
-    gateway: 10.251.3.64
+    gateway: 10.250.3.64
     pref-src: ''
     routing-table: main
   selector:
     dst-address: 10.10.0.0/24
     routing-table: main
-    gateway: 10.251.3.64
+    gateway: 10.250.3.64
     distance: '10'
   create: true
   occurrence: 0
@@ -3308,13 +3308,13 @@ routeros_records:
     disabled: 'yes'
     distance: '10'
     dst-address: 10.11.0.0/24
-    gateway: 10.251.3.21
+    gateway: 10.250.3.21
     pref-src: ''
     routing-table: main
   selector:
     dst-address: 10.11.0.0/24
     routing-table: main
-    gateway: 10.251.3.21
+    gateway: 10.250.3.21
     distance: '10'
   create: true
   occurrence: 0
@@ -3394,13 +3394,13 @@ routeros_records:
     disabled: 'yes'
     distance: '10'
     dst-address: 10.10.0.0/24
-    gateway: 10.251.3.64
+    gateway: 10.250.3.64
     pref-src: ''
     routing-table: main
   selector:
     dst-address: 10.10.0.0/24
     routing-table: main
-    gateway: 10.251.3.64
+    gateway: 10.250.3.64
     distance: '10'
   create: true
   occurrence: 1
@@ -3423,13 +3423,13 @@ routeros_records:
     disabled: 'yes'
     distance: '10'
     dst-address: 10.11.0.0/24
-    gateway: 10.251.3.21
+    gateway: 10.250.3.21
     pref-src: ''
     routing-table: main
   selector:
     dst-address: 10.11.0.0/24
     routing-table: main
-    gateway: 10.251.3.21
+    gateway: 10.250.3.21
     distance: '10'
   create: true
   occurrence: 1
@@ -3553,12 +3553,12 @@ routeros_records:
     disabled: 'no'
     distance: '10'
     dst-address: 10.10.0.0/16
-    gateway: 10.251.3.64
+    gateway: 10.250.3.64
     routing-table: main
   selector:
     dst-address: 10.10.0.0/16
     routing-table: main
-    gateway: 10.251.3.64
+    gateway: 10.250.3.64
     distance: '10'
   create: true
 - path: /ip service
@@ -4126,11 +4126,11 @@ routeros_records:
   create: true
 - path: /ppp secret
   values:
-    local-address: 10.251.3.112
+    local-address: 10.250.3.112
     name: misha
     password: '{{ l2tp_k16_password }}'
     profile: common_vpn
-    remote-address: 10.251.3.24
+    remote-address: 10.250.3.24
     service: l2tp
   selector:
     name: misha
@@ -4159,25 +4159,25 @@ routeros_records:
   create: true
 - path: /ppp secret
   values:
-    local-address: 10.251.3.112
+    local-address: 10.250.3.112
     name: 3Ekipazhnyi64
     password: '{{ l2tp_k16_password }}'
     service: l2tp
     disabled: 'no'
     profile: common_vpn
-    remote-address: 10.251.3.64
+    remote-address: 10.250.3.64
   selector:
     name: 3Ekipazhnyi64
   create: true
 - path: /ppp secret
   values:
-    local-address: 10.251.3.112
+    local-address: 10.250.3.112
     name: k16_21
     password: '{{ l2tp_k16_password }}'
     service: l2tp
     disabled: 'no'
     profile: common_vpn
-    remote-address: 10.251.3.21
+    remote-address: 10.250.3.21
   selector:
     name: k16_21
   create: true

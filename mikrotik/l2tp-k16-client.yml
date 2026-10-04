@@ -11,7 +11,7 @@
       - >-
         :local s [/ppp secret find where name="{{ client.user }}"];
         :if ([:len $s] != 1) do={:error "Expected one PPP secret"};
-        /ppp secret set $s local-address=10.251.3.112 remote-address={{ client.address }}
+        /ppp secret set $s local-address=10.250.3.112 remote-address={{ client.address }}
         service=l2tp profile=common_vpn disabled=no password="{{ l2tp_k16_password }}";
         /ip route set [find where gateway="{{ client.old }}"] gateway={{ client.address }}
   no_log: true
@@ -34,10 +34,10 @@
         :local c [/interface l2tp-client find where name="{{ client.interface }}"];
         :if ([:len $c] != 1) do={:error "Expected one L2TP client"};
         /interface l2tp-client set $c password="{{ l2tp_k16_password }}" use-ipsec=no;
-        /ip route set [find where gateway="10.9.255.1"] gateway=10.251.3.112;
-        /ip firewall filter set [find where src-address="10.9.255.1"] src-address=10.251.3.112;
-        :if ([:len [/ip firewall address-list find where list="Trusted" and address="10.251.3.0/24"]] = 0)
-        do={/ip firewall address-list add list=Trusted address=10.251.3.0/24 comment="L2TP main routers"};
+        /ip route set [find where gateway="{{ old_server_address | default('10.9.255.1') }}"] gateway=10.250.3.112;
+        /ip firewall filter set [find where src-address="{{ old_server_address | default('10.9.255.1') }}"] src-address=10.250.3.112;
+        :if ([:len [/ip firewall address-list find where list="Trusted" and address="10.250.3.0/24"]] = 0)
+        do={/ip firewall address-list add list=Trusted address=10.250.3.0/24 comment="L2TP main routers"};
         :execute {:delay 3s; /interface l2tp-client disable [find where name="{{ client.interface }}"];
         :delay 1s; /interface l2tp-client enable [find where name="{{ client.interface }}"]}
   no_log: true
@@ -58,8 +58,8 @@
         :local a [/ip address find where interface="{{ client.interface }}"];
         :if ([:len $a] != 1) do={:error "Address not ready"};
         :if ([/ip address get $a address] != "{{ client.address }}/32") do={:error "Wrong client address"};
-        :if ([/ip address get $a network] != "10.251.3.112") do={:error "Wrong server address"};
-        :put "VERIFIED {{ client.identity }} {{ client.address }}/32 peer=10.251.3.112"
+        :if ([/ip address get $a network] != "10.250.3.112") do={:error "Wrong server address"};
+        :put "VERIFIED {{ client.identity }} {{ client.address }}/32 peer=10.250.3.112"
   register: verification
   until: "'VERIFIED' in verification.stdout"
   retries: 10

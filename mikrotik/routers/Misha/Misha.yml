@@ -39,11 +39,11 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     list: 'Trusted'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
     comment: L2TP main routers
   selector:
     list: 'Trusted'
-    address: 10.251.3.0/24
+    address: 10.250.3.0/24
   create: true
 - path: /interface bridge
   values:
@@ -2086,11 +2086,11 @@ routeros_records:
   values:
     action: accept
     chain: input
-    src-address: 10.251.3.112
+    src-address: 10.250.3.112
   selector:
     action: accept
     chain: input
-    src-address: 10.251.3.112
+    src-address: 10.250.3.112
   create: true
 - path: /ip firewall mangle
   values:
@@ -2258,10 +2258,10 @@ routeros_records:
     disabled: 'yes'
     distance: '10'
     dst-address: 10.9.0.0/24
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
   selector:
     dst-address: 10.9.0.0/24
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
     distance: '10'
   create: true
 - path: /ip route
@@ -2311,10 +2311,10 @@ routeros_records:
   values:
     distance: '10'
     dst-address: 10.9.0.0/16
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
   selector:
     dst-address: 10.9.0.0/16
-    gateway: 10.251.3.112
+    gateway: 10.250.3.112
     distance: '10'
   create: true
 - path: /ip service
