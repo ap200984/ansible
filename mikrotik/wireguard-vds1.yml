@@ -1,0 +1,19 @@
+---
+- name: Configure main router WireGuard peers to vds1
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vault/common.yml
+  vars:
+    clients:
+      - {identity: K16_112, address: 10.250.1.112, keepalive: 0s}
+      - {identity: 3Ekipazhnyi64, address: 10.250.1.64, keepalive: 25s}
+      - {identity: k16_21, address: 10.250.1.21, keepalive: 25s}
+      - {identity: Misha, address: 10.250.1.24, keepalive: 25s}
+  tasks:
+    - name: Configure each router
+      ansible.builtin.include_tasks: wireguard-vds1-client.yml
+      loop: "{{ clients }}"
+      loop_control:
+        loop_var: client

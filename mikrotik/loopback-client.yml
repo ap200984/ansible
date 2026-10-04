@@ -1,0 +1,28 @@
+---
+- name: Load router connection settings
+  ansible.builtin.include_vars:
+    file: "host_vars/{{ router.identity }}.yml"
+
+- name: Ensure loopback bridge and address exist
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ router_ssh_key | expanduser }}"
+      - -p
+      - "{{ router_port | string }}"
+      - -o
+      - BatchMode=yes
+      - "{{ router_user }}@{{ router_host }}"
+      - >-
+        :local b [/interface bridge find where name="loopback"];
+        :if ([:len $b] > 1) do={:error "Ambiguous loopback bridge"};
+        :if ([:len $b] = 0) do={/interface bridge add name=loopback
+        protocol-mode=none comment="Router loopback"}
+        else={/interface bridge set $b disabled=no protocol-mode=none comment="Router loopback"};
+        :local a [/ip address find where interface="loopback"];
+        :if ([:len $a] > 1) do={:error "Ambiguous loopback address"};
+        :if ([:len $a] = 0) do={/ip address add address={{ router.address }}/32
+        interface=loopback comment="Router loopback"}
+        else={/ip address set $a address={{ router.address }}/32
+        network={{ router.address }} comment="Router loopback"}

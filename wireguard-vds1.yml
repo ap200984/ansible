@@ -1,0 +1,42 @@
+---
+- name: Apply vds1 WireGuard settings without restarting the interface
+  hosts: vds1
+  become: true
+  gather_facts: false
+  vars:
+    wireguard_mtu: 1420
+  tasks:
+    - name: Persist WireGuard configuration
+      ansible.builtin.template:
+        src: roles/wireguard/templates/wg.conf.j2
+        dest: /etc/wireguard/wg0.conf
+        owner: root
+        group: root
+        mode: '0600'
+        backup: true
+      no_log: true
+    - name: Add the requested server address
+      ansible.builtin.command: ip address replace 10.250.1.1/32 dev wg0
+    - name: Synchronize peers without disrupting existing handshakes
+      ansible.builtin.shell: wg syncconf wg0 <(wg-quick strip wg0)
+      args:
+        executable: /bin/bash
+      no_log: true
+    - name: Install peer routes
+      ansible.builtin.command:
+        argv: [ip, route, replace, '{{ item }}', dev, wg0, src, 10.250.1.1]
+      loop:
+        - 10.250.1.112/32
+        - 10.250.1.64/32
+        - 10.250.1.21/32
+        - 10.250.1.24/32
+        - 10.10.0.0/16
+    - name: Remove superseded vds1 addresses
+      ansible.builtin.command: ip address del {{ item }} dev wg0
+      loop:
+        - 10.250.1.7/32
+      register: old_addresses
+      failed_when: >-
+        old_addresses.rc != 0 and
+        'Cannot assign requested address' not in old_addresses.stderr and
+        'Address not found' not in old_addresses.stderr

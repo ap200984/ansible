@@ -1,5 +1,24 @@
 # MikroTik configuration
 
+The five main routers use a dedicated `loopback` bridge with stable `/32`
+addresses: `10.255.0.7` (vds7_CHR), `10.255.0.112` (K16_112),
+`10.255.0.64` (3Ekipazhnyi64), `10.255.0.21` (k16_21), and `10.255.0.24`
+(Misha). Apply them with:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/loopback.yml
+```
+
+vds1's `wg0` listens on UDP `56685` and uses `10.250.1.1/32` for the four
+main routers. Each router uses `wg_vds1` with its own `/32`: `10.250.1.112`
+(K16_112), `10.250.1.64` (3Ekipazhnyi64), `10.250.1.21` (k16_21), and
+`10.250.1.24` (Misha). Apply the server first and then the clients:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i inventory/vds1 wireguard-vds1.yml
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/wireguard-vds1.yml
+```
+
 vds8's existing `wg0` listens on UDP `56699` and uses `10.250.1.8/32`
 for the four main routers. Each router uses `wg_vds8` with its own `/32`:
 `10.250.1.112` (K16_112), `10.250.1.64` (3Ekipazhnyi64),

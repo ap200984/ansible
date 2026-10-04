@@ -1,4 +1,20 @@
 routeros_records:
+- path: /interface bridge
+  values:
+    name: loopback
+    protocol-mode: none
+    comment: Router loopback
+  selector:
+    name: loopback
+  create: true
+- path: /ip address
+  values:
+    address: 10.255.0.24/32
+    interface: loopback
+    comment: Router loopback
+  selector:
+    interface: loopback
+  create: true
 - path: /interface wireguard
   values:
     name: wg_vds8

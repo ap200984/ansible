@@ -16,23 +16,32 @@ auditbeat_elastic_apt_repo_enabled: false
 wireguard_enabled: true
 wireguard_interface: wg0
 wireguard_addresses:
-  - 10.250.1.7/32
   - 10.250.1.1/32
 wireguard_listen_port: 56685
 wireguard_private_key: "{{ wireguard_server_private_key }}"
 wireguard_peers:
-  - name: mikrotik-vds7
-    public_key: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
-    endpoint: 62.60.216.73:56697
-    source_address: 10.250.1.7
+  - name: mikrotik-k16-k112
+    public_key: 09+N44Dl/exqOELQAoECIev+VASLf3ki8lxJFDf10Bw=
+    endpoint: 86.110.170.70:37972
+    source_address: 10.250.1.1
     allowed_ips:
-      - 10.250.7.1/32
+      - 10.250.1.112/32
   - name: mikrotik-3Ekipazhnyi64
     public_key: rUX5DJTmbbehlI6gchyOyWwaZ80nBz6dXI1KdpFlum8=
     source_address: 10.250.1.1
     allowed_ips:
-      - 10.250.101.1/32
+      - 10.250.1.64/32
       - 10.10.0.0/16
+  - name: mikrotik-k16-k21
+    public_key: l96oFyJcZem8MXw6CsGTLRHJuV9lmXz4IZ6KN1bWMwQ=
+    source_address: 10.250.1.1
+    allowed_ips:
+      - 10.250.1.21/32
+  - name: mikrotik-Misha
+    public_key: 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=
+    source_address: 10.250.1.1
+    allowed_ips:
+      - 10.250.1.24/32
 
 domain: vds1.space
 # second_octet: 19
