@@ -1,5 +1,12 @@
 #!/bin/sh
 set -eu
+{% if amneziawg_enabled | default(false) | bool %}
+# Expose the dedicated tunnel port only to the configured public endpoints.
+{% for peer in amneziawg_peers[inventory_hostname] %}
+iptables -C INPUT -s {{ amneziawg_endpoints[peer] }}/32 -p udp --dport {{ amneziawg_port }} -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -s {{ amneziawg_endpoints[peer] }}/32 -p udp --dport {{ amneziawg_port }} -j ACCEPT
+{% endfor %}
+{% endif %}
 # Never translate routed traffic inside the private 10/8 network.
 iptables -t nat -C POSTROUTING -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT 2>/dev/null ||
     iptables -t nat -I POSTROUTING 1 -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT

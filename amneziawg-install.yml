@@ -1,0 +1,12 @@
+---
+- name: Install official current AmneziaWG on all new tunnel endpoints
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  vars:
+    awg_kernel_snapshots:
+      6.1.0-25-amd64: {date: '20240828T000000Z', archive: debian, suite: bookworm-proposed-updates}
+      6.12.38+deb13-amd64: {date: '20250717T000000Z', archive: debian, suite: sid}
+      6.12.85+deb13-amd64: {date: '20260501T000000Z', archive: debian-security, suite: trixie-security}
+  tasks:
+    - ansible.builtin.include_tasks: roles/amneziawg/tasks/install.yml

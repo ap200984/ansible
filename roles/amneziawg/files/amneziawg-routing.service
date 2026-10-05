@@ -1,0 +1,13 @@
+[Unit]
+Description=Align AmneziaWG peer AllowedIPs with OSPF routes
+Requires=awg-quick@wg1.service
+After=awg-quick@wg1.service frr.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/amneziawg-route-peers
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

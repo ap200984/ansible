@@ -1,0 +1,27 @@
+# Managed AmneziaWG OSPF mesh; independent from /etc/wireguard/wg0.conf.
+[Interface]
+Address = 10.250.2.{{ inventory_hostname[3:] }}/24
+ListenPort = {{ amneziawg_port }}
+PrivateKey = {{ awg_private_key.content | b64decode | trim }}
+MTU = {{ amneziawg_mtu }}
+Table = off
+{% for peer in amneziawg_peers[inventory_hostname] %}
+PostUp = ip route replace 10.250.2.{{ peer[3:] }}/32 dev %i src 10.250.2.{{ inventory_hostname[3:] }}
+{% endfor %}
+Jc = 4
+Jmin = 40
+Jmax = 80
+S1 = 65
+S2 = 107
+H1 = 1723456781
+H2 = 1723456782
+H3 = 1723456783
+H4 = 1723456784
+{% for peer in amneziawg_peers[inventory_hostname] %}
+
+[Peer]
+PublicKey = {{ hostvars[peer].awg_public_key.stdout | trim }}
+Endpoint = {{ amneziawg_endpoints[peer] }}:{{ amneziawg_port }}
+AllowedIPs = 10.250.2.{{ peer[3:] }}/32, 10.255.0.{{ peer[3:] }}/32
+PersistentKeepalive = 0
+{% endfor %}

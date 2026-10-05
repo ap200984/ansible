@@ -7,7 +7,7 @@ NAT notes for preserved container rules and the LAN hairpin change.
 
 Shared prefixes are defined in `group_vars/all/main.yml`: the K16 main and
 Kubernetes LANs (`10.9.0.0/24`, `10.9.1.0/24`), SSTP (`10.250.0.0/24`),
-WireGuard (`10.250.1.0/24`), L2TP (`10.250.3.0/24`) and loopbacks
+WireGuard (`10.250.1.0/24`), AmneziaWG (`10.250.2.0/24`), L2TP (`10.250.3.0/24`) and loopbacks
 (`10.255.0.0/24`). `tunnel-networks.yml` at the repository root deploys the
 Linux `tunnel_networks` ipset, the MikroTik `tunnels_networks` address list,
 WireGuard permissions and OSPF. Include every VDS inventory and localhost.
@@ -16,7 +16,10 @@ iptables role also persists the shared ipset alongside `trusted_hosts`.
 
 FRR participates on vds1, vds2, vds5, vds6 and vds8. Each uses
 `10.250.1.<VDS number>/24` and a passive `10.255.0.<VDS number>/32` loopback.
-All five use `wg0`; vds5's former `wg1` configuration is archived. vds2/vds5/vds6 have one unicast
+All five use `wg0` for ordinary WireGuard; vds5's former ordinary `wg1`
+configuration is archived. New AmneziaWG uses a separate `wg1` interface on
+vds1/vds2/vds5/vds6/vds8; run root `amneziawg.yml` for its installation and
+OSPF configuration. On ordinary WireGuard, vds2/vds5/vds6 have one unicast
 neighbor, vds7. `Table = off` leaves destination routes to OSPF while
 connected/explicit transport routes bootstrap the neighbors.
 Older distribution packages are upgraded from the signed official FRRouting

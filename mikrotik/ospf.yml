@@ -38,7 +38,7 @@
       - interface: vds5_interface
         peer: wg_to_vds5
         remote: 10.250.1.5
-        cost: 1000
+        cost: '{{ ospf_wireguard_costs.vds5 }}'
       - interface: vds6_interface
         peer: wg_to_vds6
         remote: 10.250.1.6

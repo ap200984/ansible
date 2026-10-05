@@ -12,6 +12,15 @@ interface {{ ospf_interface }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
 !
+{% if amneziawg_enabled | default(false) | bool %}
+interface {{ amneziawg_interface }}
+ ip ospf area 0.0.0.0 10.250.2.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-multipoint non-broadcast
+ ip ospf cost {{ amneziawg_ospf_cost }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+!
+{% endif %}
 router ospf
  ospf router-id {{ ospf_router_id }}
  maximum-paths 1
@@ -19,4 +28,9 @@ router ospf
 {% for peer in ospf_neighbors %}
  neighbor {{ peer }} poll-interval 60
 {% endfor %}
+{% if amneziawg_enabled | default(false) | bool %}
+{% for peer in amneziawg_peers[inventory_hostname] %}
+ neighbor 10.250.2.{{ peer[3:] }} poll-interval 60
+{% endfor %}
+{% endif %}
 !

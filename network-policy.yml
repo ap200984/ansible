@@ -25,6 +25,9 @@
         state: directory
         mode: '0755'
     - name: Persist the private-network exemption and constrained NAT rules
-      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      ansible.builtin.shell: |
+        set -e
+        iptables-save > /etc/iptables/rules.v4
+        ipset save > /etc/iptables/ipsets
       changed_when: false
 - ansible.builtin.import_playbook: mikrotik/source-nat.yml

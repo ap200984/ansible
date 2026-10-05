@@ -1,0 +1,50 @@
+---
+- name: Inspect the dedicated AmneziaWG configuration
+  ansible.builtin.stat:
+    path: /etc/amnezia/amneziawg/wg1.conf
+  register: awg_existing
+- name: Read an existing configuration without exposing keys
+  ansible.builtin.slurp:
+    src: /etc/amnezia/amneziawg/wg1.conf
+  register: awg_existing_content
+  no_log: true
+  when: awg_existing.stat.exists
+- name: Preserve unrelated AmneziaWG configurations
+  ansible.builtin.assert:
+    that: not awg_existing.stat.exists or 'Managed AmneziaWG OSPF mesh' in (awg_existing_content.content | default('') | b64decode)
+- name: Ensure the AmneziaWG state directory is private
+  ansible.builtin.file:
+    path: /etc/amnezia/amneziawg
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+- name: Inspect the persistent private key
+  ansible.builtin.stat:
+    path: /etc/amnezia/amneziawg/wg1.key
+  register: awg_key
+- name: Generate a separate AmneziaWG identity
+  ansible.builtin.command: awg genkey
+  register: awg_generated_key
+  no_log: true
+  when: not awg_key.stat.exists
+- name: Persist the identity only on its own host
+  ansible.builtin.copy:
+    content: '{{ awg_generated_key.stdout }}'
+    dest: /etc/amnezia/amneziawg/wg1.key
+    mode: '0600'
+    force: false
+  no_log: true
+  when: not awg_key.stat.exists
+- name: Read the host's private key without logging it
+  ansible.builtin.slurp:
+    src: /etc/amnezia/amneziawg/wg1.key
+  register: awg_private_key
+  no_log: true
+- name: Derive the public identity for peer configuration
+  ansible.builtin.command:
+    cmd: awg pubkey
+    stdin: '{{ awg_private_key.content | b64decode | trim }}'
+  register: awg_public_key
+  changed_when: false
+  no_log: true

@@ -1,0 +1,34 @@
+---
+- name: Verify CHR can route to every AmneziaWG endpoint
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - host_vars/vds7_CHR.yml
+  tasks:
+    - name: Test each VDS loopback from the CHR loopback
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - '{{ router_ssh_key | expanduser }}'
+          - -p
+          - '{{ router_port | string }}'
+          - -o
+          - BatchMode=yes
+          - -o
+          - ConnectTimeout=10
+          - -o
+          - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+          - '{{ router_user }}@{{ router_host }}'
+          - >-
+            :foreach suffix in={1;2;5;6;8} do={
+            :local target ("10.255.0." . $suffix);
+            :local replies [/ping address=$target src-address=10.255.0.7 count=3 interval=300ms];
+            :if ($replies < 2) do={:error ("CHR loopback reachability failed: " . $target)}};
+            :put "AMNEZIAWG_CHR_REACHABILITY_VERIFIED"
+      register: awg_chr_reachability
+      changed_when: false
+      until: awg_chr_reachability.rc == 0 and 'AMNEZIAWG_CHR_REACHABILITY_VERIFIED' in awg_chr_reachability.stdout
+      retries: 12
+      delay: 5

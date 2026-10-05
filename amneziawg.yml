@@ -1,0 +1,122 @@
+---
+- ansible.builtin.import_playbook: amneziawg-install.yml
+- ansible.builtin.import_playbook: mikrotik/amneziawg-cost.yml
+- name: Prepare independent AmneziaWG identities on every endpoint
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: roles/amneziawg/tasks/configure.yml
+- name: Configure the five requested AmneziaWG links and OSPF
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  vars:
+    ospf_interface: wg0
+    ospf_transport: '10.250.1.{{ inventory_hostname[3:] }}'
+    ospf_router_id: '10.255.0.{{ inventory_hostname[3:] }}'
+    ospf_cost: '{{ ospf_wireguard_costs[inventory_hostname] }}'
+    ospf_neighbors: '{{ ["10.250.1.112", "10.250.1.64", "10.250.1.21", "10.250.1.24", "10.250.1.7"] if inventory_hostname in ["vds1", "vds8"] else ["10.250.1.7"] }}'
+  tasks:
+    - name: Render the independent wg1 configuration
+      ansible.builtin.template:
+        src: roles/amneziawg/templates/wg1.conf.j2
+        dest: /etc/amnezia/amneziawg/wg1.conf
+        mode: '0600'
+        backup: true
+      register: awg_configuration
+      no_log: true
+    - name: Allow the new transport subnet and public peer UDP traffic
+      ansible.builtin.template:
+        src: roles/ospf/templates/firewall.sh.j2
+        dest: /usr/local/sbin/ospf-firewall
+        mode: '0755'
+    - ansible.builtin.systemd_service:
+        name: ospf-firewall
+        enabled: true
+        state: restarted
+    - name: Start the dedicated AmneziaWG interface without touching wg0
+      ansible.builtin.systemd_service:
+        name: awg-quick@wg1
+        enabled: true
+        state: started
+    - name: Synchronize peer changes without dropping the interface
+      ansible.builtin.shell: awg syncconf wg1 <(awg-quick strip wg1)
+      args:
+        executable: /bin/bash
+      when: awg_configuration.changed
+      no_log: true
+    - name: Keep direct AmneziaWG neighbor routes independent of OSPF
+      ansible.builtin.command: 'ip route replace 10.250.2.{{ item[3:] }}/32 dev wg1 src 10.250.2.{{ inventory_hostname[3:] }}'
+      loop: '{{ amneziawg_peers[inventory_hostname] }}'
+      changed_when: false
+    - name: Install the dynamic cryptokey route reconciler
+      ansible.builtin.copy:
+        src: roles/amneziawg/files/route-peers.py
+        dest: /usr/local/sbin/amneziawg-route-peers
+        mode: '0755'
+    - name: Describe the authenticated OSPF next-hop peer identities
+      ansible.builtin.template:
+        src: roles/amneziawg/templates/routing.json.j2
+        dest: /etc/amnezia/amneziawg/routing.json
+        mode: '0600'
+    - ansible.builtin.copy:
+        src: roles/amneziawg/files/amneziawg-routing.service
+        dest: /etc/systemd/system/amneziawg-routing.service
+        mode: '0644'
+    - name: Include wg1 in the existing OSPF process
+      ansible.builtin.template:
+        src: roles/ospf/templates/frr.conf.j2
+        dest: /etc/frr/frr.conf
+        owner: frr
+        group: frr
+        mode: '0640'
+        backup: true
+        validate: /usr/bin/vtysh -C -f %s
+      register: awg_frr_configuration
+    - name: Apply OSPF configuration
+      ansible.builtin.systemd_service:
+        name: frr
+        state: '{{ "restarted" if awg_frr_configuration.changed else "started" }}'
+    - name: Keep cryptokey routes aligned with OSPF failover
+      ansible.builtin.systemd_service:
+        name: amneziawg-routing
+        daemon_reload: true
+        enabled: true
+        state: restarted
+    - name: Save firewall and ipsets for boot
+      ansible.builtin.shell: |
+        set -e
+        iptables-save > /etc/iptables/rules.v4
+        ipset save > /etc/iptables/ipsets
+      changed_when: false
+    - name: Permit the new transport prefix on the existing ordinary WireGuard links
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/wireguard-configure-ospf
+          - --interface
+          - wg0
+          - --address
+          - '{{ ospf_transport }}/24'
+          - --mtu
+          - '{{ "1340" if inventory_hostname in ["vds5", "vds6"] else "1420" }}'
+          - --networks
+          - '{{ tunnel_networks | to_json }}'
+          - --loopback
+          - '{{ ospf_router_id }}/32'
+          - --peers
+          - '{{ ospf_peer_allowed_ips | to_json }}'
+      register: awg_legacy_permissions
+      changed_when: "'CONFIG_CHANGED' in awg_legacy_permissions.stdout"
+    - name: Wait for every new AmneziaWG OSPF adjacency to reach Full
+      ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
+      register: awg_ospf_state
+      changed_when: false
+      until: awg_ospf_state.stdout | regex_findall('Full/.*10\.250\.2\.') | length == amneziawg_peers[inventory_hostname] | length
+      retries: 30
+      delay: 10
+    - name: Verify every remote VDS loopback over the resulting routed fabric
+      ansible.builtin.command: 'ping -I 10.255.0.{{ inventory_hostname[3:] }} -c 3 -W 3 10.255.0.{{ item[3:] }}'
+      loop: '{{ amneziawg_peers.keys() | reject("equalto", inventory_hostname) | list }}'
+      changed_when: false
+- ansible.builtin.import_playbook: mikrotik/amneziawg-verify.yml

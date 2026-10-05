@@ -1,0 +1,99 @@
+---
+- name: Read OS and running kernel facts
+  ansible.builtin.setup:
+    gather_subset: [min]
+- name: Ensure this is a supported package platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == 'Debian'
+      - ansible_facts.architecture == 'x86_64'
+- name: Install build and repository prerequisites without upgrading the kernel
+  ansible.builtin.apt:
+    name: [ca-certificates, gnupg, dkms, build-essential, curl]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+- name: Check exact running-kernel headers
+  ansible.builtin.stat:
+    path: '/lib/modules/{{ ansible_facts.kernel }}/build/Makefile'
+  register: awg_headers
+- name: Add the signed archive for older Debian running-kernel headers
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/amneziawg-kernel-headers.list
+    mode: '0644'
+    content: >-
+      deb [check-valid-until=no signed-by=/usr/share/keyrings/debian-archive-keyring.gpg]
+      https://snapshot.debian.org/archive/{{ awg_kernel_snapshots[ansible_facts.kernel].archive }}/{{ awg_kernel_snapshots[ansible_facts.kernel].date }}/
+      {{ awg_kernel_snapshots[ansible_facts.kernel].suite }} main
+  when:
+    - not awg_headers.stat.exists
+    - ansible_facts.kernel in awg_kernel_snapshots
+- name: Prevent the kernel-header archive from replacing unrelated packages
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/amneziawg-kernel-headers
+    mode: '0644'
+    content: |
+      Package: linux-headers-* linux-kbuild-* linux-compiler-*
+      Pin: origin snapshot.debian.org
+      Pin-Priority: 100
+
+      Package: *
+      Pin: origin snapshot.debian.org
+      Pin-Priority: -1
+  when:
+    - not awg_headers.stat.exists
+    - ansible_facts.kernel in awg_kernel_snapshots
+- name: Install headers for the running kernel only
+  ansible.builtin.apt:
+    name: 'linux-headers-{{ ansible_facts.kernel }}'
+    state: present
+    update_cache: true
+  when: not awg_headers.stat.exists
+- name: Download the official Amnezia PPA signing key
+  ansible.builtin.get_url:
+    url: 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x75C9DD72C799870E310542E24166F2C257290828'
+    dest: /usr/share/keyrings/amneziawg.asc
+    mode: '0644'
+- name: Verify the full official PPA signing-key fingerprint
+  ansible.builtin.command: gpg --show-keys --with-colons /usr/share/keyrings/amneziawg.asc
+  register: awg_signing_key
+  changed_when: false
+  failed_when: "'75C9DD72C799870E310542E24166F2C257290828' not in awg_signing_key.stdout"
+- name: Add the official signed AmneziaWG package repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/amneziawg.list
+    mode: '0644'
+    content: |
+      deb [signed-by=/usr/share/keyrings/amneziawg.asc] https://ppa.launchpadcontent.net/amnezia/ppa/ubuntu {{ 'noble' if ansible_facts.distribution == 'Ubuntu' else 'focal' }} main
+      deb-src [signed-by=/usr/share/keyrings/amneziawg.asc] https://ppa.launchpadcontent.net/amnezia/ppa/ubuntu {{ 'noble' if ansible_facts.distribution == 'Ubuntu' else 'focal' }} main
+- name: Limit the PPA to AmneziaWG packages
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/amneziawg
+    mode: '0644'
+    content: |
+      Package: amneziawg amneziawg-dkms amneziawg-tools
+      Pin: origin ppa.launchpadcontent.net
+      Pin-Priority: 600
+
+      Package: *
+      Pin: origin ppa.launchpadcontent.net
+      Pin-Priority: -1
+- name: Install the latest signed AmneziaWG packages
+  ansible.builtin.apt:
+    name: [amneziawg, amneziawg-dkms, amneziawg-tools]
+    state: latest
+    update_cache: true
+    install_recommends: false
+  environment:
+    AWG_TEMP_DIR: /var/tmp
+- name: Build AmneziaWG for the running kernel
+  ansible.builtin.command: 'dkms autoinstall -k {{ ansible_facts.kernel }}'
+  changed_when: false
+  environment:
+    AWG_TEMP_DIR: /var/tmp
+- name: Load AmneziaWG without affecting ordinary WireGuard
+  ansible.builtin.command: modprobe amneziawg
+  changed_when: false
+- name: Report installed package release identifiers
+  ansible.builtin.command: dpkg-query -W amneziawg-dkms amneziawg-tools
+  changed_when: false

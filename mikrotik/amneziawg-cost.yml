@@ -1,0 +1,32 @@
+---
+- name: Remove the shared-interface ECMP tie introduced by the AmneziaWG mesh
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+    - host_vars/vds7_CHR.yml
+  tasks:
+    - name: Set CHR's vds5 link to the same cost as its Linux endpoint
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - '{{ router_ssh_key | expanduser }}'
+          - -p
+          - '{{ router_port | string }}'
+          - -o
+          - BatchMode=yes
+          - -o
+          - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+          - '{{ router_user }}@{{ router_host }}'
+          - >-
+            :local t [/routing ospf interface-template find where comment="OSPF existing vds5_interface"];
+            :if ([:len $t] != 1) do={:error "Expected one existing CHR vds5 OSPF template"};
+            :if ([/routing ospf interface-template get $t cost] != {{ ospf_wireguard_costs.vds5 }}) do={
+            /routing ospf interface-template set $t cost={{ ospf_wireguard_costs.vds5 }};
+            :put "OSPF_COST_CHANGED"};
+            :put "OSPF_COST_VERIFIED"
+      register: awg_chr_cost
+      changed_when: "'OSPF_COST_CHANGED' in awg_chr_cost.stdout"
+      failed_when: awg_chr_cost.rc != 0 or 'OSPF_COST_VERIFIED' not in awg_chr_cost.stdout

@@ -1,0 +1,8 @@
+{
+  "interface": "{{ amneziawg_interface }}",
+  "peers": {
+{% for peer in amneziawg_peers[inventory_hostname] %}
+    "10.250.2.{{ peer[3:] }}": "{{ hostvars[peer].awg_public_key.stdout | trim }}"{{ "," if not loop.last else "" }}
+{% endfor %}
+  }
+}
