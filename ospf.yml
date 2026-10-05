@@ -1,20 +1,17 @@
 ---
+- ansible.builtin.import_playbook: wireguard-wg0.yml
 - name: Configure direct OSPF on existing Linux WireGuard hubs
-  hosts: vds1:vds8
+  hosts: vds1:vds2:vds5:vds6:vds8
   become: true
   gather_facts: false
   vars:
-    wireguard_mtu: 1420
-    ospf_hub: '{{ 1 if inventory_hostname == "vds1" else 8 }}'
+    wireguard_mtu: '{{ 1340 if inventory_hostname in ["vds5", "vds6"] else 1420 }}'
+    ospf_hub: '{{ inventory_hostname | regex_replace("^vds", "") }}'
+    ospf_interface: wg0
     ospf_transport: 10.250.1.{{ ospf_hub }}
-    ospf_router_id: 10.255.1.{{ ospf_hub }}
-    ospf_cost: '{{ 1000 if inventory_hostname == "vds1" else 30000 }}'
-    ospf_neighbors:
-    - 10.250.1.112
-    - 10.250.1.64
-    - 10.250.1.21
-    - 10.250.1.24
-    - 10.250.1.7
+    ospf_router_id: 10.255.0.{{ ospf_hub }}
+    ospf_cost: '{{ 30000 if inventory_hostname == "vds8" else 1000 }}'
+    ospf_neighbors: '{{ ["10.250.1.112", "10.250.1.64", "10.250.1.21", "10.250.1.24", "10.250.1.7"] if inventory_hostname in ["vds1", "vds8"] else ["10.250.1.7"] }}'
     ospf_wireguard_enabled: true
   tasks:
   - name: Check for existing FRR configuration
@@ -45,10 +42,35 @@
       cache_valid_time: 3600
     tags:
     - firewall
+  - name: Ensure FRR supports direct unicast point-to-multipoint OSPF
+    ansible.builtin.include_tasks: roles/ospf/tasks/compatible-frr.yml
+  - name: Install focused WireGuard OSPF configuration helper
+    ansible.builtin.copy:
+      src: roles/wireguard/files/configure-ospf.py
+      dest: /usr/local/sbin/wireguard-configure-ospf
+      mode: '0755'
+  - name: Set persistent peer permissions and let OSPF own routed destinations
+    ansible.builtin.command:
+      argv:
+        - /usr/local/sbin/wireguard-configure-ospf
+        - --interface
+        - '{{ ospf_interface }}'
+        - --address
+        - '{{ ospf_transport }}/24'
+        - --mtu
+        - '{{ wireguard_mtu | string }}'
+        - --networks
+        - '{{ tunnel_networks | to_json }}'
+        - --loopback
+        - '{{ ospf_router_id }}/32'
+        - --peers
+        - '{{ ospf_peer_allowed_ips | default({}) | to_json }}'
+    register: peer_configuration
+    changed_when: "'CONFIG_CHANGED' in peer_configuration.stdout"
   - name: Persist WireGuard peer permissions without adding interfaces
     ansible.builtin.template:
       src: roles/wireguard/templates/wg.conf.j2
-      dest: /etc/wireguard/wg0.conf
+      dest: '/etc/wireguard/{{ ospf_interface }}.conf'
       owner: root
       group: root
       mode: '0600'
@@ -56,14 +78,14 @@
     no_log: true
     when: ospf_wireguard_manage_peers | default(false) | bool
   - name: Synchronize existing WireGuard peers without reconnecting
-    ansible.builtin.shell: wg syncconf wg0 <(wg-quick strip wg0)
+    ansible.builtin.shell: wg syncconf {{ ospf_interface }} <(wg-quick strip {{ ospf_interface }})
     args:
       executable: /bin/bash
     no_log: true
     when: ospf_wireguard_manage_peers | default(false) | bool
   - name: Persist numbered WireGuard prefix for unicast OSPF neighbor matching
     ansible.builtin.replace:
-      path: /etc/wireguard/wg0.conf
+      path: '/etc/wireguard/{{ ospf_interface }}.conf'
       regexp: '(?m)^(Address\s*=.*){{ ospf_transport | regex_escape }}/(?:21|32)'
       replace: '\g<1>{{ ospf_transport }}/24'
       backup: true
@@ -71,7 +93,7 @@
     when: ospf_wireguard_enabled | default(false) | bool
   - name: Remove superseded connected-route suppression
     ansible.builtin.lineinfile:
-      path: /etc/wireguard/wg0.conf
+      path: '/etc/wireguard/{{ ospf_interface }}.conf'
       regexp: '^PostUp = ip route del 10\.250\.0\.0/24 dev %i 2>/dev/null \|\| true$'
       state: absent
     no_log: true
@@ -79,13 +101,13 @@
   - name: Apply numbered WireGuard prefix for OSPF next-hop resolution
     ansible.builtin.shell: |
       set -e
-      if ip -4 -o address show dev wg0 | grep -F 'inet {{ ospf_transport }}/24 ' | grep -qv noprefixroute; then
+      if ip -4 -o address show dev {{ ospf_interface }} | grep -F 'inet {{ ospf_transport }}/24 ' | grep -qv noprefixroute; then
         echo PREFIX_UNCHANGED
       else
-        ip address del {{ ospf_transport }}/24 dev wg0 2>/dev/null || true
-        ip address add {{ ospf_transport }}/24 dev wg0
-        ip address del {{ ospf_transport }}/32 dev wg0 2>/dev/null || true
-        ip address del {{ ospf_transport }}/21 dev wg0 2>/dev/null || true
+        ip address del {{ ospf_transport }}/24 dev {{ ospf_interface }} 2>/dev/null || true
+        ip address add {{ ospf_transport }}/24 dev {{ ospf_interface }}
+        ip address del {{ ospf_transport }}/32 dev {{ ospf_interface }} 2>/dev/null || true
+        ip address del {{ ospf_transport }}/21 dev {{ ospf_interface }} 2>/dev/null || true
         echo PREFIX_CHANGED
       fi
     register: ospf_prefix
@@ -99,7 +121,7 @@
       - replace
       - '{{ item }}/32'
       - dev
-      - wg0
+      - '{{ ospf_interface }}'
       - src
       - '{{ ospf_transport }}'
     loop: '{{ ospf_neighbors }}'
@@ -116,13 +138,13 @@
     changed_when: false
     when: ospf_wireguard_enabled | default(false) | bool
   - name: Permit direct WireGuard OSPF packets
-    ansible.builtin.shell: iptables -C INPUT -i wg0 -s {{ item }}/32 -p ospf -j ACCEPT
-      || iptables -I INPUT 1 -i wg0 -s {{ item }}/32 -p ospf -j ACCEPT
+    ansible.builtin.shell: iptables -C INPUT -i {{ ospf_interface }} -s {{ item }}/32 -p ospf -j ACCEPT
+      || iptables -I INPUT 1 -i {{ ospf_interface }} -s {{ item }}/32 -p ospf -j ACCEPT
     loop: '{{ ospf_neighbors }}'
     when: ospf_wireguard_enabled | default(false) | bool
   - name: Persist scoped routing firewall rules
-    ansible.builtin.copy:
-      src: roles/ospf/files/firewall.sh
+    ansible.builtin.template:
+      src: roles/ospf/templates/firewall.sh.j2
       dest: /usr/local/sbin/ospf-firewall
       owner: root
       group: root
@@ -145,7 +167,7 @@
     tags:
     - firewall
   - name: Remove the old static LAN route so OSPF can select it
-    ansible.builtin.command: ip route del 10.10.0.0/16 dev wg0
+    ansible.builtin.command: ip route del 10.10.0.0/16 dev {{ ospf_interface }} scope link proto boot
     register: old_summary
     failed_when: old_summary.rc != 0 and 'No such process' not in old_summary.stderr
     changed_when: old_summary.rc == 0
@@ -165,13 +187,31 @@
       group: frr
       mode: '0640'
       backup: true
+      validate: /usr/bin/vtysh -C -f %s
     register: ospf_config
     when: ospf_wireguard_enabled | default(false) | bool
   - name: Start OSPF daemon
     ansible.builtin.systemd_service:
       name: frr
       enabled: true
-      state: '{{ "restarted" if daemon_config.changed or ospf_config.changed or ospf_prefix.changed else
+      state: '{{ "restarted" if daemon_config.changed or ospf_config.changed or ospf_prefix.changed or frr_compat_upgrade.changed | default(false) else
         "started" }}'
     when: ospf_wireguard_enabled | default(false) | bool
 - ansible.builtin.import_playbook: mikrotik/ospf.yml
+- name: Verify Linux OSPF and both K16 LANs after configuring both ends
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for the expected Linux OSPF neighbors
+      ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
+      register: linux_ospf_state
+      changed_when: false
+      until: linux_ospf_state.stdout | regex_findall('Full/') | length >= (5 if inventory_hostname in ['vds1', 'vds8'] else 1)
+      retries: 24
+      delay: 10
+    - name: Verify K16 LAN reachability using the advertised Linux loopback
+      ansible.builtin.command:
+        argv: [ping, -I, '10.255.0.{{ inventory_hostname[3:] }}', -c, '2', -W, '3', '{{ item }}']
+      loop: [10.9.0.1, 10.9.1.1]
+      changed_when: false

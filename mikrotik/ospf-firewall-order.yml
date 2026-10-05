@@ -11,6 +11,8 @@
     - '{{ router_port | string }}'
     - -o
     - BatchMode=yes
+    - -o
+    - 'ProxyCommand={{ router_proxy_command | default("none") }}'
     - '{{ router_user }}@{{ router_host }}'
     - :local src0 [/ip firewall filter find where comment="OSPF existing PPP hello"];
       :local dst0 [/ip firewall filter find where chain=input and action=drop]; :local

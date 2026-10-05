@@ -1,0 +1,39 @@
+---
+- name: Read installed FRR version
+  ansible.builtin.command:
+    argv: [dpkg-query, -W, '-f=${Version}', frr]
+  register: installed_frr
+  changed_when: false
+- name: Determine whether the distro FRR supports unicast point-to-multipoint
+  ansible.builtin.set_fact:
+    ospf_upgrade_frr: '{{ installed_frr.stdout.split("-")[0] is version("10.2", "<") }}'
+- name: Read the distribution codename for the official FRR repository
+  ansible.builtin.setup:
+    filter: ansible_distribution_release
+  when: ospf_upgrade_frr
+- name: Install HTTPS trust certificates
+  ansible.builtin.apt:
+    name: ca-certificates
+    state: present
+  when: ospf_upgrade_frr
+- name: Install official FRRouting repository signing keys
+  ansible.builtin.get_url:
+    url: https://deb.frrouting.org/frr/keys.gpg
+    dest: /usr/share/keyrings/frrouting.gpg
+    mode: '0644'
+  when: ospf_upgrade_frr
+- name: Use a fixed FRR 10 minor release with security and maintenance updates
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/frr.list
+    content: 'deb [signed-by=/usr/share/keyrings/frrouting.gpg] https://deb.frrouting.org/frr {{ ansible_facts.distribution_release }} frr-10.4
+
+      '
+    mode: '0644'
+  when: ospf_upgrade_frr
+- name: Upgrade FRR to support the requested OSPF network type
+  ansible.builtin.apt:
+    name: frr
+    state: latest
+    update_cache: true
+  register: frr_compat_upgrade
+  when: ospf_upgrade_frr

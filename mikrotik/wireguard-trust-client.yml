@@ -1,5 +1,7 @@
 ---
 - ansible.builtin.include_vars:
+    file: ../group_vars/all/main.yml
+- ansible.builtin.include_vars:
     file: 'host_vars/{{ client.identity }}.yml'
 - name: Set only the requested broad prefixes on existing single-peer interfaces
   ansible.builtin.command:
@@ -16,7 +18,7 @@
         {% for interface_name in client.interfaces %}
         :local p{{ loop.index }} [/interface wireguard peers find where interface="{{ interface_name }}"];
         :if ([:len $p{{ loop.index }}] != 1) do={:error "Expected exactly one existing WireGuard peer"};
-        /interface wireguard peers set $p{{ loop.index }} allowed-address=10.250.0.0/16,10.255.0.0/16;
+        /interface wireguard peers set $p{{ loop.index }} allowed-address={{ (tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16']) | join(',') }};
         {% endfor %}
         :put "WIREGUARD_TRUST_VERIFIED"
   register: wireguard_trust_result

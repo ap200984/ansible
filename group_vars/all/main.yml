@@ -2,6 +2,51 @@
 ansible_user: ansible
 ip_address: "{{ ansible_host }}"
 
+# Shared LAN and tunnel prefixes, available to Linux and localhost RouterOS plays.
+k16_k112_main_network: 10.9.0.0/24
+k16_k112_k8s_network: 10.9.1.0/24
+sstp_tunnels_network: 10.250.0.0/24
+wireguard_tunnels_network: 10.250.1.0/24
+l2tp_tunnels_network: 10.250.3.0/24
+loopback_network: 10.255.0.0/24
+tunnel_networks:
+  - '{{ k16_k112_main_network }}'
+  - '{{ k16_k112_k8s_network }}'
+  - '{{ sstp_tunnels_network }}'
+  - '{{ wireguard_tunnels_network }}'
+  - '{{ l2tp_tunnels_network }}'
+  - '{{ loopback_network }}'
+
+# Shared-interface destinations have one owner; direct neighbor /32s take precedence.
+ospf_peer_allowed_ips:
+  '09+N44Dl/exqOELQAoECIev+VASLf3ki8lxJFDf10Bw=':
+    - 10.250.1.112/32
+    - 10.250.0.112/32
+    - 10.250.3.112/32
+    - 10.255.0.112/32
+    - '{{ k16_k112_main_network }}'
+    - '{{ k16_k112_k8s_network }}'
+    - '{{ l2tp_tunnels_network }}'
+  'rUX5DJTmbbehlI6gchyOyWwaZ80nBz6dXI1KdpFlum8=':
+    - 10.250.1.64/32
+    - 10.250.0.64/32
+    - 10.250.3.64/32
+    - 10.255.0.64/32
+    - 10.10.0.0/16
+  'l96oFyJcZem8MXw6CsGTLRHJuV9lmXz4IZ6KN1bWMwQ=':
+    - 10.250.1.21/32
+    - 10.250.0.21/32
+    - 10.250.3.21/32
+    - 10.255.0.21/32
+    - 10.11.0.0/16
+  '6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=':
+    - 10.250.1.24/32
+    - 10.250.0.24/32
+    - 10.250.3.24/32
+    - 10.255.0.24/32
+  '/COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=': '{{ [sstp_tunnels_network, wireguard_tunnels_network, loopback_network, "10.251.0.0/24"] }}'
+  'WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=': '{{ [sstp_tunnels_network, wireguard_tunnels_network, loopback_network, "10.251.0.0/24"] }}'
+
 service_docker_network:
   name: docker-net
   subnet: 172.20.0.0/16

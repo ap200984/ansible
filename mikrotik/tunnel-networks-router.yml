@@ -1,0 +1,45 @@
+---
+- ansible.builtin.include_vars:
+    file: '{{ router_variables }}'
+- name: Configure the shared list, firewall permits and existing WireGuard peers
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - -o
+      - ConnectTimeout=10
+      - '{{ router_user }}@{{ router_host }}'
+      - '{{ permission_script.splitlines() | join(" ") }}'
+  vars:
+    permission_script: >-
+      {% for prefix in tunnel_networks %}
+      :if ([:len [/ip firewall address-list find where list="tunnels_networks" and address="{{ prefix }}"]] = 0)
+      do={/ip firewall address-list add list=tunnels_networks address={{ prefix }} comment="Shared tunnel networks"};
+      {% endfor %}
+      {% for chain in ['input', 'forward'] %}
+      :local r [/ip firewall filter find where comment="Shared tunnel networks {{ chain }}"];
+      :if ([:len $r] = 0) do={/ip firewall filter add chain={{ chain }} action=accept src-address-list=tunnels_networks comment="Shared tunnel networks {{ chain }}"};
+      /ip firewall filter set [find where comment="Shared tunnel networks {{ chain }}"] disabled=no action=accept src-address-list=tunnels_networks;
+      :local drops [/ip firewall filter find where chain={{ chain }} and action=drop];
+      :if ([:len $drops] > 0) do={/ip firewall filter move [find where comment="Shared tunnel networks {{ chain }}"] destination=[:pick $drops 0]};
+      {% endfor %}
+      :local nat [/ip firewall nat find where comment="Shared tunnel networks no NAT"];
+      :if ([:len $nat] = 0) do={/ip firewall nat add chain=srcnat action=accept src-address-list=tunnels_networks dst-address-list=tunnels_networks comment="Shared tunnel networks no NAT"};
+      :local masquerade [/ip firewall nat find where action=masquerade or action=src-nat];
+      :if ([:len $masquerade] > 0) do={/ip firewall nat move [find where comment="Shared tunnel networks no NAT"] destination=[:pick $masquerade 0]};
+      :foreach peer in=[/interface wireguard peers find] do={
+      :local iface [/interface wireguard peers get $peer interface];
+      :if ([:len [/interface wireguard peers find where interface=$iface]] = 1) do={
+      /interface wireguard peers set $peer allowed-address={{ (tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16']) | join(',') }};
+      } else={:error "Shared WireGuard interface needs explicit peer destination ownership"}};
+      :put "TUNNEL_NETWORKS_CONFIGURED"
+  register: permissions
+  changed_when: true
+  failed_when: permissions.rc != 0 or 'TUNNEL_NETWORKS_CONFIGURED' not in permissions.stdout

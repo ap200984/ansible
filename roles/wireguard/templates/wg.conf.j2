@@ -5,6 +5,7 @@ ListenPort = {{ wireguard_listen_port }}
 MTU = {{ wireguard_mtu }}
 {% if wireguard_ospf | default(false) %}
 Table = off
+PostUp = ip address replace 10.255.0.{{ inventory_hostname | regex_replace('^vds', '') }}/32 dev lo
 {% endif %}
 {% for peer in wireguard_peers if peer.source_address is defined or wireguard_ospf | default(false) %}
 {% for allowed_ip in (peer.allowed_ips[:1] if wireguard_ospf | default(false) else peer.allowed_ips) %}
@@ -20,7 +21,7 @@ PostUp = ip route replace {{ allowed_ip }} dev %i
 # {{ peer.name }}
 [Peer]
 PublicKey = {{ peer.public_key }}
-AllowedIPs = {{ peer.allowed_ips | join(', ') }}
+AllowedIPs = {{ (ospf_peer_allowed_ips[peer.public_key] if wireguard_ospf | default(false) and wireguard_vds7 is not defined else [wireguard_vds7.remote_address ~ '/32'] + tunnel_networks if wireguard_vds7 is defined else peer.allowed_ips) | join(', ') }}
 {% if peer.endpoint is defined %}
 Endpoint = {{ peer.endpoint }}
 {% endif %}

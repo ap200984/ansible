@@ -1,0 +1,14 @@
+---
+- name: Apply shared tunnel permissions on all MikroTiks
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+  tasks:
+    - name: Configure each managed router
+      ansible.builtin.include_tasks: tunnel-networks-router.yml
+      loop: '{{ lookup("fileglob", playbook_dir + "/host_vars/*.yml", wantlist=True) }}'
+      loop_control:
+        loop_var: router_variables
+        label: '{{ router_variables | basename }}'

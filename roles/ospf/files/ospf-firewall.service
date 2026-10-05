@@ -1,6 +1,9 @@
 [Unit]
 Description=Firewall permits for OSPF over existing WireGuard
-After=wg-quick@wg0.service
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target netfilter-persistent.service
+Wants=network-pre.target
 Before=frr.service
 
 [Service]

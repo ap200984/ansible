@@ -1,0 +1,7 @@
+---
+- name: Normalize the existing vds5 tunnel to wg0
+  hosts: vds5
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: roles/wireguard/tasks/normalize-wg0.yml

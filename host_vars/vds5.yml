@@ -16,10 +16,11 @@ wg_octet: 253
 gre_octet: 254
 l2tp_octet: 255
 domain: vds05.space
+wireguard_mtu: 1340
 
 wireguard_vds7:
-  interface: wg1
-  address: 10.250.1.5/32
+  interface: wg0
+  address: 10.250.1.5/24
   old_address: 10.250.5.7/32
   old_remote_address: 10.250.7.5
   remote_address: 10.250.1.7

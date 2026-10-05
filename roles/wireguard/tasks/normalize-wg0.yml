@@ -1,0 +1,69 @@
+---
+- name: Inspect the old and desired WireGuard configurations
+  ansible.builtin.stat:
+    path: '/etc/wireguard/{{ item }}.conf'
+  loop: [wg1, wg0]
+  register: wg_names
+- name: Refuse to replace an unrelated active wg0 configuration
+  ansible.builtin.assert:
+    that: not wg_names.results[0].stat.exists or not wg_names.results[1].stat.exists
+    fail_msg: Both wg0.conf and wg1.conf exist; inspect their peer ownership before migration.
+- name: Migrate the existing single-peer interface with rollback
+  when: wg_names.results[0].stat.exists
+  block:
+    - name: Preserve the existing keys and peer configuration under wg0
+      ansible.builtin.copy:
+        src: /etc/wireguard/wg1.conf
+        dest: /etc/wireguard/wg0.conf
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0600'
+      no_log: true
+    - name: Stop and disable wg1
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg1
+        state: stopped
+        enabled: false
+    - name: Start the same tunnel under wg0
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg0
+        state: started
+        enabled: true
+    - name: Verify the existing peer through wg0
+      ansible.builtin.command: ping -I wg0 -c 3 -W 3 10.250.1.7
+      changed_when: false
+    - name: Point the existing FRR interface configuration at wg0
+      ansible.builtin.replace:
+        path: /etc/frr/frr.conf
+        regexp: '(?m)^interface wg1$'
+        replace: interface wg0
+        backup: true
+    - name: Restart FRR on the renamed interface
+      ansible.builtin.systemd_service:
+        name: frr
+        state: restarted
+    - name: Archive wg1 configuration outside wg-quick startup
+      ansible.builtin.command:
+        argv: [mv, /etc/wireguard/wg1.conf, '/etc/wireguard/wg1.conf.retired-{{ now(utc=true, fmt="%Y%m%dT%H%M%S") }}']
+  rescue:
+    - ansible.builtin.systemd_service:
+        name: wg-quick@wg0
+        state: stopped
+        enabled: false
+    - ansible.builtin.replace:
+        path: /etc/frr/frr.conf
+        regexp: '(?m)^interface wg0$'
+        replace: interface wg1
+    - ansible.builtin.systemd_service:
+        name: wg-quick@wg1
+        state: started
+        enabled: true
+    - ansible.builtin.systemd_service:
+        name: frr
+        state: restarted
+    - ansible.builtin.file:
+        path: /etc/wireguard/wg0.conf
+        state: absent
+    - ansible.builtin.fail:
+        msg: wg0 migration failed; restored the original wg1 tunnel and FRR configuration.

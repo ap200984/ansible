@@ -1,0 +1,11 @@
+---
+- name: Keep source NAT on internet uplinks only
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: source-nat-router.yml
+      loop: '{{ lookup("fileglob", playbook_dir + "/host_vars/*.yml", wantlist=True) }}'
+      loop_control:
+        loop_var: router_variables
+        label: '{{ router_variables | basename }}'

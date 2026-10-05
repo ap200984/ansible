@@ -1,0 +1,43 @@
+---
+- ansible.builtin.include_vars:
+    file: '{{ router_variables }}'
+- name: Exempt private routed traffic and disable redundant tunnel/LAN source NAT
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+      - '{{ nat_script.splitlines() | join(" ") }}'
+  vars:
+    nat_script: >-
+      :local identity [/system identity get name];
+      :local exception [/ip firewall nat find where comment="Internal 10/8 no source NAT"];
+      :if ([:len $exception] > 1) do={:error "Ambiguous private NAT exception"};
+      :if ([:len $exception] = 0) do={/ip firewall nat add chain=srcnat action=accept src-address=10.0.0.0/8 dst-address=10.0.0.0/8 comment="Internal 10/8 no source NAT"};
+      /ip firewall nat set [find where comment="Internal 10/8 no source NAT"] disabled=no;
+      :local first [:pick [/ip firewall nat find] 0];
+      :if ($first != [:pick [/ip firewall nat find where comment="Internal 10/8 no source NAT"] 0]) do={/ip firewall nat move [find where comment="Internal 10/8 no source NAT"] destination=$first};
+      :foreach rule in=[/ip firewall nat find where chain=srcnat and action=masquerade] do={
+      :local iface [/ip firewall nat get $rule out-interface];
+      :local list [/ip firewall nat get $rule out-interface-list];
+      :local comment [/ip firewall nat get $rule comment];
+      :if ($iface = "sstp-vds7" || $iface = "LAN" || [:pick $iface 0 1] = "*" || $comment = "out SSTP" || $comment = "no interface") do={
+      /ip firewall nat set $rule disabled=yes;
+      } else={
+      :if ([/ip firewall nat get $rule disabled] = false) do={
+      :if ([:len $iface] = 0 && [:len $list] = 0) do={
+      :if ($identity != "Misha") do={:error "Unexpected unrestricted source NAT"};
+      /ip firewall nat set $rule out-interface-list=EXTERNAL comment="Internet uplinks only"};
+      /ip firewall nat set $rule dst-address=!10.0.0.0/8;
+      }}};
+      :put "SOURCE_NAT_POLICY_VERIFIED"
+  register: source_nat
+  changed_when: true
+  failed_when: source_nat.rc != 0 or 'SOURCE_NAT_POLICY_VERIFIED' not in source_nat.stdout

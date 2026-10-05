@@ -1,0 +1,27 @@
+---
+- name: Permit shared LAN and tunnel networks on every VDS
+  hosts: 'vds*'
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.apt:
+        name: [ipset, iptables]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+    - ansible.builtin.template:
+        src: roles/ospf/templates/firewall.sh.j2
+        dest: /usr/local/sbin/ospf-firewall
+        mode: '0755'
+    - ansible.builtin.copy:
+        src: roles/ospf/files/ospf-firewall.service
+        dest: /etc/systemd/system/ospf-firewall.service
+        mode: '0644'
+    - ansible.builtin.systemd_service:
+        name: ospf-firewall
+        daemon_reload: true
+        enabled: true
+        state: restarted
+- ansible.builtin.import_playbook: mikrotik/tunnel-networks.yml
+- ansible.builtin.import_playbook: ospf.yml
+- ansible.builtin.import_playbook: network-policy.yml

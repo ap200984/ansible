@@ -3,6 +3,8 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
   vars:
     ospf_routers:
     - identity: vds7_CHR
@@ -27,8 +29,20 @@
       - vds1_interface
       - vds8_interface
       summary: ''
-      connected_exports: [10.250.1.2/32, 10.250.1.5/32, 10.250.1.6/32]
+      connected_exports: []
       wg_links:
+      - interface: vds2_interface
+        peer: wg_to_vds2
+        remote: 10.250.1.2
+        cost: 1000
+      - interface: vds5_interface
+        peer: wg_to_vds5
+        remote: 10.250.1.5
+        cost: 1000
+      - interface: vds6_interface
+        peer: wg_to_vds6
+        remote: 10.250.1.6
+        cost: 1000
       - interface: vds1_interface
         peer: wg_to_vds1
         remote: 10.250.1.1

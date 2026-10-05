@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+# Never translate routed traffic inside the private 10/8 network.
+iptables -t nat -C POSTROUTING -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT 2>/dev/null ||
+    iptables -t nat -I POSTROUTING 1 -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT
+# Swap the set atomically so existing firewall references remain valid.
+ipset create tunnel_networks hash:net -exist
+ipset create tunnel_networks_next hash:net -exist
+ipset flush tunnel_networks_next
+{% for prefix in tunnel_networks %}
+ipset add tunnel_networks_next {{ prefix }} -exist
+{% endfor %}
+ipset swap tunnel_networks_next tunnel_networks
+ipset destroy tunnel_networks_next
+for chain in INPUT FORWARD; do
+    iptables -C "$chain" -m set --match-set tunnel_networks src -j ACCEPT 2>/dev/null ||
+        iptables -I "$chain" 1 -m set --match-set tunnel_networks src -j ACCEPT
+done
+iptables -C OUTPUT -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null ||
+    iptables -I OUTPUT 1 -m set --match-set tunnel_networks dst -j ACCEPT
+iptables -t nat -C POSTROUTING -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null ||
+    iptables -t nat -I POSTROUTING 1 -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT

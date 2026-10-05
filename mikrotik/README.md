@@ -1,5 +1,49 @@
 # MikroTik configuration
 
+Current tunnel drawing: [2026-10-05 topology](topology/current-tunnels.md).
+`network-policy.yml` at the repository root enforces routed `10/8` traffic
+without source NAT and WAN-only host/router masquerading. See the drawing's
+NAT notes for preserved container rules and the LAN hairpin change.
+
+Shared prefixes are defined in `group_vars/all/main.yml`: the K16 main and
+Kubernetes LANs (`10.9.0.0/24`, `10.9.1.0/24`), SSTP (`10.250.0.0/24`),
+WireGuard (`10.250.1.0/24`), L2TP (`10.250.3.0/24`) and loopbacks
+(`10.255.0.0/24`). `tunnel-networks.yml` at the repository root deploys the
+Linux `tunnel_networks` ipset, the MikroTik `tunnels_networks` address list,
+WireGuard permissions and OSPF. Include every VDS inventory and localhost.
+Linux firewall permits are restored before network/firewall startup; the
+iptables role also persists the shared ipset alongside `trusted_hosts`.
+
+FRR participates on vds1, vds2, vds5, vds6 and vds8. Each uses
+`10.250.1.<VDS number>/24` and a passive `10.255.0.<VDS number>/32` loopback.
+All five use `wg0`; vds5's former `wg1` configuration is archived. vds2/vds5/vds6 have one unicast
+neighbor, vds7. `Table = off` leaves destination routes to OSPF while
+connected/explicit transport routes bootstrap the neighbors.
+Older distribution packages are upgraded from the signed official FRRouting
+repository, using the `frr-10.4` release train. FRR configurations are syntax
+checked before installation because FRR 8.x rejects the unicast
+point-to-multipoint network type.
+
+Single-peer WireGuard interfaces permit the shared prefixes. On the shared
+Linux hubs, `ospf_peer_allowed_ips` assigns K16 LANs to K16, SSTP and the
+common WireGuard range to vds7, L2TP to K16, and individual neighbor and
+loopback `/32`s to their direct peers. Identical prefixes cannot belong to
+multiple peers on one WireGuard interface. Existing other site LANs and the
+vds7 PPP range remain permitted. WireGuard interface addresses need no `/21`.
+vds5/vds6 retain MTU 1340 to match their vds7 endpoints; the other links use
+1420. The playbook verifies Full adjacencies and both K16 gateways using
+each VDS loopback as the source.
+
+If the workstation cannot reach private router addresses, pass
+`router_proxy_command` to the tunnel/OSPF playbooks, for example:
+
+```sh
+ansible-playbook -i inventory/vds1 -i inventory/vds2 -i inventory/vds3 \
+  -i inventory/vds5 -i inventory/vds6 -i inventory/vds8 -i localhost, \
+  tunnel-networks.yml \
+  -e '{"router_proxy_command":"ssh -p 19022 -i ~/.ssh/priv/ansible -o BatchMode=yes -W %h:%p ansible@45.141.102.72"}'
+```
+
 ## OSPF on existing tunnels
 
 `ospf.yml` configures OSPFv2 area `0.0.0.0` on the existing SSTP and L2TP
@@ -24,16 +68,13 @@ ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i inventory/vds1 -i inve
 ```
 
 The WireGuard trust playbook updates only existing single-peer MikroTik
-interfaces to `allowed-address=10.250.0.0/16,10.255.0.0/16`. It never creates
+interfaces to the shared prefixes and existing other site LAN/PPP ranges. It never creates
 interfaces or peers. Direct WireGuard OSPF is enabled with unicast neighbors on existing
 interfaces: vds1 costs 1,000 and vds8 costs 30,000. Linux hub peer permissions
 are preserved by default (`ospf_wireguard_manage_peers: false`). Shared Linux
 `wg0` interfaces require distinct destination ownership, so both `/16`
-prefixes must not be assigned to every hub peer. The MikroTik single-peer
-interfaces retain exactly the two broad prefixes above. These prefixes do
-not include the `10.9.0.0/16` and `10.10.0.0/16` LANs: their advertisements
-can cross WireGuard OSPF, but their data traffic is permitted only on PPP
-unless WireGuard permissions are expanded explicitly.
+prefixes must not be assigned to every hub peer. The shared permissions now
+include both K16 `/24` LANs, allowing their data traffic over WireGuard.
 
 Direct WireGuard OSPF uses unicast point-to-multipoint neighbors. The existing hub-bound addresses use `/24` prefixes (`10.250.1.0/24`) so FRR and RouterOS can bind those neighbors. No new addresses or tunnels are created. Linux keeps explicit peer transport `/32` routes alongside the connected prefix; OSPF advertises point-to-multipoint addresses as host routes. Peer AllowedIPs are preserved by default.
 
@@ -205,4 +246,4 @@ ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-vault encrypt mikrotik/routers/Log
 The playbook loads either plaintext or Vault-encrypted secrets and uses
 `no_log: true`. Do not use `--diff` or print the sensitive export.
 
-WireGuard router addresses are consolidated in `10.250.1.0/24`: Linux vds1/vds2/vds5/vds6/vds8 use `.1/.2/.5/.6/.8`, vds7 uses `.7`, and MikroTik clients use `.21/.24/.64/.112`. Active OSPF interfaces use `/24`; the existing vds2/vds5/vds6 links use `/32` addresses. Run `wireguard-network.yml` with all five Linux inventories and localhost to migrate the existing links. The obsolete vds5 wg0 mesh and K16 legacy WireGuard interfaces are retired; the phone VPN is disabled and its old range removed. PPP address ranges remain separate.
+WireGuard router addresses are consolidated in `10.250.1.0/24`: Linux vds1/vds2/vds5/vds6/vds8 use `.1/.2/.5/.6/.8`, vds7 uses `.7`, and MikroTik clients use `.21/.24/.64/.112`. All active OSPF WireGuard interfaces use `/24`, including vds2/vds5/vds6. Run `wireguard-network.yml` with all five Linux inventories and localhost to migrate the existing links. The obsolete vds5 wg0 mesh and K16 legacy WireGuard interfaces are retired; the phone VPN is disabled and its old range removed. PPP address ranges remain separate.

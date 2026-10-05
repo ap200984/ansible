@@ -15,7 +15,7 @@
           {% for n in [1,2,5,6,8] %}
           :local a{{ n }} [/ip address find where interface="vds{{ n }}_interface"];
           :if ([:len $a{{ n }}] != 1) do={:error "Expected one existing vds7 tunnel address"};
-          /ip address set $a{{ n }} address=10.250.1.7/{{ 24 if n in [1,8] else 32 }} network={{ '10.250.1.0' if n in [1,8] else '10.250.1.' ~ n }};
+          /ip address set $a{{ n }} address=10.250.1.7/24 network=10.250.1.0;
           {% endfor %}
           /interface wireguard peers disable [find where name="GorPhone"];
           /interface wireguard peers remove [find where name="GorPhone"];

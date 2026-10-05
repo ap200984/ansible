@@ -43,3 +43,8 @@
         identity_file: "{{ router_ssh_key }}"
         records: "{{ routeros_records }}"
       no_log: true
+
+    - name: Enforce routed internal traffic after reconciling captured NAT rules
+      ansible.builtin.include_tasks: source-nat-router.yml
+      vars:
+        router_variables: '{{ playbook_dir }}/host_vars/{{ router_identity }}.yml'

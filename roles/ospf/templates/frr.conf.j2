@@ -2,7 +2,10 @@
 frr defaults traditional
 hostname {{ inventory_hostname }}
 service integrated-vtysh-config
-interface wg0
+interface lo
+ ip ospf area 0.0.0.0 {{ ospf_router_id }}
+!
+interface {{ ospf_interface }}
  ip ospf area 0.0.0.0 {{ ospf_transport }}
  ip ospf network point-to-multipoint non-broadcast
  ip ospf cost {{ ospf_cost }}
@@ -12,6 +15,7 @@ interface wg0
 router ospf
  ospf router-id {{ ospf_router_id }}
  maximum-paths 1
+ passive-interface lo
 {% for peer in ospf_neighbors %}
  neighbor {{ peer }} poll-interval 60
 {% endfor %}

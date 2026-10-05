@@ -1,0 +1,23 @@
+---
+- ansible.builtin.template:
+    src: '{{ playbook_dir }}/roles/ospf/templates/firewall.sh.j2'
+    dest: /usr/local/sbin/ospf-firewall
+    mode: '0755'
+- ansible.builtin.copy:
+    src: '{{ playbook_dir }}/roles/ospf/files/ospf-firewall.service'
+    dest: /etc/systemd/system/ospf-firewall.service
+    mode: '0644'
+- ansible.builtin.systemd_service:
+    name: ospf-firewall
+    daemon_reload: true
+    enabled: true
+    state: restarted
+- name: Install the WAN-only source NAT policy helper
+  ansible.builtin.copy:
+    src: '{{ playbook_dir }}/roles/iptables/files/restrict-source-nat.py'
+    dest: /usr/local/sbin/restrict-source-nat
+    mode: '0755'
+- name: Restrict host source NAT to internet destinations
+  ansible.builtin.command: /usr/local/sbin/restrict-source-nat
+  register: source_nat
+  changed_when: source_nat.stdout | length > 0

@@ -219,6 +219,13 @@
     - iptables
     - "iptables:trusted_hosts"
 
+- name: Permit shared tunnel networks
+  ansible.builtin.include_tasks:
+    file: tunnel-networks.yml
+    apply:
+      tags: [iptables]
+  tags: [iptables]
+
 - name: Validate INPUT ports
   ansible.builtin.assert:
     that:

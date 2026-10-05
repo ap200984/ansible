@@ -2,3 +2,7 @@ create {{ iptables_trusted_hosts_ipset_name }} hash:ip family inet hashsize 1024
 {% for ip in iptables_trusted_host_public_ips %}
 add {{ iptables_trusted_hosts_ipset_name }} {{ ip }}
 {% endfor %}
+create tunnel_networks hash:net family inet hashsize 1024 maxelem 65536
+{% for prefix in tunnel_networks %}
+add tunnel_networks {{ prefix }}
+{% endfor %}

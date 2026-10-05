@@ -1,0 +1,30 @@
+---
+- ansible.builtin.import_playbook: wireguard-wg0.yml
+- name: Enforce routed 10/8 traffic and WAN-only host source NAT
+  hosts: 'vds*'
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.template:
+        src: roles/ospf/templates/firewall.sh.j2
+        dest: /usr/local/sbin/ospf-firewall
+        mode: '0755'
+    - ansible.builtin.systemd_service:
+        name: ospf-firewall
+        state: restarted
+        enabled: true
+    - ansible.builtin.copy:
+        src: roles/iptables/files/restrict-source-nat.py
+        dest: /usr/local/sbin/restrict-source-nat
+        mode: '0755'
+    - ansible.builtin.command: /usr/local/sbin/restrict-source-nat
+      register: source_nat
+      changed_when: source_nat.stdout | length > 0
+    - ansible.builtin.file:
+        path: /etc/iptables
+        state: directory
+        mode: '0755'
+    - name: Persist the private-network exemption and constrained NAT rules
+      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      changed_when: false
+- ansible.builtin.import_playbook: mikrotik/source-nat.yml

@@ -1,0 +1,21 @@
+---
+- ansible.builtin.include_vars:
+    file: '{{ router_variables }}'
+- name: Inspect live NAT, addresses, peers and active tunnel sessions
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+      - '/system identity print; /ip firewall nat print terse; /ip address print terse; /interface wireguard print terse; /interface wireguard peers print terse; /interface sstp-client print terse; /interface l2tp-client print terse; /ppp active print terse; /routing ospf neighbor print terse'
+  register: router_audit
+  changed_when: false
+- ansible.builtin.debug:
+    var: router_audit.stdout_lines

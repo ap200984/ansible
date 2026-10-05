@@ -8,6 +8,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /ip route
       flags:
@@ -37,6 +38,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing filter rule
       selector: {comment: OSPF connected WireGuard export}
@@ -53,6 +55,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing ospf instance
       selector:
@@ -95,6 +98,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing ospf interface-template
       selector:
@@ -115,6 +119,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /ip firewall address-list
       selector:
@@ -134,6 +139,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /ip firewall filter
       selector:
@@ -199,6 +205,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing ospf interface-template
       flags:

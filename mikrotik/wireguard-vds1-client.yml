@@ -1,4 +1,6 @@
 ---
+- ansible.builtin.include_vars:
+    file: ../group_vars/all/main.yml
 - name: Load router connection settings
   ansible.builtin.include_vars:
     file: "host_vars/{{ client.identity }}.yml"
@@ -46,9 +48,9 @@
         :if ([:len $p] = 0) do={/interface wireguard peers add interface=wg_vds1 name=wg_to_vds1
         public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
         endpoint-address=45.141.102.72 endpoint-port=56685
-        allowed-address=10.250.0.0/16,10.255.0.0/16 persistent-keepalive={{ client.keepalive }}}
+        allowed-address={{ (tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16']) | join(',') }} persistent-keepalive={{ client.keepalive }}}
         else={/interface wireguard peers set $p public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
-        endpoint-address=45.141.102.72 endpoint-port=56685 allowed-address=10.250.0.0/16,10.255.0.0/16
+        endpoint-address=45.141.102.72 endpoint-port=56685 allowed-address={{ (tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16']) | join(',') }}
         persistent-keepalive={{ client.keepalive }} disabled=no};
         :local a [/ip address find where interface=wg_vds1];
         :if ([:len $a] > 1) do={:error "Ambiguous interface address"};

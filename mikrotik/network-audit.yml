@@ -1,0 +1,11 @@
+---
+- name: Inspect live tunnel interfaces and source NAT on every MikroTik
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: network-audit-router.yml
+      loop: '{{ lookup("fileglob", playbook_dir + "/host_vars/*.yml", wantlist=True) }}'
+      loop_control:
+        loop_var: router_variables
+        label: '{{ router_variables | basename }}'
