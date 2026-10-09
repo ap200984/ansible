@@ -5,7 +5,7 @@
   become: true
   gather_facts: false
   vars:
-    wireguard_mtu: '{{ 1340 if inventory_hostname in ["vds5", "vds6"] else 1420 }}'
+    wireguard_mtu: '{{ 1340 if inventory_hostname in ["vds2", "vds5", "vds6"] else 1420 }}'
     ospf_hub: '{{ inventory_hostname | regex_replace("^vds", "") }}'
     ospf_interface: wg0
     ospf_transport: 10.250.1.{{ ospf_hub }}
@@ -67,6 +67,7 @@
         - '{{ ospf_peer_allowed_ips | default({}) | to_json }}'
     register: peer_configuration
     changed_when: "'CONFIG_CHANGED' in peer_configuration.stdout"
+    when: inventory_hostname not in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([]))) or inventory_hostname in ['vds1', 'vds8']
   - name: Persist WireGuard peer permissions without adding interfaces
     ansible.builtin.template:
       src: roles/wireguard/templates/wg.conf.j2
@@ -121,7 +122,7 @@
       - replace
       - '{{ item }}/32'
       - dev
-      - '{{ ospf_interface }}'
+      - '{{ ("wg1" if inventory_hostname in (linux_wg_normalized_hosts | default([])) else "wg2") if item == "10.250.1.7" and inventory_hostname in (chr_native_awg_hosts | default([])) else ospf_interface }}'
       - src
       - '{{ ospf_transport }}'
     loop: '{{ ospf_neighbors }}'

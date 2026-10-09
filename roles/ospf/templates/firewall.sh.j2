@@ -1,5 +1,13 @@
 #!/bin/sh
 set -eu
+{% if inventory_hostname in (linux_wg_normalized_hosts | default([])) %}
+/usr/local/sbin/linux-normalized-firewall
+{% elif inventory_hostname in (chr_native_awg_hosts | default([])) %}
+/usr/local/sbin/chr-native-awg-firewall
+{% endif %}
+{% if inventory_hostname in (chr_plain_wg_hosts | default([])) and inventory_hostname not in (linux_wg_normalized_hosts | default([])) %}
+/usr/local/sbin/plain-wireguard-firewall
+{% endif %}
 {% if amneziawg_enabled | default(false) | bool %}
 # Expose the dedicated tunnel port only to the configured public endpoints.
 {% for peer in amneziawg_peers[inventory_hostname] %}

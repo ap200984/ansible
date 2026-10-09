@@ -1,0 +1,10 @@
+[Unit]
+Description=Transport permits for normalized Linux wg0 and wg1
+After=network-online.target ospf-firewall.service
+Before=wg-quick@wg0.service awg-quick@wg1.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/linux-normalized-firewall
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+---
+- name: Verify native Linux AWG transport and absence of C proxies
+  hosts: vds1:vds2:vds5:vds6:vds8
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Verify transport, OSPF, internal routing and persistent proxy removal
+      ansible.builtin.shell: |
+        set -eu
+        /usr/local/sbin/chr-native-awg-verify {{ inventory_hostname[3:] }}
+        test -f /etc/amnezia/amneziawg/chr-native.enabled
+        test ! -f /etc/systemd/system/chr-awg-proxy.service
+        test ! -f /usr/local/bin/chr-awg-proxy
+        test ! -f /usr/local/sbin/chr-awg-firewall
+        systemctl is-active chr-native-awg-firewall
+        systemctl is-enabled chr-native-awg-firewall
+        test "$(awg show wg2 listen-port)" = 56707
+        ! pgrep -x chr-awg-proxy
+        vtysh -c 'show ip ospf neighbor' | awk '$3 ~ /^Full/ && $7 ~ /^wg0:/ {n++} END {if (n != {{ 4 if inventory_hostname in ["vds1", "vds8"] else 0 }}) exit 1}'
+        vtysh -c 'show ip ospf neighbor' | awk '$3 ~ /^Full/ && $7 ~ /^wg1:/ {n++} END {if (n != {{ amneziawg_peers[inventory_hostname] | length }}) exit 1}'
+        wg show wg0 peers | awk '$1 == "{{ chr_awg_chr_keys[inventory_hostname] }}" {exit 1}'
+        iptables-save | awk '/chr-awg-proxy|chr-awg-loopback|chr-awg-no-plain/ {exit 1}'
+        awg show wg2 public-key
+        awg show wg2 endpoints
+        dpkg-query -W amneziawg-dkms amneziawg-tools
+      changed_when: false
+      when: inventory_hostname in (chr_native_awg_hosts | default([])) and inventory_hostname not in (linux_wg_normalized_hosts | default([]))
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml

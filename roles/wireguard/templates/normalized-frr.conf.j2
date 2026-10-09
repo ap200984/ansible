@@ -1,0 +1,52 @@
+! Managed OSPF on existing WireGuard; normalized Linux wg0/wg1
+frr defaults traditional
+hostname {{ inventory_hostname }}
+service integrated-vtysh-config
+interface lo
+ ip ospf area 0.0.0.0 10.255.0.{{ inventory_hostname[3:] }}
+!
+interface wg0
+ ip ospf area 0.0.0.0 10.250.1.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-multipoint non-broadcast
+ ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }} 10.250.1.{{ inventory_hostname[3:] }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+{% if inventory_hostname in chr_plain_wg_hosts %}
+ ip ospf area 0.0.0.0 10.250.2.{{ 128 + inventory_hostname[3:] | int }}
+ ip ospf cost 200 10.250.2.{{ 128 + inventory_hostname[3:] | int }}
+{% endif %}
+!
+{% if amneziawg_enabled | bool %}
+interface wg1
+ ip ospf area 0.0.0.0 10.250.2.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-multipoint non-broadcast
+ ip ospf cost 200 10.250.2.{{ inventory_hostname[3:] }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+{% if inventory_hostname in chr_native_awg_hosts %}
+ ip ospf area 0.0.0.0 10.250.1.{{ inventory_hostname[3:] }}
+ ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }} 10.250.1.{{ inventory_hostname[3:] }}
+{% endif %}
+!
+{% endif %}
+router ospf
+ ospf router-id 10.255.0.{{ inventory_hostname[3:] }}
+ maximum-paths 1
+ passive-interface lo
+{% if inventory_hostname in ['vds1', 'vds8'] %}
+{% for n in [112,64,21,24] %}
+ neighbor 10.250.1.{{ n }} poll-interval 60
+{% endfor %}
+{% endif %}
+{% if inventory_hostname in chr_plain_wg_hosts %}
+{% for peer in ([2,6] if inventory_hostname == 'vds5' else [5]) %}
+ neighbor 10.250.2.{{ 128 + peer }} poll-interval 60
+{% endfor %}
+{% endif %}
+{% if amneziawg_enabled | bool %}
+{% for peer in amneziawg_peers[inventory_hostname] %}
+ neighbor 10.250.2.{{ peer[3:] }} poll-interval 60
+{% endfor %}
+{% endif %}
+! CHR discovers via its unchanged multicast hellos; replies are unicast.
+!

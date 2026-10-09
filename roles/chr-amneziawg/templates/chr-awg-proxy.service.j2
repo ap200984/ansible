@@ -1,0 +1,34 @@
+[Unit]
+Description=C AmneziaWG transport proxy for the CHR WireGuard peer
+After=network-online.target wg-quick@wg0.service ospf-firewall.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=AWG_MODE=server
+Environment=AWG_LISTEN=:{{ chr_awg_port }}
+Environment=AWG_REMOTE=127.0.0.1:{{ chr_awg_wg_port.stdout }}
+Environment=AWG_JC=4
+Environment=AWG_JMIN=40
+Environment=AWG_JMAX=80
+Environment=AWG_S1=65
+Environment=AWG_S2=107
+Environment=AWG_H1=1723456781
+Environment=AWG_H2=1723456782
+Environment=AWG_H3=1723456783
+Environment=AWG_H4=1723456784
+Environment=AWG_SERVER_PUB={{ chr_awg_linux_key.stdout }}
+Environment=AWG_CLIENT_PUB={{ chr_awg_chr_keys[inventory_hostname] }}
+Environment=AWG_CLIENT_PUBS={{ chr_awg_chr_keys[inventory_hostname] }}
+Environment=AWG_LOG_LEVEL=info
+ExecStartPre=/usr/local/sbin/chr-awg-firewall
+ExecStart=/usr/local/bin/chr-awg-proxy
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

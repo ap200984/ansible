@@ -1,6 +1,7 @@
 # Managed AmneziaWG OSPF mesh; independent from /etc/wireguard/wg0.conf.
 [Interface]
-Address = 10.250.2.{{ inventory_hostname[3:] }}/24
+Address = 10.250.2.{{ inventory_hostname[3:] }}/{{ 25 if inventory_hostname in (linux_wg_normalized_hosts | default([])) else 24 }}{% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}, 10.250.1.{{ inventory_hostname[3:] }}/24{% endif %}
+
 ListenPort = {{ amneziawg_port }}
 PrivateKey = {{ awg_private_key.content | b64decode | trim }}
 MTU = {{ amneziawg_mtu }}
@@ -8,6 +9,9 @@ Table = off
 {% for peer in amneziawg_peers[inventory_hostname] %}
 PostUp = ip route replace 10.250.2.{{ peer[3:] }}/32 dev %i src 10.250.2.{{ inventory_hostname[3:] }}
 {% endfor %}
+{% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}
+PostUp = ip route replace 10.250.1.7/32 dev %i src 10.250.1.{{ inventory_hostname[3:] }}
+{% endif %}
 Jc = 4
 Jmin = 40
 Jmax = 80
@@ -21,7 +25,15 @@ H4 = 1723456784
 
 [Peer]
 PublicKey = {{ hostvars[peer].awg_public_key.stdout | trim }}
-Endpoint = {{ amneziawg_endpoints[peer] }}:{{ amneziawg_port }}
+Endpoint = {{ amneziawg_endpoints[peer] }}:{{ amneziawg_host_ports.get(peer, 56702) }}
 AllowedIPs = 10.250.2.{{ peer[3:] }}/32, 10.255.0.{{ peer[3:] }}/32
 PersistentKeepalive = 0
 {% endfor %}
+{% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}
+
+[Peer]
+# CHR endpoint is learned from its existing container, which remains unchanged.
+PublicKey = {{ normalized_chr_public_keys[inventory_hostname] }}
+AllowedIPs = 10.250.1.7/32, 10.255.0.7/32, 224.0.0.5/32
+PersistentKeepalive = 0
+{% endif %}

@@ -1,0 +1,11 @@
+:do {
+:local p [/interface wireguard peers find where interface={{ inventory_hostname }}_interface];
+:if ([:len $p] != 1) do={ :error "Expected one CHR peer" };
+:if ([:len [/ip firewall filter find where comment="Plain WireGuard {{ inventory_hostname }} uplink"]] = 0) do={
+ /ip firewall filter add chain=input action=accept src-address={{ amneziawg_endpoints[inventory_hostname] }} protocol=udp dst-port={{ chr_awg_chr_ports[inventory_hostname] }} comment="Plain WireGuard {{ inventory_hostname }} uplink" place-before=0;
+};
+/interface wireguard peers set $p endpoint-address={{ amneziawg_endpoints[inventory_hostname] }} endpoint-port={{ chr_awg_original_ports[inventory_hostname] }} persistent-keepalive=0;
+/ip route set [find where comment="Native AWG {{ inventory_hostname }} transport"] comment="WireGuard {{ inventory_hostname }} transport";
+:if ([/interface wireguard peers get $p endpoint-address] != "{{ amneziawg_endpoints[inventory_hostname] }}") do={ :error "Plain WG endpoint cutover failed" };
+:put "PLAIN_WG_CUTOVER";
+};

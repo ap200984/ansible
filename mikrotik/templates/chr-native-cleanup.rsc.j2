@@ -1,0 +1,6 @@
+:do {
+:local pin [/ip route find where comment="Native AWG {{ inventory_hostname }} transport"];
+:if ([:len $pin] != 1) do={ :error "Native transport pin is missing" };
+/ip route remove [find where comment="OSPF WireGuard transport {{ inventory_hostname }}_interface" and dst-address=10.250.1.{{ inventory_hostname[3:] }}/32 and gateway={{ inventory_hostname }}_interface and static];
+:put "NATIVE_ROUTES_CLEAN";
+};

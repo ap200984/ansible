@@ -14,10 +14,12 @@ import subprocess
 import time
 
 
-def desired_prefixes(peers, routes):
+def desired_prefixes(peers, routes, loopbacks=None, fixed=None):
+    loopbacks = loopbacks or {}
+    fixed = fixed or {}
     owners = {address + '/32': key for address, key in peers.items()}
     for address, key in peers.items():
-        owners['10.255.0.' + address.rsplit('.', 1)[1] + '/32'] = key
+        owners[loopbacks.get(address, '10.255.0.' + address.rsplit('.', 1)[1] + '/32')] = key
     for route in routes:
         destination = route.get('dst', '')
         if destination == 'default' or not destination:
@@ -31,6 +33,9 @@ def desired_prefixes(peers, routes):
             raise ValueError('ECMP requires distinct per-peer interfaces; OSPF maximum-paths must remain 1')
         if candidates and destination not in {address + '/32' for address in peers}:
             owners[str(network)] = peers[candidates[0]]
+    for address, prefixes in fixed.items():
+        for prefix in prefixes:
+            owners[prefix] = peers[address]
     return {key: sorted(prefix for prefix, owner in owners.items() if owner == key)
             for key in peers.values()}
 
@@ -39,9 +44,10 @@ def reconcile(config):
     interface = config['interface']
     routes = json.loads(subprocess.check_output(
         ['ip', '-j', '-4', 'route', 'show', 'dev', interface, 'proto', 'ospf'], text=True))
-    wanted = desired_prefixes(config['peers'], routes)
+    wanted = desired_prefixes(config['peers'], routes, config.get('loopbacks'), config.get('fixed'))
+    command = config.get('command', 'awg')
     current = {}
-    output = subprocess.check_output(['awg', 'show', interface, 'allowed-ips'], text=True)
+    output = subprocess.check_output([command, 'show', interface, 'allowed-ips'], text=True)
     for line in output.splitlines():
         key, prefixes = line.split('\t', 1)
         current[key] = sorted(prefixes.replace(',', ' ').split()) if prefixes != '(none)' else []
@@ -49,7 +55,7 @@ def reconcile(config):
     # prefixes can steal ownership, so subsequent removals must not clear a
     # prefix that another peer has just acquired.
     if current != wanted:
-        args = ['awg', 'set', interface]
+        args = [command, 'set', interface]
         for key, prefixes in wanted.items():
             args += ['peer', key, 'allowed-ips', ','.join(prefixes)]
         subprocess.run(args, check=True)

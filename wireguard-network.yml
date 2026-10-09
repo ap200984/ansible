@@ -1,4 +1,11 @@
 ---
+- name: Protect completed native AWG links from the legacy renumbering workflow
+  hosts: all
+  gather_facts: false
+  tasks:
+    - ansible.builtin.assert:
+        that: chr_native_awg_hosts | default([]) | length == 0
+        fail_msg: 'Legacy migration is retired after native AWG cutover; use chr-amneziawg-native.yml and ospf.yml.'
 - ansible.builtin.import_playbook: wireguard-wg0.yml
 - ansible.builtin.import_playbook: mikrotik/wireguard-network.yml
 - name: Renumber existing vds2 vds5 and vds6 links to vds7

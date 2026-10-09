@@ -1,8 +1,13 @@
 # Current tunnel topology — 2026-10-05
 
 Live interfaces and OSPF adjacencies were checked after deployment. Retired
-interfaces and phone VPNs are omitted. Ordinary Linux WireGuard links use
-`wg0`; the new AmneziaWG links use `wg1`.
+interfaces and phone VPNs are omitted. Linux `wg0` retains ordinary site
+WireGuard. AmneziaWG remains on vds1/vds5/vds8 `wg1`, while two CHR C containers
+connect to vds1/vds8 native `wg2`. vds2/vds6 now use ordinary `wg0` to CHR
+and ordinary `wg1` to vds5; vds5 uses `wg0` to CHR and independent
+`wg-vds2`/`wg-vds6` ordinary mesh interfaces. Linux C
+proxy services have been removed from vds1/vds2/vds5/vds6/vds8. Addresses,
+keys and OSPF costs are unchanged; dedicated CHR links use point-to-point OSPF.
 
 [SVG drawing](current-tunnels.svg) · [PNG drawing](current-tunnels.png)
 
@@ -27,8 +32,10 @@ flowchart LR
   V6["vds6 · wg0 · .6"]
   V1 <-->|WG| K & E & R & M
   V8 <-->|WG| K & E & R & M
-  C <-->|WG| V1 & V8 & V2 & V5 & V6
-  V5 <-->|AmneziaWG| V1 & V2 & V6 & V8
+  C <-->|CHR C container ↔ Linux native AWG wg2| V1 & V8
+  C <-->|WireGuard wg0| V2 & V5 & V6
+  V5 <-->|WireGuard| V2 & V6
+  V5 <-->|AmneziaWG| V1 & V8
   V1 <-->|AmneziaWG| V8
   K & E & R & M <-->|SSTP| C
   E & R & M <-->|L2TP| K
@@ -42,23 +49,46 @@ Transport addressing uses each node's suffix above:
 | --- | --- | --- | --- |
 | WireGuard to vds1 | 10.250.1.N/24 | 10.250.1.1 | 1000 |
 | WireGuard to vds8 | 10.250.1.N/24 | 10.250.1.8 | 30000 |
-| CHR ↔ Linux WireGuard | CHR 10.250.1.7/24 | Linux 10.250.1.N/24 | 1000; vds5 1001; vds8 30000 |
-| AmneziaWG star to vds5 | 10.250.2.N/24 (N=1,2,6,8) | 10.250.2.5/24 | 200 |
+| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.1.7/24 | vds1/vds8 10.250.1.N/24 | 1000; vds8 30000 |
+| CHR ↔ ordinary Linux wg0 | CHR 10.250.1.7/24 | vds2/vds5/vds6 10.250.1.N/24 | 1000; vds5 1001 |
+| Ordinary WG star to vds5 | vds2/vds6 10.250.2.N/24 | 10.250.2.5/24 | 200 |
+| AmneziaWG star to vds5 | vds1/vds8 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG vds1 ↔ vds8 | 10.250.2.1/24 | 10.250.2.8/24 | 200 |
 | SSTP to CHR | 10.250.0.N/32 | Legacy PPP endpoint 10.251.0.7 | 10 |
 | L2TP to K16_112 | 10.250.3.N/32 | 10.250.3.112 | 100 |
 
-There are 13 WireGuard, five AmneziaWG, four SSTP and three L2TP links (25 total). WireGuard MTU is
-1420 except CHR links to vds5/vds6 (1340). Loopbacks are `10.255.0.N/32`.
+There are thirteen ordinary WireGuard, five AmneziaWG (two CHR links and
+three native mesh links), four SSTP and three L2TP links (25 total). Site WG
+MTU is 1420; CHR and inter-VDS tunnels use 1340. Loopbacks are `10.255.0.N/32`.
 vds3 is a LAN host, not a WireGuard endpoint. LAN labels `.2/.3/.120` above
 are addresses in `10.9.0.0/24`, not transport suffixes.
 
 ## AmneziaWG deployment
 
-Run root `amneziawg.yml` with all five VDS inventories and localhost;
+The one-time selective rollback used `wireguard-revert.yml`, followed by
+`wireguard-revert-cleanup.yml`. Repeated health checks use
+`chr-amneziawg-verify.yml`, which checks native and ordinary links separately.
+The five converted links are Full in OSPF; internal LAN/loopback pings pass.
+AmneziaWG packages are absent on vds2/vds6, and only vds1/vds8 containers
+remain on CHR. Requested device-local VPN/routing backups were deleted;
+workstation copies are retained. Plain interfaces use `Table = off`, `10/8`
+plus `224.0.0.5/32` AllowedIPs and persistent keepalive off.
+
+Remaining CHR transport migration uses root `chr-amneziawg-native.yml`; see
+[native deployment and backups](chr-native-migration-status.md). It keeps
+10.250.1.N addressing and original OSPF costs, with UDP 56707, keepalive off,
+no internal source NAT and checks before every sequential cutover.
+`wg2` reuses the original wg0 identity, not the independent wg1 mesh identity.
+Its CHR peer allows routed `10/8` destinations plus OSPF multicast `224.0.0.5/32`;
+`Table = off` leaves destination routing to FRR. Matching MTU 1340, numbered
+point-to-point links and pinned CHR transport return routes avoid the pilot's
+MTU/return-path issues. The same preserved source address exists on wg0 and
+wg2; explicit interface binding separates their OSPF and transport routes.
+
+Run root `amneziawg.yml` for vds1/vds5/vds8 and localhost;
 pass `router_proxy_command` as documented in `mikrotik/README.md` when
 the workstation needs the vds1 SSH jump host to reach CHR. vds5 is included
-because it terminates the four star links. Signed official Amnezia PPA
+because it terminates the remaining two AWG star links. Signed official Amnezia PPA
 packages provide the latest kernel module (`v3.1.20260906`, commit
 `4569c4c`) and tools (`v3.1.20260812`, commit `ee0f0a9`) checked on
 2026-10-05. The package version strings retain upstream's older base
@@ -86,7 +116,7 @@ Unlike the former CHR-only connectivity, vds5 can now be reached through
 vds1 or vds8 without CHR. Cost 200 prefers direct AmneziaWG between VDSes,
 while existing lower-cost site-to-CHR SSTP paths remain available.
 
-The existing CHR↔vds5 WireGuard link uses cost **1001 on both ends**.
+The existing CHR↔vds5 link, now ordinary WireGuard, uses cost **1001 on both ends**.
 Without that one-unit distinction, CHR has equal-cost routes to vds8 via
 vds1 and vds5, while shared-interface cryptokey routing permits CHR's
 source prefix on only one peer. Removing this ECMP tie makes CHR↔vds8

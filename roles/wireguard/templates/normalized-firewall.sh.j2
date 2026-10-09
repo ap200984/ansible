@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+permit() {
+ iptables -C INPUT -s "$1/32" -p udp --dport "$2" -m comment --comment linux-normalized-wg -j ACCEPT 2>/dev/null ||
+ iptables -I INPUT 1 -s "$1/32" -p udp --dport "$2" -m comment --comment linux-normalized-wg -j ACCEPT
+}
+{% if inventory_hostname in chr_plain_wg_hosts %}
+permit 62.60.216.73 {{ chr_awg_original_ports[inventory_hostname] }}
+{% for peer in (['vds2','vds6'] if inventory_hostname == 'vds5' else ['vds5']) %}
+permit {{ amneziawg_endpoints[peer] }} {{ chr_awg_original_ports[inventory_hostname] }}
+{% endfor %}
+{% endif %}
+{% if amneziawg_enabled | bool %}
+{% for peer in amneziawg_peers[inventory_hostname] %}
+permit {{ amneziawg_endpoints[peer] }} {{ 56707 if inventory_hostname in chr_native_awg_hosts else 56702 }}
+{% endfor %}
+{% endif %}
+{% if inventory_hostname in chr_native_awg_hosts %}
+permit 62.60.216.73 56707
+{% endif %}
+{% if inventory_hostname in chr_native_awg_hosts or inventory_hostname in chr_plain_wg_hosts %}
+iptables -C INPUT -i {{ 'wg1' if inventory_hostname in chr_native_awg_hosts else 'wg0' }} -s 10.250.1.7/32 -p ospf -j ACCEPT 2>/dev/null ||
+ iptables -I INPUT 1 -i {{ 'wg1' if inventory_hostname in chr_native_awg_hosts else 'wg0' }} -s 10.250.1.7/32 -p ospf -j ACCEPT
+{% endif %}

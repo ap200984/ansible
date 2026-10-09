@@ -1,0 +1,86 @@
+---
+- name: Prepare consolidation without changing MikroTik interfaces
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml
+  vars:
+    ansible_become_timeout: 60
+  tasks:
+    - name: Read the preserved ordinary public identity
+      ansible.builtin.command: wg show wg0 public-key
+      register: normalized_plain_key
+      changed_when: false
+    - name: Read the future Amnezia public identity without changing CHR
+      ansible.builtin.shell: '{{ "awg show wg2 public-key 2>/dev/null || awg show wg1 public-key" if inventory_hostname in chr_native_awg_hosts else "awg show wg1 public-key" }}'
+      register: normalized_awg_key
+      changed_when: false
+      when: amneziawg_enabled | bool
+    - name: Reject duplicate Amnezia identities before modifying any interfaces
+      ansible.builtin.assert:
+        that: >-
+          [hostvars.vds1.normalized_awg_key.stdout, hostvars.vds5.normalized_awg_key.stdout,
+           hostvars.vds8.normalized_awg_key.stdout] | unique | length == 3
+        fail_msg: 'CHR identities on vds1/vds8 collide. Rotate one native AWG identity and update its CHR peer/container before consolidation.'
+      run_once: true
+    - name: Install consolidation helper and shared route owner
+      ansible.builtin.copy:
+        src: '{{ item.src }}'
+        dest: '{{ item.dest }}'
+        mode: '0700'
+      loop:
+        - {src: roles/wireguard/files/normalize-linux.py, dest: /usr/local/sbin/wireguard-normalize-linux}
+        - {src: roles/amneziawg/files/route-peers.py, dest: /usr/local/sbin/amneziawg-route-peers}
+    - name: Describe normalized public peers and address-specific OSPF
+      ansible.builtin.template:
+        src: roles/wireguard/templates/normalized-spec.json.j2
+        dest: /etc/wireguard/linux-normalized.json
+        mode: '0600'
+    - name: Validate proposed configs and retain a temporary private checkpoint
+      ansible.builtin.command: wireguard-normalize-linux prepare
+    - name: Install the ordinary route ownership service
+      ansible.builtin.copy:
+        src: roles/wireguard/files/wireguard-routing.service
+        dest: /etc/systemd/system/wireguard-routing.service
+        mode: '0644'
+      when: inventory_hostname in chr_plain_wg_hosts
+    - name: Install scoped transport permits for shared interfaces
+      ansible.builtin.template:
+        src: roles/wireguard/templates/normalized-firewall.sh.j2
+        dest: /usr/local/sbin/linux-normalized-firewall
+        mode: '0755'
+    - ansible.builtin.copy:
+        src: roles/wireguard/files/normalized-firewall.service
+        dest: /etc/systemd/system/linux-normalized-firewall.service
+        mode: '0644'
+    - name: Apply permits before replacing interfaces
+      ansible.builtin.systemd_service:
+        name: linux-normalized-firewall
+        daemon_reload: true
+        enabled: true
+        state: restarted
+
+- name: Consolidate Linux peers onto wg0 and wg1
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    ansible_become_timeout: 60
+  tasks:
+    - name: Activate the normalized interfaces and OSPF
+      ansible.builtin.command: wireguard-normalize-linux activate
+
+- ansible.builtin.import_playbook: wireguard-normalized-verify.yml
+  vars:
+    linux_wg_normalized_hosts: [vds1, vds2, vds5, vds6, vds8]
+
+- name: Remove retired Linux configs only after full verification
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Remove retired interfaces' configs and temporary checkpoints
+      ansible.builtin.command: wireguard-normalize-linux cleanup

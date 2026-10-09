@@ -1,0 +1,11 @@
+:do {
+:local t [/routing ospf interface-template find where interfaces={{ inventory_hostname }}_interface];
+:if ([:len $t] != 1) do={ :error "Expected one OSPF template" };
+/interface wireguard peers set [find where interface={{ inventory_hostname }}_interface] allowed-address={{ native_chr_allowed }},224.0.0.5/32 persistent-keepalive=0;
+/routing ospf interface-template set $t type=ptp;
+:if ([:len [/ip route find where comment="Native AWG {{ inventory_hostname }} transport"]] = 0) do={
+ /ip route add dst-address=10.250.1.{{ inventory_hostname[3:] }}/32 gateway=10.250.1.{{ inventory_hostname[3:] }}%{{ inventory_hostname }}_interface comment="Native AWG {{ inventory_hostname }} transport";
+};
+:if ([/routing ospf interface-template get $t type] != "ptp") do={ :error "OSPF cutover failed" };
+:put "NATIVE_CHR_READY";
+};

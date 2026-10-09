@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT 1 -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT
+# Only loopback WireGuard frames pass between the native tunnel and the proxy.
+iptables -C INPUT -i lo -p udp --dport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-loopback -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT 1 -i lo -p udp --dport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-loopback -j ACCEPT
+# Do not silently fall back to plain WireGuard on the converted CHR link.
+# Provisioning alone must not interrupt an unconverted link. Activate guards
+# at cutover, and persist their activation only after validation succeeds.
+if [ "${1:-}" != "--enforce" ] && [ ! -f /etc/wireguard/chr-awg-transport.enabled ]; then
+  exit 0
+fi
+iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-no-plain -j DROP 2>/dev/null ||
+  iptables -I INPUT 1 -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-no-plain -j DROP
+iptables -C OUTPUT -d {{ chr_awg_public_endpoint }}/32 -p udp --sport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-no-plain -j DROP 2>/dev/null ||
+  iptables -I OUTPUT 1 -d {{ chr_awg_public_endpoint }}/32 -p udp --sport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-no-plain -j DROP

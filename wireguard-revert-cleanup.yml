@@ -1,0 +1,89 @@
+---
+- name: Verify ordinary links before irreversible cleanup
+  hosts: vds2:vds5:vds6
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars:
+    ansible_become_timeout: 60
+  tasks:
+    - name: Verify all required ordinary OSPF adjacencies and routed destinations
+      ansible.builtin.shell: |
+        set -eu
+        test -f /etc/wireguard/plain-chr.enabled
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.7" && $3 ~ /^Full/ && $7 ~ /^wg0:/ {ok=1} END {if (!ok) exit 1}'
+        {% for neighbor in ([2,6] if inventory_hostname == 'vds5' else [5]) %}
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.{{ neighbor }}" && $3 ~ /^Full/ && $7 ~ /^{{ "wg-vds" ~ neighbor if inventory_hostname == "vds5" else "wg1" }}:/ {ok=1} END {if (!ok) exit 1}'
+        {% endfor %}
+        for dst in 10.255.0.7 10.255.0.1 10.255.0.8 10.9.0.1 10.9.1.1 10.255.0.21; do
+          ping -I 10.255.0.{{ inventory_hostname[3:] }} -c 3 -W 3 "$dst"
+        done
+      changed_when: false
+      register: verification
+      until: verification.rc == 0
+      retries: 12
+      delay: 5
+- name: Uninstall official AmneziaWG only from converted leaf hosts
+  hosts: vds2:vds6
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Purge retired AmneziaWG packages without removing unrelated packages
+      ansible.builtin.apt:
+        name: [amneziawg, amneziawg-dkms, amneziawg-tools]
+        state: absent
+        purge: true
+        autoremove: false
+- name: Remove audited obsolete configuration and device-local backups
+  hosts: vds2:vds5:vds6
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Persist the updated firewall without retired AWG hooks
+      ansible.builtin.template:
+        src: roles/ospf/templates/firewall.sh.j2
+        dest: /usr/local/sbin/ospf-firewall
+        mode: '0755'
+    - ansible.builtin.copy:
+        src: roles/wireguard/files/cleanup-awg.py
+        dest: /usr/local/sbin/wireguard-cleanup-awg
+        mode: '0700'
+    - ansible.builtin.command: 'wireguard-cleanup-awg --number {{ inventory_hostname[3:] }}'
+
+- name: Remove only the three retired CHR containers and device-local configuration backups
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - mikrotik/host_vars/vds7_CHR.yml
+  vars:
+    cleanup_ssh:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '20022'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - ControlMaster=no
+      - -o
+      - ControlPath=none
+      - -o
+      - 'ProxyCommand=ssh -p19022 -i {{ router_ssh_key | expanduser }} -oBatchMode=yes -oControlMaster=no -oControlPath=none -W %h:%p ansible@38.247.137.237'
+      - ansible@62.60.216.73
+  tasks:
+    - name: Stop the three obsolete proxy processes
+      ansible.builtin.command:
+        argv: '{{ cleanup_ssh + [lookup("template", "mikrotik/templates/chr-plain-stop.rsc.j2").splitlines() | join(" ")] }}'
+      register: stopped
+      failed_when: stopped.rc != 0 or 'RETIRED_STOPPED' not in stopped.stdout
+    - ansible.builtin.pause:
+        seconds: 5
+    - name: Delete audited retired stores, helper settings and RouterOS backups
+      ansible.builtin.command:
+        argv: '{{ cleanup_ssh + [lookup("template", "mikrotik/templates/chr-plain-cleanup.rsc.j2").splitlines() | join(" ")] }}'
+      register: cleaned
+      failed_when: cleaned.rc != 0 or 'PLAIN_WG_CLEANUP' not in cleaned.stdout

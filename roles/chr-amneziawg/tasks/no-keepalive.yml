@@ -1,0 +1,12 @@
+---
+- name: Disable keepalive only for the migrated CHR peer
+  ansible.builtin.command:
+    argv: [wg, set, wg0, peer, '{{ chr_awg_chr_keys[inventory_hostname] }}', persistent-keepalive, '0']
+  changed_when: false
+- name: Persist CHR keepalive off without changing other WireGuard peers
+  ansible.builtin.replace:
+    path: /etc/wireguard/wg0.conf
+    regexp: '(?ms)(^PublicKey[ \t]*=[ \t]*{{ chr_awg_chr_keys[inventory_hostname] | regex_escape }}[ \t]*\n(?:(?!^\[Peer\]).)*?^PersistentKeepalive[ \t]*=[ \t]*)[0-9]+'
+    replace: '\g<1>0'
+    backup: true
+  no_log: true

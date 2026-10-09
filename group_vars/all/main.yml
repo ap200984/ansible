@@ -55,9 +55,18 @@ service_docker_network:
   iprange: 172.20.240.0/20
 
 # Dedicated AmneziaWG mesh, independent of the ordinary wg0/CHR links.
-amneziawg_enabled: '{{ inventory_hostname in ["vds1", "vds2", "vds5", "vds6", "vds8"] }}'
+chr_native_awg_hosts: [vds1, vds8]
+linux_wg_normalized_hosts: [] # Consolidation rolled back; CHR identities collide.
+amneziawg_host_ports: {vds1: 56702, vds5: 56702, vds8: 56702}
+normalized_chr_public_keys:
+  vds1: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
+  vds8: WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=
+chr_plain_wg_hosts: [vds2, vds5, vds6]
+plain_wg_mesh_leaf_hosts: [vds2, vds6]
+chr_amneziawg_transport_enabled: false
+amneziawg_enabled: '{{ inventory_hostname in ["vds1", "vds5", "vds8"] }}'
 amneziawg_interface: wg1
-amneziawg_port: 56702
+amneziawg_port: '{{ amneziawg_host_ports.get(inventory_hostname, 56702) }}'
 amneziawg_mtu: 1340
 amneziawg_ospf_cost: 200
 # Break CHR↔vds8's equal-cost paths through vds1/vds5 on both ends.
@@ -69,9 +78,7 @@ ospf_wireguard_costs:
   vds8: 30000
 amneziawg_peers:
   vds1: [vds5, vds8]
-  vds2: [vds5]
-  vds5: [vds1, vds2, vds6, vds8]
-  vds6: [vds5]
+  vds5: [vds1, vds8]
   vds8: [vds5, vds1]
 amneziawg_endpoints:
   vds1: 45.141.102.72

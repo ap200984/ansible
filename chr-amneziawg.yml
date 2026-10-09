@@ -1,0 +1,95 @@
+---
+- name: Prepare the C proxy backend without changing tunnel addressing
+  hosts: '{{ chr_awg_targets | default(["vds1"]) | join(":") }}'
+  become: true
+  gather_facts: false
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml
+  tasks:
+    - name: Do not reinstall a C proxy over a migrated native kernel link
+      ansible.builtin.assert:
+        that: inventory_hostname not in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([])))
+        fail_msg: 'Use chr-amneziawg-native.yml; this host has migrated to native AWG.'
+    - name: Back up VPN, routing and firewall configuration before migration
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        mkdir -p /root/before-chr-awg-20261005
+        cp -an /etc/wireguard /etc/amnezia /etc/frr /root/before-chr-awg-20261005/
+        test -f /root/before-chr-awg-20261005/iptables.v4 || iptables-save > /root/before-chr-awg-20261005/iptables.v4
+      changed_when: false
+    - name: Inspect native WireGuard public identity
+      ansible.builtin.command: wg show wg0 public-key
+      register: chr_awg_linux_key
+      changed_when: false
+    - name: Inspect native WireGuard local UDP port
+      ansible.builtin.command: wg show wg0 listen-port
+      register: chr_awg_wg_port
+      changed_when: false
+    - name: Verify the existing CHR peer identity
+      ansible.builtin.command: wg show wg0 peers
+      register: chr_awg_linux_peers
+      changed_when: false
+      failed_when: chr_awg_chr_keys[inventory_hostname] not in chr_awg_linux_peers.stdout_lines
+    - name: Install the pinned upstream C binary
+      ansible.builtin.get_url:
+        url: 'https://github.com/timbrs/amneziawg-mikrotik-c/releases/download/{{ chr_awg_release }}/awg-proxy-linux-amd64'
+        dest: /usr/local/bin/chr-awg-proxy
+        checksum: 'sha256:{{ chr_awg_binary_sha256 }}'
+        mode: '0755'
+      register: chr_awg_binary
+    - name: Install a transport firewall for the CHR proxy
+      ansible.builtin.template:
+        src: roles/chr-amneziawg/templates/firewall.sh.j2
+        dest: /usr/local/sbin/chr-awg-firewall
+        mode: '0755'
+      register: chr_awg_firewall
+    - name: Install proxy service
+      ansible.builtin.template:
+        src: roles/chr-amneziawg/templates/chr-awg-proxy.service.j2
+        dest: /etc/systemd/system/chr-awg-proxy.service
+        mode: '0644'
+      register: chr_awg_unit
+    - name: Start the proxy without interrupting native WireGuard
+      ansible.builtin.systemd_service:
+        name: chr-awg-proxy
+        daemon_reload: true
+        enabled: true
+        state: '{{ "restarted" if chr_awg_binary.changed or chr_awg_unit.changed or chr_awg_firewall.changed else "started" }}'
+    - ansible.builtin.include_tasks: roles/chr-amneziawg/tasks/no-keepalive.yml
+- name: Migrate CHR peers sequentially with validation and rollback
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/all/main.yml
+    - mikrotik/host_vars/vds7_CHR.yml
+    - mikrotik/vars/chr-amneziawg.yml
+  tasks:
+    - name: Download the pinned amd64 container image
+      ansible.builtin.get_url:
+        url: 'https://github.com/timbrs/amneziawg-mikrotik-c/releases/download/{{ chr_awg_release }}/awg-proxy-amd64.tar.gz'
+        dest: '/private/tmp/chr-awg-proxy-{{ chr_awg_release }}-amd64.tar.gz'
+        checksum: 'sha256:{{ chr_awg_image_sha256 }}'
+        mode: '0600'
+    - name: Copy the verified image to CHR
+      ansible.builtin.command:
+        argv:
+          - scp
+          - -O
+          - -i
+          - '{{ router_ssh_key | expanduser }}'
+          - -P
+          - '{{ router_port | string }}'
+          - -o
+          - BatchMode=yes
+          - -o
+          - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+          - '/private/tmp/chr-awg-proxy-{{ chr_awg_release }}-amd64.tar.gz'
+          - '{{ router_user }}@{{ router_host }}:chr-awg-proxy-{{ chr_awg_release }}-amd64.tar.gz'
+      changed_when: false
+    - name: Migrate and verify each requested peer
+      ansible.builtin.include_tasks: mikrotik/chr-amneziawg-peer.yml
+      loop: '{{ chr_awg_targets | default(["vds1"]) }}'
+      loop_control:
+        loop_var: chr_awg_peer

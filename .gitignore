@@ -1,2 +1,4 @@
 secrets/
 collections/
+.local-backups/
+__pycache__/

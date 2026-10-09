@@ -1,0 +1,29 @@
+---
+- name: Verify the deliberately ordinary WireGuard CHR and mesh links
+  hosts: vds2:vds5:vds6
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check persisted interfaces, keepalive, OSPF, routing and package state
+      ansible.builtin.shell: |
+        set -eu
+        test -f /etc/wireguard/plain-chr.enabled
+        {% for interface in (['wg0','wg-vds2','wg-vds6'] if inventory_hostname == 'vds5' else ['wg0','wg1']) %}
+        systemctl is-active wg-quick@{{ interface }}
+        systemctl is-enabled wg-quick@{{ interface }}
+        wg show {{ interface }} persistent-keepalive | awk '$2 != "off" && $2 != "0" {exit 1}'
+        {% endfor %}
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.7" && $3 ~ /^Full/ && $7 ~ /^wg0:/ {ok=1} END {if (!ok) exit 1}'
+        {% for peer in ([2,6] if inventory_hostname == 'vds5' else [5]) %}
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.{{ peer }}" && $3 ~ /^Full/ && $7 ~ /^{{ "wg-vds" ~ peer if inventory_hostname == "vds5" else "wg1" }}:/ {ok=1} END {if (!ok) exit 1}'
+        {% endfor %}
+        {% if inventory_hostname != 'vds5' %}
+        ! command -v awg
+        {% endif %}
+        iptables -t nat -C POSTROUTING -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT
+        for dst in 10.255.0.7 10.255.0.1 10.255.0.8 10.9.0.1 10.9.1.1 10.255.0.21; do
+          ping -I 10.255.0.{{ inventory_hostname[3:] }} -c 3 -W 3 "$dst"
+        done
+        ip route get 10.255.0.21
+      changed_when: false
+      when: inventory_hostname not in (linux_wg_normalized_hosts | default([]))

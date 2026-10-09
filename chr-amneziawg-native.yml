@@ -1,0 +1,251 @@
+---
+- name: Replace Linux C proxies with the official native AmneziaWG module
+  hosts: '{{ chr_native_targets | default(["vds8", "vds1"]) | join(":") }}'
+  serial: 1
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml
+    - mikrotik/host_vars/vds7_CHR.yml
+  vars:
+    ospf_interface: wg0
+    ospf_transport: '10.250.1.{{ inventory_hostname[3:] }}'
+    ospf_router_id: '10.255.0.{{ inventory_hostname[3:] }}'
+    ospf_cost: '{{ ospf_wireguard_costs[inventory_hostname] }}'
+    ospf_neighbors: '{{ ["10.250.1.112", "10.250.1.64", "10.250.1.21", "10.250.1.24"] if inventory_hostname in ["vds1", "vds8"] else [] }}'
+    chr_native_this_host: true
+    chr_native_backup: /root/before-chr-native-awg-20261005
+    ansible_become_timeout: 60
+    chr_native_ssh:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - ControlMaster=no
+      - -o
+      - ControlPath=none
+      - -o
+      - 'ProxyCommand=ssh -p19022 -i {{ router_ssh_key | expanduser }} -oBatchMode=yes -oControlMaster=no -oControlPath=none -W %h:%p ansible@38.247.137.237'
+      - '{{ router_user }}@{{ chr_awg_public_endpoint }}'
+  tasks:
+    - name: Protect deliberately ordinary WireGuard links from reconversion
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname not in (chr_plain_wg_hosts | default([]))
+          - inventory_hostname not in (linux_wg_normalized_hosts | default([]))
+        fail_msg: 'This legacy wg2 migration is retired; use wireguard-normalize-linux.yml.'
+    - name: Confirm the existing official module is running
+      ansible.builtin.command: awg show wg1 public-key
+      changed_when: false
+    - name: Inspect completed native migration marker
+      ansible.builtin.stat:
+        path: /etc/amnezia/amneziawg/chr-native.enabled
+      register: native_marker
+    - name: Preserve private VPN, routing, service and firewall rollback state
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        mkdir -p {{ chr_native_backup }}
+        cp -an /etc/wireguard /etc/amnezia /etc/frr {{ chr_native_backup }}/
+        cp -an /etc/systemd/system/chr-awg-proxy.service /usr/local/sbin/chr-awg-firewall /usr/local/bin/chr-awg-proxy {{ chr_native_backup }}/
+        test -f {{ chr_native_backup }}/iptables.v4 || iptables-save > {{ chr_native_backup }}/iptables.v4
+      when: not native_marker.stat.exists
+      changed_when: false
+    - name: Check independent CHR management and retain pre-native checkpoint
+      ansible.builtin.command:
+        argv: '{{ chr_native_ssh + [lookup("template", "mikrotik/templates/chr-native-checkpoint.rsc.j2").splitlines() | join(" ")] }}'
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+      register: chr_native_checkpoint
+      failed_when: chr_native_checkpoint.rc != 0 or 'NATIVE_BACKUP_READY' not in chr_native_checkpoint.stdout
+      changed_when: false
+    - name: Install the private local migration helper
+      ansible.builtin.copy:
+        src: roles/chr-amneziawg/files/native-migrate.py
+        dest: /usr/local/sbin/chr-native-awg-migrate
+        mode: '0700'
+    - name: Install the read-only native verification helper
+      ansible.builtin.copy:
+        src: roles/chr-amneziawg/files/native-verify.sh
+        dest: /usr/local/sbin/chr-native-awg-verify
+        mode: '0755'
+    - name: Capture this CHR peer's exact original permissions for rollback
+      ansible.builtin.command:
+        argv: '{{ chr_native_ssh + [":put [:serialize to=json [/interface wireguard peers print as-value where interface=" + inventory_hostname + "_interface]]"] }}'
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+      register: native_original_peer
+      changed_when: false
+      no_log: true
+    - name: Retain the exact original address list without private-key output
+      ansible.builtin.set_fact:
+        native_chr_allowed: '{{ (native_original_peer.stdout | from_json | first)["allowed-address"] | join(",") if (native_original_peer.stdout | from_json | first)["allowed-address"] is not string else (native_original_peer.stdout | from_json | first)["allowed-address"] }}'
+      no_log: true
+    - name: Install the native transport firewall
+      ansible.builtin.template:
+        src: roles/chr-amneziawg/templates/native-firewall.sh.j2
+        dest: /usr/local/sbin/chr-native-awg-firewall
+        mode: '0755'
+    - name: Persist the native transport firewall service
+      ansible.builtin.template:
+        src: roles/chr-amneziawg/templates/native-firewall.service.j2
+        dest: /etc/systemd/system/chr-native-awg-firewall.service
+        mode: '0644'
+    - name: Apply the native scoped firewall
+      ansible.builtin.systemd_service:
+        name: chr-native-awg-firewall
+        daemon_reload: true
+        enabled: true
+        state: restarted
+    - name: Migrate and verify with automatic rollback
+      when: not native_marker.stat.exists
+      block:
+        - name: Move only the CHR identity and peer to the official AWG interface
+          ansible.builtin.command: 'chr-native-awg-migrate --peer {{ chr_awg_chr_keys[inventory_hostname] }} --number {{ inventory_hostname[3:] }}'
+          no_log: true
+        - name: Release the public UDP socket held by the C proxy
+          ansible.builtin.systemd_service:
+            name: chr-awg-proxy
+            state: stopped
+            enabled: false
+        - name: Start the native kernel link
+          ansible.builtin.systemd_service:
+            name: awg-quick@wg2
+            state: started
+            enabled: true
+        - name: Enable multicast OSPF on only the dedicated CHR peer
+          ansible.builtin.command:
+            argv: '{{ chr_native_ssh + [lookup("template", "mikrotik/templates/chr-native-cutover.rsc.j2").splitlines() | join(" ")] }}'
+          delegate_to: localhost
+          become: false
+          vars:
+            ansible_connection: local
+          register: chr_native_router
+          failed_when: chr_native_router.rc != 0 or 'NATIVE_CHR_READY' not in chr_native_router.stdout
+        - name: Bind CHR OSPF to the dedicated point-to-point AWG interface
+          ansible.builtin.template:
+            src: roles/ospf/templates/frr.conf.j2
+            dest: /etc/frr/frr.conf
+            owner: frr
+            group: frr
+            mode: '0640'
+            validate: /usr/bin/vtysh -C -f %s
+        - name: Apply updated OSPF interfaces
+          ansible.builtin.systemd_service:
+            name: frr
+            state: restarted
+        - name: Wait for the native authenticated transport and routing
+          ansible.builtin.command:
+            argv:
+              - ssh
+              - -i
+              - '{{ router_ssh_key | expanduser }}'
+              - -p
+              - '19022'
+              - -o
+              - BatchMode=yes
+              - -o
+              - ConnectTimeout=10
+              - -o
+              - ControlMaster=no
+              - -o
+              - ControlPath=none
+              - 'ansible@{{ ansible_host }}'
+              - 'sudo /usr/local/sbin/chr-native-awg-verify {{ inventory_hostname[3:] }}'
+          delegate_to: localhost
+          become: false
+          vars:
+            ansible_connection: local
+          register: native_neighbor
+          changed_when: false
+          until: native_neighbor.rc == 0
+          retries: 18
+          delay: 5
+        - name: Record successful native migration
+          ansible.builtin.copy:
+            content: 'Official kernel AmneziaWG on wg2; CHR C container retained.\n'
+            dest: /etc/amnezia/amneziawg/chr-native.enabled
+            mode: '0600'
+      rescue:
+        - name: Stop the failed native link
+          ansible.builtin.systemd_service:
+            name: awg-quick@wg2
+            state: stopped
+            enabled: false
+        - name: Restore only original VPN, FRR and firewall state
+          ansible.builtin.shell: |
+            set -eu
+            cp {{ chr_native_backup }}/wireguard/wg0.conf /etc/wireguard/wg0.conf
+            cp {{ chr_native_backup }}/frr/frr.conf /etc/frr/frr.conf
+            wg syncconf wg0 <(wg-quick strip wg0)
+            ip route replace 10.250.1.7/32 dev wg0 src {{ ospf_transport }}
+            iptables-restore < {{ chr_native_backup }}/iptables.v4
+            systemctl restart frr
+            systemctl enable --now chr-awg-proxy
+          args:
+            executable: /bin/bash
+          no_log: true
+        - name: Restore only the CHR link network type
+          ansible.builtin.command:
+            argv: '{{ chr_native_ssh + [lookup("template", "mikrotik/templates/chr-native-rollback.rsc.j2").splitlines() | join(" ")] }}'
+          delegate_to: localhost
+          become: false
+          vars:
+            ansible_connection: local
+        - name: Disable the failed native firewall startup
+          ansible.builtin.systemd_service:
+            name: chr-native-awg-firewall
+            enabled: false
+            state: stopped
+        - ansible.builtin.fail:
+            msg: 'Native CHR migration failed; original Linux C proxy restored. No further hosts migrated.'
+    - name: Remove superseded C-proxy firewall rules
+      ansible.builtin.shell: |
+        set -eu
+        while iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport 56707 -m comment --comment chr-awg-proxy -j ACCEPT 2>/dev/null; do
+          iptables -D INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport 56707 -m comment --comment chr-awg-proxy -j ACCEPT
+        done
+        while iptables -C INPUT -i lo -p udp --dport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-loopback -j ACCEPT 2>/dev/null; do
+          iptables -D INPUT -i lo -p udp --dport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-loopback -j ACCEPT
+        done
+        while iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-no-plain -j DROP 2>/dev/null; do
+          iptables -D INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-no-plain -j DROP
+        done
+        while iptables -C OUTPUT -d {{ chr_awg_public_endpoint }}/32 -p udp --sport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-no-plain -j DROP 2>/dev/null; do
+          iptables -D OUTPUT -d {{ chr_awg_public_endpoint }}/32 -p udp --sport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-no-plain -j DROP
+        done
+        iptables-save > /etc/iptables/rules.v4
+      changed_when: false
+    - name: Remove only superseded duplicate transport pins after validation
+      ansible.builtin.command:
+        argv: '{{ chr_native_ssh + [lookup("template", "mikrotik/templates/chr-native-cleanup.rsc.j2").splitlines() | join(" ")] }}'
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+      register: native_route_cleanup
+      failed_when: native_route_cleanup.rc != 0 or 'NATIVE_ROUTES_CLEAN' not in native_route_cleanup.stdout
+      changed_when: false
+    - name: Remove the backed-up C-proxy service, binary, helper and marker
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: absent
+      loop:
+        - /etc/systemd/system/chr-awg-proxy.service
+        - /usr/local/bin/chr-awg-proxy
+        - /usr/local/sbin/chr-awg-firewall
+        - /etc/wireguard/chr-awg-transport.enabled
+    - name: Reload service definitions after removing the proxy
+      ansible.builtin.systemd_service:
+        daemon_reload: true

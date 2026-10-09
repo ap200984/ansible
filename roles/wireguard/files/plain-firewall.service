@@ -1,0 +1,12 @@
+[Unit]
+Description=Scoped ordinary WireGuard transport firewall
+After=network-online.target ospf-firewall.service
+Before=wg-quick@wg0.service wg-quick@wg1.service wg-quick@wg-vds2.service wg-quick@wg-vds6.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/plain-wireguard-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

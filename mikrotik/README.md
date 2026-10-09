@@ -1,6 +1,52 @@
 # MikroTik configuration
 
+Linux-only `wg0`/`wg1` consolidation was safely rolled back because the
+vds1/vds8 CHR identities collide. See
+[normalization status](topology/linux-interface-normalization-status.md).
+Completing it requires approval for a matching peer-key update on vds7;
+its interface layout need not change.
+
+Selective rollback on 2026-10-05: CHR↔vds2/vds5/vds6 and
+vds5↔vds2/vds6 now use ordinary WireGuard. AmneziaWG packages were
+removed from vds2/vds6; CHR retains only `awg-vds1` and `awg-vds8`.
+Linux vds2/vds6 use `wg0` to CHR and `wg1` to vds5. vds5 retains
+AWG `wg1` to vds1/vds8, with ordinary `wg-vds2`/`wg-vds6` mesh links.
+Addresses, costs, MTU 1340 and keepalive-off policy are unchanged.
+`wireguard-revert.yml` records the one-time cutover; do not rerun it after
+package removal. `wireguard-plain-verify.yml` checks the converted links.
+Requested VPN/routing backups on vds2/vds5/vds6 and CHR were deleted;
+ignored workstation copies remain available. The following native migration
+notes describe the earlier rollout; native CHR deployment now targets only
+vds1/vds8 and mesh AWG deployment targets vds1/vds5/vds8.
+
 Current tunnel drawing: [2026-10-05 topology](topology/current-tunnels.md).
+Native Linux AWG rollout and backup notes:
+[migration status](topology/chr-native-migration-status.md).
+
+`chr-amneziawg-native.yml` replaces Linux C-proxy services with the official
+AmneziaWG kernel module on a dedicated `wg2`. CHR retains its five C-proxy
+containers, which connect directly to native AWG UDP 56707 on Linux. Existing
+keys, `10.250.1.N/24` addresses and OSPF costs are preserved. Linux `wg0`
+retains ordinary site peers; the independent native `wg1` mesh is unchanged.
+The CHR peer exists only on `wg2`, with keepalive disabled and `Table = off`.
+Each dedicated CHR link uses point-to-point OSPF, multicast `224.0.0.5/32`,
+MTU 1340 and hello/dead 60/240 seconds. A CHR transport host route pins
+each `10.250.1.N/32` to its own VDS interface. The preserved Linux source
+address is also present on wg0; interface-bound OSPF and explicit bootstrap
+routes separate the ordinary site and native CHR transports.
+
+Run with all five VDS inventories. Each serial cutover verifies native
+handshake, OSPF and routed LAN access before removing Linux proxy files.
+`chr-amneziawg-native-verify.yml` verifies migrated native hosts;
+`chr-amneziawg-verify.yml` dispatches native checks plus any remaining legacy
+C-proxy hosts. `chr_native_awg_hosts` records successfully migrated hosts and
+protects them from old C-proxy redeployment. CHR management uses its public
+address through an independent vds2 SSH jump. Keep private Linux backups under
+`/root/before-chr-native-awg-20261005/` and ignored off-router CHR backups in
+`.local-backups/chr-20261005/`. The old `chr-amneziawg.yml` documents the
+superseded C-proxy-on-both-ends rollout and must not be used on native hosts.
+The older captured full-router snapshots predate this migration; do not
+reapply them expecting to preserve the new containers and peer endpoints.
 `network-policy.yml` at the repository root enforces routed `10/8` traffic
 without source NAT and WAN-only host/router masquerading. See the drawing's
 NAT notes for preserved container rules and the LAN hairpin change.
@@ -16,11 +62,12 @@ iptables role also persists the shared ipset alongside `trusted_hosts`.
 
 FRR participates on vds1, vds2, vds5, vds6 and vds8. Each uses
 `10.250.1.<VDS number>/24` and a passive `10.255.0.<VDS number>/32` loopback.
-All five use `wg0` for ordinary WireGuard; vds5's former ordinary `wg1`
+All five retain ordinary `wg0`; migrated CHR peers use native AWG `wg2`,
+while ordinary site peers stay unchanged. vds5's former ordinary `wg1`
 configuration is archived. New AmneziaWG uses a separate `wg1` interface on
 vds1/vds2/vds5/vds6/vds8; run root `amneziawg.yml` for its installation and
-OSPF configuration. On ordinary WireGuard, vds2/vds5/vds6 have one unicast
-neighbor, vds7. `Table = off` leaves destination routes to OSPF while
+OSPF configuration. After native migration vds2/vds5/vds6 have no ordinary
+wg0 peer: their CHR neighbor is on wg2. `Table = off` leaves destination routes to OSPF while
 connected/explicit transport routes bootstrap the neighbors.
 Older distribution packages are upgraded from the signed official FRRouting
 repository, using the `frr-10.4` release train. FRR configurations are syntax

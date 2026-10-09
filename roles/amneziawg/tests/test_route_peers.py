@@ -54,6 +54,17 @@ class RouteOwnershipTests(unittest.TestCase):
             {'dst': '10.9.0.0/24', 'gateway': '10.250.2.99'}])
         self.assertEqual(sum(map(len, result.values())), 4)
 
+    def test_custom_mesh_suffix_does_not_change_router_loopback(self):
+        result = routes.desired_prefixes({'10.250.2.130': 'key2'}, [],
+                                         {'10.250.2.130': '10.255.0.2/32'})
+        self.assertIn('10.255.0.2/32', result['key2'])
+        self.assertNotIn('10.255.0.130/32', result['key2'])
+
+    def test_chr_multicast_permission_survives_reconciliation(self):
+        result = routes.desired_prefixes({'10.250.1.7': 'key7'}, [],
+                                         fixed={'10.250.1.7': ['224.0.0.5/32']})
+        self.assertIn('224.0.0.5/32', result['key7'])
+
 
 if __name__ == '__main__':
     unittest.main()

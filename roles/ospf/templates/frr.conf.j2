@@ -1,3 +1,6 @@
+{% if inventory_hostname in (linux_wg_normalized_hosts | default([])) %}
+{% include 'roles/wireguard/templates/normalized-frr.conf.j2' %}
+{% else %}
 ! Managed OSPF on existing WireGuard
 frr defaults traditional
 hostname {{ inventory_hostname }}
@@ -7,7 +10,7 @@ interface lo
 !
 interface {{ ospf_interface }}
  ip ospf area 0.0.0.0 {{ ospf_transport }}
- ip ospf network point-to-multipoint non-broadcast
+ ip ospf network {{ 'point-to-point' if inventory_hostname in (chr_plain_wg_hosts | default([])) else 'point-to-multipoint non-broadcast' }}
  ip ospf cost {{ ospf_cost }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
@@ -21,12 +24,32 @@ interface {{ amneziawg_interface }}
  ip ospf dead-interval 240
 !
 {% endif %}
+{% for name in (['wg-vds2', 'wg-vds6'] if inventory_hostname == 'vds5' else ['wg1'] if inventory_hostname in (plain_wg_mesh_leaf_hosts | default([])) else []) %}
+interface {{ name }}
+ ip ospf area 0.0.0.0 10.250.2.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-point
+ ip ospf cost 200
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+!
+{% endfor %}
+{% if chr_native_this_host | default(false) | bool or inventory_hostname in (chr_native_awg_hosts | default([])) %}
+interface wg2
+ ip ospf area 0.0.0.0 10.250.1.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-point
+ ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+!
+{% endif %}
 router ospf
  ospf router-id {{ ospf_router_id }}
  maximum-paths 1
  passive-interface lo
 {% for peer in ospf_neighbors %}
+{% if peer != '10.250.1.7' or not (chr_native_this_host | default(false) | bool or inventory_hostname in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([])))) %}
  neighbor {{ peer }} poll-interval 60
+{% endif %}
 {% endfor %}
 {% if amneziawg_enabled | default(false) | bool %}
 {% for peer in amneziawg_peers[inventory_hostname] %}
@@ -34,3 +57,4 @@ router ospf
 {% endfor %}
 {% endif %}
 !
+{% endif %}

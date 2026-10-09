@@ -13,6 +13,9 @@
       /routing ospf interface-template set $passiveTemplate disabled=yes;
       {% endif %}
       {% for link in ospf_router.wg_links %}
+      {% set native_link = ospf_router.identity == 'vds7_CHR' and link.interface.replace('_interface', '') in (chr_native_awg_hosts | default([])) %}
+      {% set plain_link = ospf_router.identity == 'vds7_CHR' and link.interface.replace('_interface', '') in (chr_plain_wg_hosts | default([])) %}
+      {% set ptp_link = native_link or plain_link %}
       :local a{{ loop.index }} [/ip address find where interface="{{ link.interface }}"];
       :if ([:len $a{{ loop.index }}] != 1) do={:error "Expected one existing WireGuard address"};
       :local addr{{ loop.index }} [/ip address get $a{{ loop.index }} address];
@@ -21,16 +24,21 @@
       :local t{{ loop.index }} [/routing ospf interface-template find where comment="OSPF existing {{ link.interface }}"];
       :if ([:len $t{{ loop.index }}] > 1) do={:error "Ambiguous WireGuard OSPF template"};
       :if ([:len $t{{ loop.index }}] = 0) do={/routing ospf interface-template add comment="OSPF existing {{ link.interface }}"
-      interfaces={{ link.interface }} area=tunnel-backbone type=ptmp cost={{ link.cost }} hello-interval=1m dead-interval=4m use-bfd=no disabled=no}
+      interfaces={{ link.interface }} area=tunnel-backbone type={{ 'ptp' if ptp_link else 'ptmp' }} cost={{ link.cost }} hello-interval=1m dead-interval=4m use-bfd=no disabled=no}
       else={/routing ospf interface-template set $t{{ loop.index }} !passive !networks
-      interfaces={{ link.interface }} area=tunnel-backbone type=ptmp cost={{ link.cost }} hello-interval=1m dead-interval=4m use-bfd=no disabled=no};
+      interfaces={{ link.interface }} area=tunnel-backbone type={{ 'ptp' if ptp_link else 'ptmp' }} cost={{ link.cost }} hello-interval=1m dead-interval=4m use-bfd=no disabled=no};
       :local n{{ loop.index }} [/routing ospf static-neighbor find where address="{{ link.remote }}%{{ link.interface }}"];
       :if ([:len $n{{ loop.index }}] > 1) do={:error "Ambiguous WireGuard OSPF neighbor"};
       :if ([:len $n{{ loop.index }}] = 0) do={/routing ospf static-neighbor add address="{{ link.remote }}%{{ link.interface }}"
       area=tunnel-backbone poll-interval=1m disabled=no}
       else={/routing ospf static-neighbor set $n{{ loop.index }} area=tunnel-backbone poll-interval=1m disabled=no};
+      {% if ptp_link %}
+      :if ([:len [/ip route find where comment="{{ 'Native AWG' if native_link else 'WireGuard' }} {{ link.interface.replace('_interface', '') }} transport"]] = 0)
+      do={/ip route add dst-address={{ link.remote }}/32 gateway={{ link.remote }}%{{ link.interface }} comment="{{ 'Native AWG' if native_link else 'WireGuard' }} {{ link.interface.replace('_interface', '') }} transport"};
+      {% else %}
       :if ([:len [/ip route find where dst-address="{{ link.remote }}/32" and gateway="{{ link.interface }}"]] = 0)
       do={/ip route add dst-address={{ link.remote }}/32 gateway={{ link.interface }} comment="OSPF WireGuard transport {{ link.interface }}"};
+      {% endif %}
       {% endfor %}
       :put "WIREGUARD_OSPF_ENABLED"
   ansible.builtin.command:

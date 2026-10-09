@@ -1,0 +1,10 @@
+:do {
+:local p [/interface wireguard peers find where interface="{{ chr_awg_peer }}_interface"];
+:if ([:len $p] != 1) do={:error "Expected one tunnel peer"};
+/interface wireguard set [find where name="{{ chr_awg_peer }}_interface"] mtu={{ chr_awg_mtu }};
+/interface wireguard peers set $p disabled=yes;
+/interface wireguard peers set $p endpoint-address={{ chr_awg_container_ip }} endpoint-port={{ chr_awg_local_port }} persistent-keepalive=0 disabled=no;
+:if ([:tostr [/interface wireguard peers get $p endpoint-address]] != "{{ chr_awg_container_ip }}") do={:error "Proxy endpoint was not applied"};
+:if ([/interface wireguard peers get $p endpoint-port] != {{ chr_awg_local_port }}) do={:error "Proxy port was not applied"};
+:put "AWG_CUTOVER";
+} on-error={:error "AWG cutover failed"};

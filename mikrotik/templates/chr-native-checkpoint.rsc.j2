@@ -1,0 +1,3 @@
+:if ([:len [/file find where name="before-native-awg-20261005.backup"]] = 0) do={ /system backup save name=before-native-awg-20261005 };
+:if ([:len [/file find where name="before-native-awg-20261005.rsc"]] = 0) do={ /export file=before-native-awg-20261005 };
+:put "NATIVE_BACKUP_READY";

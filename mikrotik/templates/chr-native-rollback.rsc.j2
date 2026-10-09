@@ -1,0 +1,6 @@
+/ip route remove [find where comment="Native AWG {{ inventory_hostname }} transport"];
+/interface wireguard peers set [find where interface={{ inventory_hostname }}_interface] allowed-address={{ native_chr_allowed }} persistent-keepalive=0;
+/routing ospf interface-template set [find where interfaces={{ inventory_hostname }}_interface] type=ptmp;
+/interface wireguard peers disable [find where interface={{ inventory_hostname }}_interface];
+/interface wireguard peers enable [find where interface={{ inventory_hostname }}_interface];
+:put "NATIVE_ROLLBACK";

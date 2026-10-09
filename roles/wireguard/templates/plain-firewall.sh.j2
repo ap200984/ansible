@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+permit() {
+  iptables -C INPUT -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT
+}
+permit 62.60.216.73 {{ chr_awg_original_ports[inventory_hostname] }}
+{% if inventory_hostname == 'vds5' %}
+permit 38.247.137.237 56712
+permit 195.245.239.82 56716
+{% else %}
+permit 217.144.189.206 56702
+{% endif %}

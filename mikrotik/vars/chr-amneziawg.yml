@@ -1,0 +1,30 @@
+---
+# C proxy changes UDP framing only. Existing wg0 addresses/costs stay intact;
+# the independently deployed wg1 kernel AmneziaWG mesh remains unchanged.
+chr_awg_release: v1.4.2
+chr_awg_binary_sha256: be8b9125eb258a0833a4a2d83306d4556fe5d8c3799897575cb5abb6e2767d3f
+chr_awg_image_sha256: 6c4f8929b5e6b3c89094f761fe9fc089294d8a35019f8cff07ee7884b5902b5e
+chr_awg_public_endpoint: 62.60.216.73
+# Public management bypasses the very vds1 tunnel being migrated.
+router_host: '{{ chr_awg_public_endpoint }}'
+chr_awg_port: 56707
+chr_awg_local_port: 51820
+chr_awg_mtu: 1340
+chr_awg_chr_keys:
+  vds1: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
+  vds2: av7eQozol6pfxpvssX76FB7Omc0Dp1anKr4JC9GpZSg=
+  vds5: xC+UM4Y6WxSwIq5C7Sq5rnOatQPSj+qDNIN2SOD2gz0=
+  vds6: UXPiRL2G6vovV1i838Z69J0bNBsUoXWTznsQ5+bNXHY=
+  vds8: WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=
+chr_awg_original_ports:
+  vds1: 56685
+  vds2: 56698
+  vds5: 56695
+  vds6: 56696
+  vds8: 56699
+chr_awg_chr_ports:
+  vds1: 56697
+  vds2: 56698
+  vds5: 56695
+  vds6: 56696
+  vds8: 56699

@@ -1,0 +1,30 @@
+---
+- ansible.builtin.import_playbook: chr-amneziawg-native-verify.yml
+- ansible.builtin.import_playbook: wireguard-plain-verify.yml
+- ansible.builtin.import_playbook: wireguard-normalized-verify.yml
+- name: Verify all Linux CHR C proxy transports and the routed fabric
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml
+  tasks:
+    - name: Verify proxy persistence, authenticated endpoint, OSPF and reachability
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active chr-awg-proxy
+        systemctl is-enabled chr-awg-proxy
+        test -f /etc/wireguard/chr-awg-transport.enabled
+        wg show wg0 endpoints | awk '$1 == "{{ chr_awg_chr_keys[inventory_hostname] }}" {if ($2 !~ /^127\.0\.0\.1:/) exit 1; found=1} END {if (!found) exit 1}'
+        wg show wg0 persistent-keepalive | awk '$1 == "{{ chr_awg_chr_keys[inventory_hostname] }}" {if ($2 != "off") exit 1; found=1} END {if (!found) exit 1}'
+        iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-no-plain -j DROP
+        iptables -C OUTPUT -d {{ chr_awg_public_endpoint }}/32 -p udp --sport {{ chr_awg_original_ports[inventory_hostname] }} -m comment --comment chr-awg-no-plain -j DROP
+        iptables -t nat -C POSTROUTING -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT
+        ping -I wg0 -c 5 -W 3 10.250.1.7
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.7" && $3 ~ /^Full/ {found=1} END {if (!found) exit 1}'
+        for destination in 10.255.0.7 10.9.0.1 10.9.1.1 10.255.0.21 10.255.0.64; do
+          ping -I 10.255.0.{{ inventory_hostname[3:] }} -c 3 -W 3 "$destination"
+        done
+        ip route get 10.255.0.21 from 10.255.0.{{ inventory_hostname[3:] }}
+      changed_when: false
+      when: inventory_hostname not in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([])))

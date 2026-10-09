@@ -37,7 +37,14 @@
       :foreach peer in=[/interface wireguard peers find] do={
       :local iface [/interface wireguard peers get $peer interface];
       :if ([:len [/interface wireguard peers find where interface=$iface]] = 1) do={
+      {% for native_host in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([]))) if router_variables | basename == 'vds7_CHR.yml' %}
+      :if ($iface = "{{ native_host }}_interface") do={
+       /interface wireguard peers set $peer allowed-address={{ (tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16', '224.0.0.5/32']) | join(',') }} else={
+      {% endfor %}
       /interface wireguard peers set $peer allowed-address={{ (tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16']) | join(',') }};
+      {% for native_host in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([]))) if router_variables | basename == 'vds7_CHR.yml' %}
+      };
+      {% endfor %}
       } else={:error "Shared WireGuard interface needs explicit peer destination ownership"}};
       :put "TUNNEL_NETWORKS_CONFIGURED"
   register: permissions

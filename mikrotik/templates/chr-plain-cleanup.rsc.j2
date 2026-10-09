@@ -1,0 +1,18 @@
+:do {
+{% for n in [2,5,6] %}
+:local c{{ n }} [/container find where name="awg-vds{{ n }}"];
+:if ([:len $c{{ n }}] != 0) do={/container remove $c{{ n }}};
+/ip firewall filter remove [find where comment="AWG proxy vds{{ n }} local"];
+/ip firewall filter remove [find where comment="AWG proxy vds{{ n }} uplink"];
+/ip address remove [find where interface="veth-awg-vds{{ n }}"];
+/interface veth remove [find where name="veth-awg-vds{{ n }}"];
+/container envs remove [find where list="awg-vds{{ n }}"];
+:local f{{ n }} [/file find where name="awg-vds{{ n }}"];
+:if ([:len $f{{ n }}] != 0) do={/file remove $f{{ n }}};
+{% endfor %}
+/file remove [find where type="backup"];
+{% for file in ['before-native-awg-20261005.rsc','after-awg-chr-20261005.rsc','before-awg-chr-20261005.rsc','after-native-awg-20261005.rsc','01.10.2026.rsc'] %}
+/file remove [find where name="{{ file }}"];
+{% endfor %}
+:put "PLAIN_WG_CLEANUP";
+};

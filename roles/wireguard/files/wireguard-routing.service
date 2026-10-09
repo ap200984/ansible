@@ -1,0 +1,13 @@
+[Unit]
+Description=Align ordinary WireGuard AllowedIPs with single-path OSPF routes
+After=wg-quick@wg0.service frr.service
+Requires=wg-quick@wg0.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/amneziawg-route-peers --config /etc/wireguard/routing.json
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

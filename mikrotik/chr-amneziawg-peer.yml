@@ -1,0 +1,189 @@
+---
+- name: Build the local proxy network for this peer
+  ansible.builtin.set_fact:
+    chr_awg_suffix: '{{ chr_awg_peer[3:] | int }}'
+    chr_awg_veth: 'veth-awg-{{ chr_awg_peer }}'
+    chr_awg_env: 'awg-{{ chr_awg_peer }}'
+    chr_awg_gateway: '172.31.70.{{ (chr_awg_peer[3:] | int) * 4 + 1 }}'
+    chr_awg_container_ip: '172.31.70.{{ (chr_awg_peer[3:] | int) * 4 + 2 }}'
+    chr_awg_ssh:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+- name: Create isolated container plumbing before changing the peer
+  ansible.builtin.command:
+    argv: '{{ chr_awg_ssh + [lookup("template", "templates/chr-awg-prepare.rsc.j2").splitlines() | join(" ")] }}'
+  register: chr_awg_prepared
+  changed_when: "'AWG_CREATED' in chr_awg_prepared.stdout"
+  failed_when: chr_awg_prepared.rc != 0 or 'AWG_PREPARED' not in chr_awg_prepared.stdout
+- name: Wait for the image extraction to complete
+  ansible.builtin.command:
+    argv: '{{ chr_awg_ssh + [":put [:serialize to=json [/container print as-value where interface=" + chr_awg_veth + "]]"] }}'
+  register: chr_awg_container
+  changed_when: false
+  until: (chr_awg_container.stdout | from_json | first).get('stopped', false) or (chr_awg_container.stdout | from_json | first).get('running', false)
+  retries: 20
+  delay: 3
+- name: Start the prepared proxy
+  ansible.builtin.command:
+    argv: '{{ chr_awg_ssh + ["/container start [find where interface=" + chr_awg_veth + "]"] }}'
+  register: chr_awg_started
+  changed_when: false
+  failed_when: chr_awg_started.rc != 0 and 'already running' not in chr_awg_started.stdout
+- name: Verify running container before the transport cutover
+  ansible.builtin.command:
+    argv: '{{ chr_awg_ssh + [":put [:serialize to=json [/container print as-value where interface=" + chr_awg_veth + "]]"] }}'
+  register: chr_awg_running
+  changed_when: false
+  until: (chr_awg_running.stdout | from_json | first).get('running', false)
+  retries: 10
+  delay: 3
+- name: Switch and validate only this transport
+  block:
+    - name: Disable plain-WireGuard fallback only at cutover
+      ansible.builtin.command: /usr/local/sbin/chr-awg-firewall --enforce
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      changed_when: false
+    - name: Send the existing WireGuard peer through the C proxy
+      ansible.builtin.command:
+        argv: '{{ chr_awg_ssh + [lookup("template", "templates/chr-awg-cutover.rsc.j2").splitlines() | join(" ")] }}'
+      register: chr_awg_cutover
+      changed_when: true
+      failed_when: chr_awg_cutover.rc != 0 or 'AWG_CUTOVER' not in chr_awg_cutover.stdout
+    - name: Wait for WireGuard to learn the authenticated loopback proxy endpoint
+      ansible.builtin.command: wg show wg0 endpoints
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      register: chr_awg_endpoints
+      changed_when: false
+      until: chr_awg_endpoints.stdout is search((chr_awg_chr_keys[chr_awg_peer] | regex_escape) + '\s+127\.0\.0\.1:')
+      retries: 30
+      delay: 3
+    - name: Verify the direct transport with source and destination pinned
+      ansible.builtin.command: 'ping -I wg0 -c 5 -W 3 10.250.1.7'
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      changed_when: false
+    - name: Verify CHR to the Linux direct transport
+      ansible.builtin.command:
+        argv: '{{ chr_awg_ssh + ["/ping 10.250.1." + (chr_awg_suffix | string) + " interface=" + chr_awg_peer + "_interface src-address=10.250.1.7 count=5"] }}'
+      register: chr_awg_ping
+      changed_when: false
+      failed_when: chr_awg_ping.rc != 0 or 'received=5' not in chr_awg_ping.stdout
+    - name: Wait for this OSPF neighbor to be Full
+      ansible.builtin.command:
+        argv: '{{ chr_awg_ssh + ["/routing ospf neighbor print where interface=" + chr_awg_peer + "_interface"] }}'
+      register: chr_awg_ospf
+      changed_when: false
+      until: "'state=\"Full\"' in chr_awg_ospf.stdout"
+      retries: 30
+      delay: 5
+    - name: Verify routed CHR loopback from Linux
+      ansible.builtin.command: 'ping -I 10.255.0.{{ chr_awg_suffix }} -c 5 -W 3 10.255.0.7'
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      changed_when: false
+    - name: Persist only this peer's endpoint removal without exposing private keys
+      ansible.builtin.replace:
+        path: /etc/wireguard/wg0.conf
+        regexp: '(?m)^Endpoint\s*=\s*62\.60\.216\.73:\d+\s*$'
+        replace: '# CHR endpoint learned from the authenticated local C proxy; no plain-WG bootstrap.'
+        backup: true
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      no_log: true
+    - name: Persist validated proxy-only transport enforcement
+      ansible.builtin.copy:
+        content: 'Validated CHR AmneziaWG C proxy transport\n'
+        dest: /etc/wireguard/chr-awg-transport.enabled
+        mode: '0600'
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+    - name: Save the Linux transport firewall for boot
+      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      changed_when: false
+  rescue:
+    - name: Restore the original CHR endpoint and MTU
+      ansible.builtin.command:
+        argv: '{{ chr_awg_ssh + ["/interface wireguard peers set [find where interface=" + chr_awg_peer + "_interface] endpoint-address=" + amneziawg_endpoints[chr_awg_peer] + " endpoint-port=" + (chr_awg_original_ports[chr_awg_peer] | string) + "; /interface wireguard set [find where name=" + chr_awg_peer + "_interface] mtu=" + ("1340" if chr_awg_peer in ["vds5", "vds6"] else "1420")] }}'
+    - name: Remove no-plain transport guards for this failed pilot
+      ansible.builtin.shell: |
+        iptables -D INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ hostvars[chr_awg_peer].chr_awg_wg_port.stdout }} -m comment --comment chr-awg-no-plain -j DROP || true
+        iptables -D OUTPUT -d {{ chr_awg_public_endpoint }}/32 -p udp --sport {{ hostvars[chr_awg_peer].chr_awg_wg_port.stdout }} -m comment --comment chr-awg-no-plain -j DROP || true
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+    - name: Disable failed proxy so it cannot reapply transport guards
+      ansible.builtin.systemd_service:
+        name: chr-awg-proxy
+        enabled: false
+        state: stopped
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+    - name: Remove persisted proxy-only enforcement on rollback
+      ansible.builtin.file:
+        path: /etc/wireguard/chr-awg-transport.enabled
+        state: absent
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+    - name: Restore native Linux peer bootstrap endpoint
+      ansible.builtin.command:
+        argv:
+          - wg
+          - set
+          - wg0
+          - peer
+          - '{{ chr_awg_chr_keys[chr_awg_peer] }}'
+          - endpoint
+          - '{{ chr_awg_public_endpoint }}:{{ chr_awg_chr_ports[chr_awg_peer] }}'
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+    - name: Restore only the migrated endpoint line in the Linux config
+      ansible.builtin.replace:
+        path: /etc/wireguard/wg0.conf
+        regexp: '^# CHR endpoint learned from the authenticated local C proxy; no plain-WG bootstrap\.$'
+        replace: 'Endpoint = {{ chr_awg_public_endpoint }}:{{ chr_awg_chr_ports[chr_awg_peer] }}'
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+      no_log: true
+    - name: Persist the restored firewall
+      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      delegate_to: '{{ chr_awg_peer }}'
+      vars:
+        ansible_connection: ssh
+      become: true
+    - ansible.builtin.fail:
+        msg: 'CHR {{ chr_awg_peer }} transport failed validation and original endpoint was restored. Do not migrate additional peers.'

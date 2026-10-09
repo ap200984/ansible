@@ -1,0 +1,12 @@
+[Unit]
+Description=Scoped native AmneziaWG CHR transport firewall
+After=network-online.target ospf-firewall.service
+Before=awg-quick@wg2.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/chr-native-awg-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 ---
 - name: Install official current AmneziaWG on all new tunnel endpoints
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds5:vds8
   become: true
   gather_facts: false
   vars:

@@ -7,7 +7,7 @@ MTU = {{ wireguard_mtu }}
 Table = off
 PostUp = ip address replace 10.255.0.{{ inventory_hostname | regex_replace('^vds', '') }}/32 dev lo
 {% endif %}
-{% for peer in wireguard_peers if peer.source_address is defined or wireguard_ospf | default(false) %}
+{% for peer in wireguard_peers if (peer.source_address is defined or wireguard_ospf | default(false)) and not (inventory_hostname in (chr_native_awg_hosts | default([])) and peer.name == 'vds7') %}
 {% for allowed_ip in (peer.allowed_ips[:1] if wireguard_ospf | default(false) else peer.allowed_ips) %}
 {% if peer.source_address is defined %}
 PostUp = ip route replace {{ allowed_ip }} dev %i src {{ peer.source_address }}
@@ -17,15 +17,19 @@ PostUp = ip route replace {{ allowed_ip }} dev %i
 {% endfor %}
 {% endfor %}
 
-{% for peer in wireguard_peers %}
+{% for peer in wireguard_peers if not (inventory_hostname in (chr_native_awg_hosts | default([])) and peer.name == 'vds7') %}
 # {{ peer.name }}
 [Peer]
 PublicKey = {{ peer.public_key }}
-AllowedIPs = {{ (ospf_peer_allowed_ips[peer.public_key] if wireguard_ospf | default(false) and wireguard_vds7 is not defined else [wireguard_vds7.remote_address ~ '/32'] + tunnel_networks if wireguard_vds7 is defined else peer.allowed_ips) | join(', ') }}
+AllowedIPs = {{ (['10.0.0.0/8', '224.0.0.5/32'] if inventory_hostname in (chr_plain_wg_hosts | default([])) and peer.name == 'vds7' else ospf_peer_allowed_ips[peer.public_key] if wireguard_ospf | default(false) and wireguard_vds7 is not defined else [wireguard_vds7.remote_address ~ '/32'] + tunnel_networks if wireguard_vds7 is defined else peer.allowed_ips) | join(', ') }}
 {% if peer.endpoint is defined %}
+{% if chr_amneziawg_transport_enabled | default(false) | bool and peer.endpoint.split(':')[0] == '62.60.216.73' %}
+# CHR endpoint learned from the authenticated local C proxy; no plain-WG bootstrap.
+{% else %}
 Endpoint = {{ peer.endpoint }}
 {% endif %}
-{% if peer.persistent_keepalive | default(0) | int > 0 %}
+{% endif %}
+{% if peer.persistent_keepalive | default(0) | int > 0 and inventory_hostname not in (chr_plain_wg_hosts | default([])) and not (chr_amneziawg_transport_enabled | default(false) | bool and (peer.endpoint | default('')).split(':')[0] == '62.60.216.73') %}
 PersistentKeepalive = {{ peer.persistent_keepalive }}
 {% endif %}
 {% if not loop.last %}

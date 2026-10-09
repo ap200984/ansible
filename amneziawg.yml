@@ -2,13 +2,13 @@
 - ansible.builtin.import_playbook: amneziawg-install.yml
 - ansible.builtin.import_playbook: mikrotik/amneziawg-cost.yml
 - name: Prepare independent AmneziaWG identities on every endpoint
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds5:vds8
   become: true
   gather_facts: false
   tasks:
     - ansible.builtin.include_tasks: roles/amneziawg/tasks/configure.yml
 - name: Configure the five requested AmneziaWG links and OSPF
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds5:vds8
   become: true
   gather_facts: false
   vars:
@@ -108,6 +108,7 @@
           - '{{ ospf_peer_allowed_ips | to_json }}'
       register: awg_legacy_permissions
       changed_when: "'CONFIG_CHANGED' in awg_legacy_permissions.stdout"
+      when: inventory_hostname not in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([]))) or inventory_hostname in ['vds1', 'vds8']
     - name: Wait for every new AmneziaWG OSPF adjacency to reach Full
       ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
       register: awg_ospf_state

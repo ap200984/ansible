@@ -2,7 +2,11 @@
   "interface": "{{ amneziawg_interface }}",
   "peers": {
 {% for peer in amneziawg_peers[inventory_hostname] %}
-    "10.250.2.{{ peer[3:] }}": "{{ hostvars[peer].awg_public_key.stdout | trim }}"{{ "," if not loop.last else "" }}
+    "10.250.2.{{ peer[3:] }}": "{{ hostvars[peer].awg_public_key.stdout | trim }}"{{ "," if not loop.last or (inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts) else "" }}
 {% endfor %}
-  }
+{% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}
+    "10.250.1.7": "{{ normalized_chr_public_keys[inventory_hostname] }}"
+{% endif %}
+  },
+  "fixed": {% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}{"10.250.1.7": ["224.0.0.5/32"]}{% else %}{}{% endif %}
 }

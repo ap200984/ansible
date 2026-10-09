@@ -1,0 +1,9 @@
+---
+- name: Ensure migrated CHR links have keepalive off on Linux as well as RouterOS
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml
+  tasks:
+    - ansible.builtin.include_tasks: roles/chr-amneziawg/tasks/no-keepalive.yml

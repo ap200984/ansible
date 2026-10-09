@@ -1,0 +1,24 @@
+{% set n = inventory_hostname[3:] | int %}
+{% set ns = namespace(interfaces=[], peers=[], addresses=[]) %}
+{% if inventory_hostname in chr_plain_wg_hosts %}
+{% set ns.peers = [{'address':'10.250.1.7', 'source':'10.250.1.' ~ n, 'loopback':'10.255.0.7/32', 'public':chr_awg_chr_keys[inventory_hostname], 'endpoint':'62.60.216.73:' ~ chr_awg_chr_ports[inventory_hostname], 'fixed':['224.0.0.5/32']}] %}
+{% for peer in (['vds2','vds6'] if n == 5 else ['vds5']) %}
+{% set pn = peer[3:] | int %}
+{% set ns.peers = ns.peers + [{'address':'10.250.2.' ~ (128 + pn), 'source':'10.250.2.' ~ (128 + n), 'loopback':'10.255.0.' ~ pn ~ '/32', 'public':hostvars[peer].normalized_plain_key.stdout | trim, 'endpoint':amneziawg_endpoints[peer] ~ ':' ~ chr_awg_original_ports[peer]}] %}
+{% endfor %}
+{% set ns.interfaces = ns.interfaces + [{'name':'wg0','command':'wg','key_source':'/etc/wireguard/wg0.conf','addresses':['10.250.1.' ~ n ~ '/24','10.250.2.' ~ (128+n) ~ '/25'],'port':chr_awg_original_ports[inventory_hostname],'peers':ns.peers}] %}
+{% endif %}
+{% if amneziawg_enabled | bool %}
+{% set ns.peers = [] %}
+{% set ns.addresses = ['10.250.2.' ~ n ~ '/25'] %}
+{% for peer in amneziawg_peers[inventory_hostname] %}
+{% set pn = peer[3:] | int %}
+{% set ns.peers = ns.peers + [{'address':'10.250.2.' ~ pn,'source':'10.250.2.' ~ n,'loopback':'10.255.0.' ~ pn ~ '/32','public':hostvars[peer].normalized_awg_key.stdout | trim,'endpoint':amneziawg_endpoints[peer] ~ ':' ~ (56707 if peer in chr_native_awg_hosts else 56702)}] %}
+{% endfor %}
+{% if inventory_hostname in chr_native_awg_hosts %}
+{% set ns.addresses = ns.addresses + ['10.250.1.' ~ n ~ '/24'] %}
+{% set ns.peers = ns.peers + [{'address':'10.250.1.7','source':'10.250.1.' ~ n,'loopback':'10.255.0.7/32','public':chr_awg_chr_keys[inventory_hostname],'fixed':['224.0.0.5/32']}] %}
+{% endif %}
+{% set ns.interfaces = ns.interfaces + [{'name':'wg1','command':'awg','key_source':'/etc/amnezia/amneziawg/wg2.conf' if inventory_hostname in chr_native_awg_hosts else '/etc/amnezia/amneziawg/wg1.conf','addresses':ns.addresses,'port':56707 if inventory_hostname in chr_native_awg_hosts else 56702,'peers':ns.peers}] %}
+{% endif %}
+{{ {'number':n, 'interfaces':ns.interfaces, 'frr':lookup('template','roles/wireguard/templates/normalized-frr.conf.j2')} | to_nice_json }}

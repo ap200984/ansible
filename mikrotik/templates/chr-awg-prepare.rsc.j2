@@ -1,0 +1,24 @@
+:do {
+:if ([/system device-mode get container] != true) do={:error "Container permission not activated"};
+:local w [/interface wireguard find where name="{{ chr_awg_peer }}_interface"];
+:if ([:len $w] != 1) do={:error "Expected one existing tunnel interface"};
+:if ([/interface wireguard get $w public-key] != "{{ chr_awg_chr_keys[chr_awg_peer] }}") do={:error "Unexpected CHR public identity"};
+:if ([:len [/interface veth find where name="{{ chr_awg_veth }}"]] = 0) do={
+ /interface veth add name="{{ chr_awg_veth }}" address={{ chr_awg_container_ip }}/30 gateway={{ chr_awg_gateway }};
+ /ip address add address={{ chr_awg_gateway }}/30 interface="{{ chr_awg_veth }}" comment="AWG proxy {{ chr_awg_peer }}";
+ :put "AWG_CREATED"};
+:if ([:len [/ip firewall filter find where comment="AWG proxy {{ chr_awg_peer }} local"]] = 0) do={
+ /ip firewall filter add chain=input action=accept in-interface="{{ chr_awg_veth }}" src-address={{ chr_awg_container_ip }} protocol=udp dst-port=[/interface wireguard get $w listen-port] comment="AWG proxy {{ chr_awg_peer }} local" place-before=0;
+ :put "AWG_CREATED"};
+:if ([:len [/ip firewall filter find where comment="AWG proxy {{ chr_awg_peer }} uplink"]] = 0) do={
+ /ip firewall filter add chain=forward action=accept in-interface="{{ chr_awg_veth }}" src-address={{ chr_awg_container_ip }} dst-address={{ amneziawg_endpoints[chr_awg_peer] }} protocol=udp dst-port={{ chr_awg_port }} comment="AWG proxy {{ chr_awg_peer }} uplink" place-before=0;
+ :put "AWG_CREATED"};
+{% set env = {'AWG_MODE': 'normal', 'AWG_LISTEN': ':' ~ chr_awg_local_port, 'AWG_REMOTE': amneziawg_endpoints[chr_awg_peer] ~ ':' ~ chr_awg_port, 'AWG_JC': '4', 'AWG_JMIN': '40', 'AWG_JMAX': '80', 'AWG_S1': '65', 'AWG_S2': '107', 'AWG_H1': '1723456781', 'AWG_H2': '1723456782', 'AWG_H3': '1723456783', 'AWG_H4': '1723456784', 'AWG_SERVER_PUB': hostvars[chr_awg_peer].chr_awg_linux_key.stdout, 'AWG_CLIENT_PUB': chr_awg_chr_keys[chr_awg_peer], 'AWG_LOG_LEVEL': 'info'} %}
+{% for key, value in env.items() %}
+:if ([:len [/container envs find where list="{{ chr_awg_env }}" and key="{{ key }}"]] = 0) do={/container envs add list="{{ chr_awg_env }}" key="{{ key }}" value="{{ value }}"; :put "AWG_CREATED"};
+{% endfor %}
+:if ([:len [/container find where comment="AWG {{ chr_awg_peer }}"]] = 0) do={
+ /container add name="awg-{{ chr_awg_peer }}" file=chr-awg-proxy-{{ chr_awg_release }}-amd64.tar.gz interface="{{ chr_awg_veth }}" envlist="{{ chr_awg_env }}" hostname="awg-{{ chr_awg_peer }}" root-dir="awg-{{ chr_awg_peer }}" logging=yes shm-size=4M start-on-boot=yes comment="AWG {{ chr_awg_peer }}";
+ :put "AWG_CREATED"};
+:put "AWG_PREPARED";
+} on-error={:error "AWG preparation failed"};

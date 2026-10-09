@@ -1,0 +1,211 @@
+---
+- name: Prepare the five requested ordinary WireGuard replacements
+  hosts: vds2:vds5:vds6
+  become: true
+  gather_facts: false
+  vars_files: &revert_files
+    - mikrotik/vars/chr-amneziawg.yml
+    - mikrotik/host_vars/vds7_CHR.yml
+  vars: &revert_vars
+    ansible_become_timeout: 60
+    plain_chr_ssh:
+      - ssh
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '20022'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - ControlMaster=no
+      - -o
+      - ControlPath=none
+      - -o
+      - 'ProxyCommand=ssh -p19022 -i {{ router_ssh_key | expanduser }} -oBatchMode=yes -oControlMaster=no -oControlPath=none -W %h:%p ansible@38.247.137.237'
+      - ansible@62.60.216.73
+  tasks:
+    - name: Read only public mesh identities before removing any AWG interfaces
+      ansible.builtin.command: awg show wg1 public-key
+      register: plain_mesh_public
+      changed_when: false
+    - name: Keep a private temporary rollback checkpoint until verification
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        mkdir -p /run/wg-revert-20261005
+        cp -an /etc/wireguard /etc/amnezia /etc/frr /run/wg-revert-20261005/
+        test -f /run/wg-revert-20261005/iptables.v4 || iptables-save > /run/wg-revert-20261005/iptables.v4
+      changed_when: false
+    - name: Confirm ordinary WireGuard tools are installed
+      ansible.builtin.apt:
+        name: wireguard-tools
+        state: present
+    - name: Install the focused local conversion helper
+      ansible.builtin.copy:
+        src: roles/wireguard/files/revert-awg.py
+        dest: /usr/local/sbin/wireguard-revert-awg
+        mode: '0700'
+    - name: Persist scoped ordinary WireGuard transport permits
+      ansible.builtin.template:
+        src: roles/wireguard/templates/plain-firewall.sh.j2
+        dest: /usr/local/sbin/plain-wireguard-firewall
+        mode: '0755'
+    - name: Install the plain WireGuard firewall startup service
+      ansible.builtin.copy:
+        src: roles/wireguard/files/plain-firewall.service
+        dest: /etc/systemd/system/plain-wireguard-firewall.service
+        mode: '0644'
+    - name: Prepare transport permits without interrupting existing links
+      ansible.builtin.systemd_service:
+        name: plain-wireguard-firewall
+        daemon_reload: true
+        state: restarted
+        enabled: true
+
+- name: Prepare separate vds5 ordinary mesh links while keeping AWG backups live
+  hosts: vds5
+  become: true
+  gather_facts: false
+  vars: *revert_vars
+  tasks:
+    - name: Preserve vds5 mesh identity on the two independent plain peer interfaces
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/wireguard-revert-awg
+          - hub-prepare
+          - --number
+          - '5'
+          - --peer-keys
+          - '{{ {"2": hostvars.vds2.plain_mesh_public.stdout, "6": hostvars.vds6.plain_mesh_public.stdout} | to_json }}'
+    - name: Start the independent plain mesh interfaces
+      ansible.builtin.systemd_service:
+        name: 'wg-quick@wg-{{ item }}'
+        state: started
+        enabled: true
+      loop: [vds2, vds6]
+    - name: Include the prepared mesh interfaces in OSPF
+      ansible.builtin.systemd_service:
+        name: frr
+        state: restarted
+
+- name: Convert vds2 and vds6 mesh links individually to ordinary WireGuard
+  hosts: vds2:vds6
+  serial: 1
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars: *revert_vars
+  tasks:
+    - name: Prepare the ordinary wg1 using this host's existing mesh identity
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/wireguard-revert-awg, leaf-prepare, --number, '{{ inventory_hostname[3:] }}', --peer-key, '{{ hostvars.vds5.plain_mesh_public.stdout }}']
+    - name: Stop AWG cryptokey routing before replacing the leaf interface
+      ansible.builtin.systemd_service:
+        name: amneziawg-routing
+        state: stopped
+        enabled: false
+    - name: Stop the replaced AWG wg1 and release its address and UDP socket
+      ansible.builtin.systemd_service:
+        name: awg-quick@wg1
+        state: stopped
+        enabled: false
+    - name: Start ordinary wg1 on the same transport address
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg1
+        state: started
+        enabled: true
+    - name: Move the leaf mesh OSPF interface to point-to-point
+      ansible.builtin.command: 'wireguard-revert-awg leaf-frr --number {{ inventory_hostname[3:] }}'
+    - name: Pause vds5 AWG route reconciliation while removing the replaced peer
+      ansible.builtin.systemd_service:
+        name: amneziawg-routing
+        state: stopped
+      delegate_to: vds5
+    - name: Remove only this replaced peer from vds5 AWG and its persistent route map
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/wireguard-revert-awg, hub-trim, --number, '5', --peer-number, '{{ inventory_hostname[3:] }}', --peer-key, '{{ plain_mesh_public.stdout }}']
+      delegate_to: vds5
+    - name: Restart reconciliation for the remaining vds5 AWG peers
+      ansible.builtin.systemd_service:
+        name: amneziawg-routing
+        state: restarted
+      delegate_to: vds5
+    - name: Apply the ordinary leaf mesh OSPF configuration
+      ansible.builtin.systemd_service:
+        name: frr
+        state: restarted
+    - name: Wait for the new ordinary mesh link and routing
+      ansible.builtin.shell: |
+        set -eu
+        wg show wg1 endpoints | grep -F '217.144.189.206:{{ 56710 + inventory_hostname[3:] | int }}'
+        ping -I wg1 -c 3 -W 2 10.250.2.5
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.5" && $3 ~ /^Full/ && $7 ~ /^wg1:/ {ok=1} END {if (!ok) exit 1}'
+        ping -I 10.255.0.{{ inventory_hostname[3:] }} -c 3 -W 2 10.255.0.5
+      register: plain_leaf_check
+      changed_when: false
+      until: plain_leaf_check.rc == 0
+      retries: 24
+      delay: 5
+
+- name: Convert the three CHR links from native AWG to ordinary wg0
+  hosts: vds5:vds2:vds6
+  serial: 1
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars_files: *revert_files
+  vars: *revert_vars
+  tasks:
+    - name: Prepare ordinary wg0 with the preserved CHR identity
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/wireguard-revert-awg, chr-prepare, --number, '{{ inventory_hostname[3:] }}', --peer-key, '{{ chr_awg_chr_keys[inventory_hostname] }}']
+    - name: Synchronize ordinary wg0 without changing unrelated interfaces
+      ansible.builtin.shell: wg syncconf wg0 <(wg-quick strip wg0)
+      args:
+        executable: /bin/bash
+      no_log: true
+    - name: Match the CHR tunnel MTU
+      ansible.builtin.command: ip link set wg0 mtu 1340
+    - name: Retire only the replaced native CHR interface
+      ansible.builtin.systemd_service:
+        name: awg-quick@wg2
+        state: stopped
+        enabled: false
+    - name: Restore the direct ordinary transport bootstrap route
+      ansible.builtin.command: 'ip route replace 10.250.1.7/32 dev wg0 src 10.250.1.{{ inventory_hostname[3:] }}'
+    - name: Point only this CHR peer directly at Linux ordinary WireGuard
+      ansible.builtin.command:
+        argv: '{{ plain_chr_ssh + [lookup("template", "mikrotik/templates/chr-plain-cutover.rsc.j2").splitlines() | join(" ")] }}'
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+      register: plain_chr_cutover
+      failed_when: plain_chr_cutover.rc != 0 or 'PLAIN_WG_CUTOVER' not in plain_chr_cutover.stdout
+    - name: Move CHR OSPF from retired wg2 to ordinary wg0
+      ansible.builtin.command: 'wireguard-revert-awg chr-frr --number {{ inventory_hostname[3:] }}'
+    - name: Apply OSPF on the ordinary CHR link
+      ansible.builtin.systemd_service:
+        name: frr
+        state: restarted
+    - name: Verify plain CHR transport and routed internal destinations
+      ansible.builtin.shell: |
+        set -eu
+        wg show wg0 endpoints | grep -F '62.60.216.73:{{ chr_awg_chr_ports[inventory_hostname] }}'
+        ping -I wg0 -c 3 -W 2 10.250.1.7
+        vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.7" && $3 ~ /^Full/ && $7 ~ /^wg0:/ {ok=1} END {if (!ok) exit 1}'
+        for destination in 10.255.0.7 10.9.0.1 10.9.1.1 10.255.0.21 10.255.0.64; do
+          ping -I 10.255.0.{{ inventory_hostname[3:] }} -c 3 -W 2 "$destination"
+        done
+      register: plain_chr_check
+      changed_when: false
+      until: plain_chr_check.rc == 0
+      retries: 24
+      delay: 5
+    - name: Persist successful ordinary CHR conversion
+      ansible.builtin.copy:
+        content: 'CHR and selected mesh links use ordinary WireGuard.\n'
+        dest: /etc/wireguard/plain-chr.enabled
+        mode: '0600'
