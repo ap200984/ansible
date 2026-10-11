@@ -1,0 +1,32 @@
+---
+- name: Download and verify the pinned ARM64 image
+  ansible.builtin.get_url:
+    url: https://github.com/timbrs/amneziawg-mikrotik-c/releases/download/v1.4.2/awg-proxy-arm64.tar.gz
+    dest: /tmp/k16-awg-proxy-v1.4.2-arm64.tar.gz
+    checksum: sha256:b8345723922f2cfb25f7dfb698eadfa0e4ed77db6a870203971a82d71da65d55
+    mode: '0644'
+  delegate_to: localhost
+  become: false
+- name: Upload the verified container image
+  ansible.builtin.command:
+    argv:
+      - scp
+      - -O
+      - -F
+      - /dev/null
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -P
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - /tmp/k16-awg-proxy-v1.4.2-arm64.tar.gz
+      - '{{ router_user }}@{{ router_host }}:k16-awg-proxy-v1.4.2-arm64.tar.gz'
+  delegate_to: localhost
+  become: false

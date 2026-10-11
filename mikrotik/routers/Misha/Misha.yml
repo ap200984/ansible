@@ -71,10 +71,48 @@ routeros_records:
   selector:
     name: l2tp-to-d24
   create: true
+- path: /interface gre
+  values:
+    allow-fast-path: 'no'
+    comment: GRE to VDS6 over OSPF loopbacks
+    keepalive: ''
+    local-address: 10.255.0.24
+    mtu: '1300'
+    name: gre-vds6
+    remote-address: 10.255.0.6
+  unset:
+  - keepalive
+  selector:
+    name: gre-vds6
+  create: true
+- path: /interface veth
+  values:
+    address: 172.31.72.2/30
+    container-mac-address: 48:73:D6:10:39:79
+    dhcp: 'no'
+    gateway: 172.31.72.1
+    gateway6: ''
+    mac-address: 48:73:D6:10:39:78
+    name: veth-misha-awg-vds1
+  selector:
+    name: veth-misha-awg-vds1
+  create: true
+- path: /interface veth
+  values:
+    address: 172.31.72.6/30
+    container-mac-address: 2E:0D:1B:54:35:75
+    dhcp: 'no'
+    gateway: 172.31.72.5
+    gateway6: ''
+    mac-address: 2E:0D:1B:54:35:74
+    name: veth-misha-awg-vds8
+  selector:
+    name: veth-misha-awg-vds8
+  create: true
 - path: /interface wireguard
   values:
     listen-port: '37972'
-    mtu: '1420'
+    mtu: '1340'
     name: wg_vds1
     private-key: '{{ routeros_secrets.record_ca382fabff5505b65026e34a }}'
   selector:
@@ -83,7 +121,7 @@ routeros_records:
 - path: /interface wireguard
   values:
     listen-port: '37973'
-    mtu: '1420'
+    mtu: '1340'
     name: wg_vds8
     private-key: '{{ routeros_secrets.record_8780e4a8fd8aaf11f9a77616 }}'
   selector:
@@ -207,6 +245,14 @@ routeros_records:
   selector:
     name: bfd-vds8
   create: true
+- path: /routing table
+  values:
+    disabled: 'no'
+    fib: 'yes'
+    name: google_ips_table
+  selector:
+    name: google_ips_table
+  create: true
 - path: /system script
   values:
     dont-require-permissions: 'no'
@@ -239,11 +285,12 @@ routeros_records:
   create: true
 - path: /system script
   values:
-    comment: Get all google IP addresses
+    comment: Google official IPv4 prefix feed; preserve last good list on download
+      failure
     dont-require-permissions: 'no'
     name: get_google_ips
-    owner: tanya
-    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    owner: ansible
+    policy: read,write,test
     source: '{{ routeros_secrets.record_22_source }}'
   selector:
     name: get_google_ips
@@ -255,10 +302,342 @@ routeros_records:
   selector:
     name: bandwidth-test
   create: true
+- path: /container
+  values:
+    comment: Misha AWG vds1
+    envlists: misha-awg-vds1
+    file: usb1/misha-awg-proxy-v1.4.2-arm.tar.gz
+    hostname: misha-awg-vds1
+    interface: veth-misha-awg-vds1
+    layer-dir: ''
+    logging: 'yes'
+    name: misha-awg-vds1
+    root-dir: /usb1/misha-awg-vds1
+    shm-size: 4096.0KiB
+    start-on-boot: 'yes'
+  selector:
+    name: misha-awg-vds1
+  create: true
+- path: /container
+  values:
+    comment: Misha AWG vds8
+    envlists: misha-awg-vds8
+    file: usb1/misha-awg-proxy-v1.4.2-arm.tar.gz
+    hostname: misha-awg-vds8
+    interface: veth-misha-awg-vds8
+    layer-dir: ''
+    logging: 'yes'
+    name: misha-awg-vds8
+    root-dir: /usb1/misha-awg-vds8
+    shm-size: 4096.0KiB
+    start-on-boot: 'yes'
+  selector:
+    name: misha-awg-vds8
+  create: true
 - path: /container config
   values:
     registry-url: https://registry-1.docker.io
     tmpdir: /usb1/docker/pull
+- path: /container envs
+  values:
+    key: AWG_CLIENT_PUB
+    list: misha-awg-vds1
+    value: 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=
+  selector:
+    key: AWG_CLIENT_PUB
+    list: misha-awg-vds1
+    value: 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H1
+    list: misha-awg-vds1
+    value: '1723456781'
+  selector:
+    key: AWG_H1
+    list: misha-awg-vds1
+    value: '1723456781'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H2
+    list: misha-awg-vds1
+    value: '1723456782'
+  selector:
+    key: AWG_H2
+    list: misha-awg-vds1
+    value: '1723456782'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H3
+    list: misha-awg-vds1
+    value: '1723456783'
+  selector:
+    key: AWG_H3
+    list: misha-awg-vds1
+    value: '1723456783'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H4
+    list: misha-awg-vds1
+    value: '1723456784'
+  selector:
+    key: AWG_H4
+    list: misha-awg-vds1
+    value: '1723456784'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JC
+    list: misha-awg-vds1
+    value: '4'
+  selector:
+    key: AWG_JC
+    list: misha-awg-vds1
+    value: '4'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMAX
+    list: misha-awg-vds1
+    value: '80'
+  selector:
+    key: AWG_JMAX
+    list: misha-awg-vds1
+    value: '80'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMIN
+    list: misha-awg-vds1
+    value: '40'
+  selector:
+    key: AWG_JMIN
+    list: misha-awg-vds1
+    value: '40'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LISTEN
+    list: misha-awg-vds1
+    value: :51820
+  selector:
+    key: AWG_LISTEN
+    list: misha-awg-vds1
+    value: :51820
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LOG_LEVEL
+    list: misha-awg-vds1
+    value: info
+  selector:
+    key: AWG_LOG_LEVEL
+    list: misha-awg-vds1
+    value: info
+  create: true
+- path: /container envs
+  values:
+    key: AWG_MODE
+    list: misha-awg-vds1
+    value: normal
+  selector:
+    key: AWG_MODE
+    list: misha-awg-vds1
+    value: normal
+  create: true
+- path: /container envs
+  values:
+    key: AWG_REMOTE
+    list: misha-awg-vds1
+    value: 45.141.102.72:56709
+  selector:
+    key: AWG_REMOTE
+    list: misha-awg-vds1
+    value: 45.141.102.72:56709
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S1
+    list: misha-awg-vds1
+    value: '65'
+  selector:
+    key: AWG_S1
+    list: misha-awg-vds1
+    value: '65'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S2
+    list: misha-awg-vds1
+    value: '107'
+  selector:
+    key: AWG_S2
+    list: misha-awg-vds1
+    value: '107'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_SERVER_PUB
+    list: misha-awg-vds1
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    key: AWG_SERVER_PUB
+    list: misha-awg-vds1
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  create: true
+- path: /container envs
+  values:
+    key: AWG_CLIENT_PUB
+    list: misha-awg-vds8
+    value: 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=
+  selector:
+    key: AWG_CLIENT_PUB
+    list: misha-awg-vds8
+    value: 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H1
+    list: misha-awg-vds8
+    value: '1723456781'
+  selector:
+    key: AWG_H1
+    list: misha-awg-vds8
+    value: '1723456781'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H2
+    list: misha-awg-vds8
+    value: '1723456782'
+  selector:
+    key: AWG_H2
+    list: misha-awg-vds8
+    value: '1723456782'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H3
+    list: misha-awg-vds8
+    value: '1723456783'
+  selector:
+    key: AWG_H3
+    list: misha-awg-vds8
+    value: '1723456783'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H4
+    list: misha-awg-vds8
+    value: '1723456784'
+  selector:
+    key: AWG_H4
+    list: misha-awg-vds8
+    value: '1723456784'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JC
+    list: misha-awg-vds8
+    value: '4'
+  selector:
+    key: AWG_JC
+    list: misha-awg-vds8
+    value: '4'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMAX
+    list: misha-awg-vds8
+    value: '80'
+  selector:
+    key: AWG_JMAX
+    list: misha-awg-vds8
+    value: '80'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMIN
+    list: misha-awg-vds8
+    value: '40'
+  selector:
+    key: AWG_JMIN
+    list: misha-awg-vds8
+    value: '40'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LISTEN
+    list: misha-awg-vds8
+    value: :51820
+  selector:
+    key: AWG_LISTEN
+    list: misha-awg-vds8
+    value: :51820
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LOG_LEVEL
+    list: misha-awg-vds8
+    value: info
+  selector:
+    key: AWG_LOG_LEVEL
+    list: misha-awg-vds8
+    value: info
+  create: true
+- path: /container envs
+  values:
+    key: AWG_MODE
+    list: misha-awg-vds8
+    value: normal
+  selector:
+    key: AWG_MODE
+    list: misha-awg-vds8
+    value: normal
+  create: true
+- path: /container envs
+  values:
+    key: AWG_REMOTE
+    list: misha-awg-vds8
+    value: 194.113.106.136:56709
+  selector:
+    key: AWG_REMOTE
+    list: misha-awg-vds8
+    value: 194.113.106.136:56709
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S1
+    list: misha-awg-vds8
+    value: '65'
+  selector:
+    key: AWG_S1
+    list: misha-awg-vds8
+    value: '65'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S2
+    list: misha-awg-vds8
+    value: '107'
+  selector:
+    key: AWG_S2
+    list: misha-awg-vds8
+    value: '107'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_SERVER_PUB
+    list: misha-awg-vds8
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    key: AWG_SERVER_PUB
+    list: misha-awg-vds8
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  create: true
 - path: /ip smb
   values:
     enabled: 'yes'
@@ -313,20 +692,6 @@ routeros_records:
   selector:
     interface: wlan2
   create: true
-- path: /interface bridge port
-  values:
-    bridge: '*B'
-    interface: '*C'
-  selector:
-    interface: '*C'
-  create: true
-- path: /interface bridge port
-  values:
-    bridge: '*B'
-    interface: '*D'
-  selector:
-    interface: '*D'
-  create: true
 - path: /ip firewall connection tracking
   values:
     udp-timeout: 10s
@@ -357,22 +722,6 @@ routeros_records:
   create: true
 - path: /interface list member
   values:
-    interface: '*C'
-    list: LAN_ALL
-  selector:
-    list: LAN_ALL
-    interface: '*C'
-  create: true
-- path: /interface list member
-  values:
-    interface: '*D'
-    list: LAN_ALL
-  selector:
-    list: LAN_ALL
-    interface: '*D'
-  create: true
-- path: /interface list member
-  values:
     interface: LAN
     list: LAN_ALL
   selector:
@@ -389,24 +738,22 @@ routeros_records:
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16
-    endpoint-address: 194.113.106.136
-    endpoint-port: '56699'
+    allowed-address: 10.0.0.0/8,224.0.0.5/32
+    endpoint-address: 172.31.72.6
+    endpoint-port: '51820'
     interface: wg_vds8
     name: wg_to_vds8
-    persistent-keepalive: 25s
     public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
   selector:
     name: wg_to_vds8
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16
-    endpoint-address: 45.141.102.72
-    endpoint-port: '56685'
+    allowed-address: 10.0.0.0/8,224.0.0.5/32
+    endpoint-address: 172.31.72.2
+    endpoint-port: '51820'
     interface: wg_vds1
     name: wg_to_vds1
-    persistent-keepalive: 25s
     public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
   selector:
     name: wg_to_vds1
@@ -432,29 +779,20 @@ routeros_records:
   create: true
 - path: /ip address
   values:
-    address: 192.168.254.1/24
-    interface: '*B'
-    network: 192.168.254.0
-  selector:
-    address: 192.168.254.1/24
-    interface: '*B'
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.1.24/24
+    address: 10.255.2.24
     interface: wg_vds8
-    network: 10.250.1.0
+    network: 10.255.2.8
   selector:
-    address: 10.250.1.24/24
+    address: 10.255.2.24
     interface: wg_vds8
   create: true
 - path: /ip address
   values:
-    address: 10.250.1.24/24
+    address: 10.255.2.24
     interface: wg_vds1
-    network: 10.250.1.0
+    network: 10.255.2.1
   selector:
-    address: 10.250.1.24/24
+    address: 10.255.2.24
     interface: wg_vds1
   create: true
 - path: /ip address
@@ -466,6 +804,36 @@ routeros_records:
   selector:
     address: 10.255.0.24
     interface: loopback
+  create: true
+- path: /ip address
+  values:
+    address: 172.31.72.1/30
+    comment: Misha AWG vds1 gateway
+    interface: veth-misha-awg-vds1
+    network: 172.31.72.0
+  selector:
+    address: 172.31.72.1/30
+    interface: veth-misha-awg-vds1
+  create: true
+- path: /ip address
+  values:
+    address: 172.31.72.5/30
+    comment: Misha AWG vds8 gateway
+    interface: veth-misha-awg-vds8
+    network: 172.31.72.4
+  selector:
+    address: 172.31.72.5/30
+    interface: veth-misha-awg-vds8
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.4.17/30
+    comment: GRE to VDS6
+    interface: gre-vds6
+    network: 10.250.4.16
+  selector:
+    address: 10.250.4.17/30
+    interface: gre-vds6
   create: true
 - path: /ip dhcp-client
   values:
@@ -1018,7 +1386,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.8.4.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1027,7 +1395,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.8.8.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1036,7 +1404,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.34.208.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1045,7 +1413,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.35.192.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1054,7 +1422,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.228.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1063,7 +1431,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.232.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1072,7 +1440,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 8.236.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1081,7 +1449,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 23.236.48.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1090,7 +1458,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 23.251.128.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1099,7 +1467,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.0.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1108,7 +1476,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.2.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1117,7 +1485,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.0.0/23
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1126,7 +1494,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.3.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1135,7 +1503,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.4.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1144,7 +1512,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.8.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1153,7 +1521,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.16.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1162,7 +1530,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.32.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1171,7 +1539,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.3.64.0/18
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1180,7 +1548,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.4.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1189,7 +1557,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.8.0.0/13
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1198,7 +1566,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.16.0.0/12
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1207,7 +1575,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.32.0.0/11
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1216,7 +1584,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.64.0.0/10
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1225,7 +1593,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 34.128.0.0/10
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1234,7 +1602,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.184.0.0/13
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1243,7 +1611,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.192.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1252,7 +1620,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.196.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1261,7 +1629,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.198.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1270,7 +1638,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.199.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1279,7 +1647,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.199.128.0/18
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1288,7 +1656,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.200.0.0/13
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1297,7 +1665,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.208.0.0/12
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1306,7 +1674,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.224.0.0/12
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1315,7 +1683,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.240.0.0/13
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1324,7 +1692,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 35.252.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1333,7 +1701,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 64.15.112.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1342,7 +1710,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 64.233.160.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1351,7 +1719,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 66.102.0.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1360,7 +1728,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 66.249.64.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1369,7 +1737,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 70.32.128.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1378,7 +1746,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 72.14.192.0/18
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1387,7 +1755,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 74.114.24.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1396,7 +1764,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 74.125.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1405,7 +1773,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 104.154.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1414,7 +1782,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 104.196.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1423,7 +1791,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 104.237.160.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1432,7 +1800,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 107.167.160.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1441,7 +1809,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 107.178.192.0/18
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1450,7 +1818,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 108.59.80.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1459,7 +1827,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 108.170.192.0/18
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1468,7 +1836,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 108.177.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1477,7 +1845,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 130.211.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1486,7 +1854,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.2.0/23
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1495,7 +1863,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.4.0/23
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1504,7 +1872,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.8.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1513,7 +1881,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.160.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1522,7 +1890,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.176.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1531,7 +1899,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.184.0/23
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1540,7 +1908,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.22.186.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1549,7 +1917,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.23.39.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1558,7 +1926,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.23.48.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1567,7 +1935,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.23.64.0/18
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1576,7 +1944,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.64.0.0/11
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1585,7 +1953,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.107.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1594,7 +1962,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.108.0.0/14
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1603,7 +1971,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.112.0.0/13
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1612,7 +1980,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.120.0.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1621,7 +1989,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.121.8.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1630,7 +1998,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 136.124.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1639,7 +2007,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 142.250.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1648,7 +2016,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 146.148.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1657,7 +2025,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 152.238.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1666,7 +2034,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 152.239.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1675,7 +2043,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 162.120.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1684,7 +2052,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 162.216.148.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1693,7 +2061,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 162.222.176.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1702,7 +2070,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 172.110.32.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1711,7 +2079,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 172.217.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1720,7 +2088,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 172.253.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1729,7 +2097,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 173.194.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1738,7 +2106,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 173.255.112.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1747,7 +2115,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 177.176.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1756,7 +2124,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 177.178.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1765,7 +2133,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 177.208.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1774,7 +2142,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 179.67.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1783,7 +2151,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 179.69.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1792,7 +2160,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 179.193.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1801,7 +2169,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 179.199.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1810,7 +2178,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 186.242.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1819,7 +2187,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 186.245.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1828,7 +2196,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 187.78.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1837,7 +2205,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 187.79.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1846,7 +2214,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 187.126.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1855,7 +2223,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.24.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1864,7 +2232,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.48.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1873,7 +2241,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.49.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1882,7 +2250,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.70.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1891,7 +2259,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.82.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1900,7 +2268,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.105.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1909,7 +2277,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 189.106.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1918,7 +2286,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.0.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1927,7 +2295,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.2.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1936,7 +2304,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.40.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1945,7 +2313,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.44.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1954,7 +2322,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.45.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1963,7 +2331,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.46.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1972,7 +2340,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.212.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1981,7 +2349,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.216.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1990,7 +2358,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.218.0.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -1999,7 +2367,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 191.220.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2008,7 +2376,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 192.104.160.0/23
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2017,7 +2385,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 192.158.28.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2026,7 +2394,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 192.178.0.0/15
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2035,7 +2403,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 193.186.4.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2044,7 +2412,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 199.36.154.0/23
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2053,7 +2421,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 199.36.156.0/24
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2062,7 +2430,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 199.192.112.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2071,7 +2439,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 199.223.232.0/21
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2080,7 +2448,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 200.226.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2089,7 +2457,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 207.175.0.0/16
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2098,7 +2466,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 207.223.160.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2107,7 +2475,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 208.65.152.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2116,7 +2484,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 208.68.108.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2125,7 +2493,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 208.81.188.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2134,7 +2502,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 208.117.224.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2143,7 +2511,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 209.85.128.0/17
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2152,7 +2520,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 216.58.192.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2161,7 +2529,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 216.73.80.0/20
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2170,7 +2538,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 216.239.32.0/19
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
@@ -2179,12 +2547,173 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 216.252.220.0/22
-    comment: Added by scheduled script google_ips
+    comment: Google feed 1791749175744
     list: google_ips
   selector:
     list: google_ips
     address: 216.252.220.0/22
   create: true
+- path: /ip firewall address-list
+  values:
+    address: api.ipify.org
+    comment: Google GRE IP check hostname
+    list: google_gre_ip_check
+  selector:
+    list: google_gre_ip_check
+    address: api.ipify.org
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Google GRE outer input
+    dst-address: 10.255.0.24
+    protocol: gre
+    src-address: 10.255.0.6
+  selector:
+    action: accept
+    chain: input
+    comment: Google GRE outer input
+    dst-address: 10.255.0.24
+    protocol: gre
+    src-address: 10.255.0.6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Google GRE outbound
+    dst-address-list: google_ips
+    in-interface: LAN
+    out-interface: gre-vds6
+  selector:
+    action: accept
+    chain: forward
+    comment: Google GRE outbound
+    dst-address-list: google_ips
+    in-interface: LAN
+    out-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Google GRE return forward
+    connection-state: established,related
+    in-interface: gre-vds6
+  selector:
+    action: accept
+    chain: forward
+    comment: Google GRE return forward
+    connection-state: established,related
+    in-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Google GRE return input
+    connection-state: established,related
+    in-interface: gre-vds6
+  selector:
+    action: accept
+    chain: input
+    comment: Google GRE return input
+    connection-state: established,related
+    in-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Google GRE IP check outbound
+    dst-address-list: google_gre_ip_check
+    in-interface: LAN
+    out-interface: gre-vds6
+  selector:
+    action: accept
+    chain: forward
+    comment: Google GRE IP check outbound
+    dst-address-list: google_gre_ip_check
+    in-interface: LAN
+    out-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Misha AWG vds1 local
+    dst-port: '37972'
+    in-interface: veth-misha-awg-vds1
+    protocol: udp
+    src-address: 172.31.72.2
+  selector:
+    action: accept
+    chain: input
+    comment: Misha AWG vds1 local
+    dst-port: '37972'
+    in-interface: veth-misha-awg-vds1
+    protocol: udp
+    src-address: 172.31.72.2
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Misha AWG vds1 uplink
+    dst-address: 45.141.102.72
+    dst-port: '56709'
+    in-interface: veth-misha-awg-vds1
+    protocol: udp
+    src-address: 172.31.72.2
+  selector:
+    action: accept
+    chain: forward
+    comment: Misha AWG vds1 uplink
+    dst-address: 45.141.102.72
+    dst-port: '56709'
+    in-interface: veth-misha-awg-vds1
+    protocol: udp
+    src-address: 172.31.72.2
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Misha AWG vds8 local
+    dst-port: '37973'
+    in-interface: veth-misha-awg-vds8
+    protocol: udp
+    src-address: 172.31.72.6
+  selector:
+    action: accept
+    chain: input
+    comment: Misha AWG vds8 local
+    dst-port: '37973'
+    in-interface: veth-misha-awg-vds8
+    protocol: udp
+    src-address: 172.31.72.6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Misha AWG vds8 uplink
+    dst-address: 194.113.106.136
+    dst-port: '56709'
+    in-interface: veth-misha-awg-vds8
+    protocol: udp
+    src-address: 172.31.72.6
+  selector:
+    action: accept
+    chain: forward
+    comment: Misha AWG vds8 uplink
+    dst-address: 194.113.106.136
+    dst-port: '56709'
+    in-interface: veth-misha-awg-vds8
+    protocol: udp
+    src-address: 172.31.72.6
+  create: true
 - path: /ip firewall filter
   values:
     action: accept
@@ -2289,6 +2818,7 @@ routeros_records:
     chain: forward
     connection-state: established,related
   create: true
+  occurrence: 1
 - path: /ip firewall filter
   values:
     action: accept
@@ -2299,6 +2829,7 @@ routeros_records:
     chain: input
     connection-state: established,related
   create: true
+  occurrence: 1
 - path: /ip firewall filter
   values:
     action: accept
@@ -2309,6 +2840,7 @@ routeros_records:
     chain: forward
     in-interface: LAN
   create: true
+  occurrence: 2
 - path: /ip firewall filter
   values:
     action: accept
@@ -2421,6 +2953,150 @@ routeros_records:
   create: true
 - path: /ip firewall mangle
   values:
+    action: mark-connection
+    chain: prerouting
+    comment: Google GRE connection LAN
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Google GRE connection LAN
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Google GRE routing LAN
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Google GRE routing LAN
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: output
+    comment: Google GRE connection router
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: output
+    comment: Google GRE connection router
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: Google GRE routing router
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: output
+    comment: Google GRE routing router
+    dst-address-list: google_ips
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: prerouting
+    comment: Google GRE IP check connection LAN
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Google GRE IP check connection LAN
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Google GRE IP check routing LAN
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Google GRE IP check routing LAN
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: output
+    comment: Google GRE IP check connection router
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: output
+    comment: Google GRE IP check connection router
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: Google GRE IP check routing router
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: output
+    comment: Google GRE IP check routing router
+    dst-address-list: google_gre_ip_check
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
     action: mark-routing
     chain: prerouting
     comment: to_SSTP_to_VDS7 (TV only)
@@ -2460,44 +3136,44 @@ routeros_records:
     action: mark-routing
     chain: output
     comment: BFD force vds1 interface
-    dst-address: 10.250.1.1
+    dst-address: 10.255.2.1
     dst-port: '3784'
     new-routing-mark: bfd-vds1
     passthrough: 'no'
     protocol: udp
-    src-address: 10.250.1.24
+    src-address: 10.255.2.24
   selector:
     action: mark-routing
     chain: output
     comment: BFD force vds1 interface
-    dst-address: 10.250.1.1
+    dst-address: 10.255.2.1
     dst-port: '3784'
     new-routing-mark: bfd-vds1
     passthrough: 'no'
     protocol: udp
-    src-address: 10.250.1.24
+    src-address: 10.255.2.24
   create: true
 - path: /ip firewall mangle
   values:
     action: mark-routing
     chain: output
     comment: BFD force vds8 interface
-    dst-address: 10.250.1.8
+    dst-address: 10.255.2.8
     dst-port: '3784'
     new-routing-mark: bfd-vds8
     passthrough: 'no'
     protocol: udp
-    src-address: 10.250.1.24
+    src-address: 10.255.2.24
   selector:
     action: mark-routing
     chain: output
     comment: BFD force vds8 interface
-    dst-address: 10.250.1.8
+    dst-address: 10.255.2.8
     dst-port: '3784'
     new-routing-mark: bfd-vds8
     passthrough: 'no'
     protocol: udp
-    src-address: 10.250.1.24
+    src-address: 10.255.2.24
   create: true
 - path: /ip firewall nat
   values:
@@ -2577,6 +3253,74 @@ routeros_records:
     action: masquerade
     chain: srcnat
     out-interface: sstp-vds7
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    comment: Misha AWG vds1 WAN
+    dst-address: 45.141.102.72
+    dst-port: '56709'
+    protocol: udp
+    src-address: 172.31.72.2
+  selector:
+    action: masquerade
+    chain: srcnat
+    comment: Misha AWG vds1 WAN
+    dst-address: 45.141.102.72
+    dst-port: '56709'
+    protocol: udp
+    src-address: 172.31.72.2
+  create: true
+- path: /ip firewall nat
+  values:
+    action: masquerade
+    chain: srcnat
+    comment: Misha AWG vds8 WAN
+    dst-address: 194.113.106.136
+    dst-port: '56709'
+    protocol: udp
+    src-address: 172.31.72.6
+  selector:
+    action: masquerade
+    chain: srcnat
+    comment: Misha AWG vds8 WAN
+    dst-address: 194.113.106.136
+    dst-port: '56709'
+    protocol: udp
+    src-address: 172.31.72.6
+  create: true
+- path: /ip firewall nat
+  values:
+    action: src-nat
+    chain: srcnat
+    comment: Google GRE source NAT
+    dst-address-list: google_ips
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.17
+  selector:
+    action: src-nat
+    chain: srcnat
+    comment: Google GRE source NAT
+    dst-address-list: google_ips
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.17
+  create: true
+- path: /ip firewall nat
+  values:
+    action: src-nat
+    chain: srcnat
+    comment: Google GRE IP check source NAT
+    dst-address-list: google_gre_ip_check
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.17
+  selector:
+    action: src-nat
+    chain: srcnat
+    comment: Google GRE IP check source NAT
+    dst-address-list: google_gre_ip_check
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.17
   create: true
 - path: /ip hotspot profile
   selector:
@@ -2696,22 +3440,6 @@ routeros_records:
   create: true
 - path: /ip route
   values:
-    disabled: 'yes'
-    distance: '22'
-    dst-address: 0.0.0.0/0
-    gateway: 192.168.254.2%
-    pref-src: ''
-    routing-table: '*403'
-    scope: '30'
-    target-scope: '10'
-  selector:
-    dst-address: 0.0.0.0/0
-    routing-table: '*403'
-    gateway: 192.168.254.2%
-    distance: '22'
-  create: true
-- path: /ip route
-  values:
     comment: vds7 wg network
     disabled: 'yes'
     dst-address: 10.250.0.0/16
@@ -2750,46 +3478,74 @@ routeros_records:
 - path: /ip route
   values:
     comment: vds8 WireGuard server
-    dst-address: 10.250.1.8/32
+    dst-address: 10.255.2.8/32
     gateway: wg_vds8
   selector:
-    dst-address: 10.250.1.8/32
+    dst-address: 10.255.2.8/32
     gateway: wg_vds8
   create: true
   occurrence: 0
 - path: /ip route
   values:
     comment: vds1 WireGuard server
-    dst-address: 10.250.1.1/32
+    dst-address: 10.255.2.1/32
     gateway: wg_vds1
   selector:
-    dst-address: 10.250.1.1/32
+    dst-address: 10.255.2.1/32
     gateway: wg_vds1
   create: true
   occurrence: 0
 - path: /ip route
   values:
     comment: BFD peer interface
-    dst-address: 10.250.1.1/32
+    dst-address: 10.255.2.1/32
     gateway: wg_vds1
     routing-table: bfd-vds1
     scope: '10'
   selector:
-    dst-address: 10.250.1.1/32
+    dst-address: 10.255.2.1/32
     routing-table: bfd-vds1
     gateway: wg_vds1
   create: true
 - path: /ip route
   values:
     comment: BFD peer interface
-    dst-address: 10.250.1.8/32
+    dst-address: 10.255.2.8/32
     gateway: wg_vds8
     routing-table: bfd-vds8
     scope: '10'
   selector:
-    dst-address: 10.250.1.8/32
+    dst-address: 10.255.2.8/32
     routing-table: bfd-vds8
     gateway: wg_vds8
+  create: true
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: Google GRE default
+    disabled: 'no'
+    distance: '1'
+    dst-address: 0.0.0.0/0
+    gateway: 10.250.4.18%gre-vds6
+    routing-table: google_ips_table
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: google_ips_table
+    gateway: 10.250.4.18%gre-vds6
+    distance: '1'
+  create: true
+- path: /ip route
+  values:
+    blackhole: 'yes'
+    comment: Google GRE unavailable
+    disabled: 'no'
+    distance: '254'
+    dst-address: 0.0.0.0/0
+    routing-table: google_ips_table
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: google_ips_table
+    distance: '254'
   create: true
 - path: /ip service
   selector:
@@ -2918,7 +3674,7 @@ routeros_records:
     disabled: 'no'
     hello-interval: 1m
     interfaces: wg_vds1
-    type: ptmp
+    type: ptp
     use-bfd: 'yes'
   selector:
     area: tunnel-backbone
@@ -2927,7 +3683,7 @@ routeros_records:
     dead-interval: 4m
     hello-interval: 1m
     interfaces: wg_vds1
-    type: ptmp
+    type: ptp
     use-bfd: 'yes'
   create: true
 - path: /routing ospf interface-template
@@ -2939,7 +3695,7 @@ routeros_records:
     disabled: 'no'
     hello-interval: 1m
     interfaces: wg_vds8
-    type: ptmp
+    type: ptp
     use-bfd: 'yes'
   selector:
     area: tunnel-backbone
@@ -2948,28 +3704,28 @@ routeros_records:
     dead-interval: 4m
     hello-interval: 1m
     interfaces: wg_vds8
-    type: ptmp
+    type: ptp
     use-bfd: 'yes'
   create: true
 - path: /routing ospf static-neighbor
   values:
-    address: 10.250.1.1%wg_vds1
+    address: 10.255.2.1%wg_vds1
     area: tunnel-backbone
     disabled: 'no'
     poll-interval: 1m
   selector:
-    address: 10.250.1.1%wg_vds1
+    address: 10.255.2.1%wg_vds1
     area: tunnel-backbone
     poll-interval: 1m
   create: true
 - path: /routing ospf static-neighbor
   values:
-    address: 10.250.1.8%wg_vds8
+    address: 10.255.2.8%wg_vds8
     area: tunnel-backbone
     disabled: 'no'
     poll-interval: 1m
   selector:
-    address: 10.250.1.8%wg_vds8
+    address: 10.255.2.8%wg_vds8
     area: tunnel-backbone
     poll-interval: 1m
   create: true
@@ -3028,7 +3784,7 @@ routeros_records:
     interval: 1d
     name: get_google_ips
     on-event: '{{ routeros_secrets.record_260_on_event }}'
-    policy: ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon
+    policy: read,write,test
     start-date: '2024-11-16'
     start-time: 01:00:00
   unset:

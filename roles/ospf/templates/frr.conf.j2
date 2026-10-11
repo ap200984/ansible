@@ -54,6 +54,26 @@ interface wg2
 {% endif %}
 !
 {% endif %}
+{% if k16_amneziawg_enabled | default(false) | bool %}
+interface wg3
+ ip ospf area 0.0.0.0 10.255.2.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-point
+ ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+ ip ospf bfd
+!
+{% endif %}
+{% if misha_amneziawg_enabled | default(false) | bool %}
+interface wg4
+ ip ospf area 0.0.0.0 10.255.2.{{ inventory_hostname[3:] }}
+ ip ospf network point-to-point
+ ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
+ ip ospf hello-interval 60
+ ip ospf dead-interval 240
+ ip ospf bfd
+!
+{% endif %}
 router ospf
  ospf router-id {{ ospf_router_id }}
  maximum-paths 1

@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+{% for link in google_gre_links %}
+iptables -C INPUT -p gre -s 10.255.0.{{ link.suffix }}/32 -d {{ google_gre_server_loopback }}/32 -m comment --comment google-gre -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -p gre -s 10.255.0.{{ link.suffix }}/32 -d {{ google_gre_server_loopback }}/32 -m comment --comment google-gre -j ACCEPT
+iptables -C FORWARD -i {{ link.linux_interface }} -s {{ link.router_address }}/32 -o {{ google_gre_wan_interface }} -m comment --comment google-gre -j ACCEPT 2>/dev/null ||
+    iptables -I FORWARD 1 -i {{ link.linux_interface }} -s {{ link.router_address }}/32 -o {{ google_gre_wan_interface }} -m comment --comment google-gre -j ACCEPT
+iptables -C FORWARD -o {{ link.linux_interface }} -d {{ link.router_address }}/32 -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment google-gre -j ACCEPT 2>/dev/null ||
+    iptables -I FORWARD 1 -o {{ link.linux_interface }} -d {{ link.router_address }}/32 -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment google-gre -j ACCEPT
+iptables -t mangle -C FORWARD -i {{ link.linux_interface }} -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss {{ google_gre_mtu - 40 }} 2>/dev/null ||
+    iptables -t mangle -I FORWARD 1 -i {{ link.linux_interface }} -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss {{ google_gre_mtu - 40 }}
+{% endfor %}
+iptables -t nat -C POSTROUTING -s 10.250.4.0/24 ! -d 10.0.0.0/8 -o {{ google_gre_wan_interface }} -m comment --comment google-gre -j MASQUERADE 2>/dev/null ||
+    iptables -t nat -I POSTROUTING 1 -s 10.250.4.0/24 ! -d 10.0.0.0/8 -o {{ google_gre_wan_interface }} -m comment --comment google-gre -j MASQUERADE

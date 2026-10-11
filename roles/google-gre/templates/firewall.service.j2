@@ -1,0 +1,10 @@
+[Unit]
+Description=Google GRE forwarding and Internet NAT
+After=network-online.target docker.service frr.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/google-gre-firewall
+[Install]
+WantedBy=multi-user.target

@@ -19,7 +19,7 @@ ignored workstation copies remain available. The following native migration
 notes describe the earlier rollout; native CHR deployment now targets only
 vds1/vds8 and mesh AWG deployment targets vds1/vds5/vds8.
 
-Current tunnel drawing: [2026-10-05 topology](topology/current-tunnels.md).
+Current tunnel drawing: [2026-10-11 topology](topology/current-tunnels.md).
 Native Linux AWG rollout and backup notes:
 [migration status](topology/chr-native-migration-status.md).
 
@@ -308,3 +308,16 @@ rules. CHR point-to-point interfaces use local `10.250.1.7/32` with each
 remote peer as `network`; site point-to-multipoint interfaces retain `/24`.
 Linux templates enable `ip ospf bfd` on every active tunnel and `ospf.yml`
 enables `bfdd`. Loopbacks remain passive. No custom BFD timer profiles are set.
+
+K16_112 ↔ vds1/vds8 now use ARM64 container-backed AmneziaWG and native
+Linux `wg3`, with transport subnet `10.255.2.0/24`. See
+[the K16 migration](../docs/k16-amneziawg.md) for addresses, costs, images and
+recovery details. Ordinary K16 hub client playbooks skip these migrated links.
+
+Misha’s two links to vds1/vds8 also use AmneziaWG: ARM containers on `usb1`,
+transport `10.255.2.24`, native VDS `wg4`/UDP 56709. See
+[Misha deployment and recovery](../docs/misha-amneziawg.md).
+
+Four site routers use GRE to VDS6 for Google IPv4 traffic via `google_ips_table`.
+Address allocation, scheduled prefix refresh and rebuild details are in
+[Google GRE routing](../docs/google-gre.md).

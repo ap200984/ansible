@@ -1,0 +1,22 @@
+:local response [/tool fetch url="{{ google_gre_feed }}" check-certificate=yes duration=60s idle-timeout=15s output=user as-value];
+:if (($response->"status") != "finished") do={:error "Google prefix download failed"};
+:local document [:deserialize from=json value=($response->"data") options=json.no-string-conversion];
+:local prefixes [:toarray ""];
+:foreach row in=($document->"prefixes") do={
+    :local prefix ($row->"ipv4Prefix");
+    :if ([:typeof $prefix] = "str") do={
+        :if (!($prefix ~ "^[0-9.]+/[0-9]+\$")) do={:error "Invalid Google IPv4 prefix"};
+        :set prefixes ($prefixes,$prefix);
+    };
+};
+:if ([:len $prefixes] < 50) do={:error "Incomplete Google prefix feed; retaining previous list"};
+:local generation ("Google feed " . ($document->"syncToken"));
+:foreach prefix in=$prefixes do={
+    :local existing [/ip firewall address-list find where list="google_ips" and address=$prefix];
+    :if ([:len $existing] = 0) do={
+        /ip firewall address-list add list=google_ips address=$prefix comment=$generation;
+    } else={/ip firewall address-list set $existing comment=$generation};
+};
+/ip firewall address-list remove [find where list="google_ips" and comment!=$generation];
+:log info ("Google IPv4 prefixes updated: " . [:len $prefixes]);
+:put ("GOOGLE_PREFIXES " . [:len $prefixes]);

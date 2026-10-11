@@ -1,0 +1,42 @@
+- name: Install the idempotent GRE helper
+  ansible.builtin.copy:
+    src: roles/google-gre/files/tunnel
+    dest: /usr/local/sbin/google-gre-tunnel
+    mode: '0755'
+- name: Install persistent GRE links
+  ansible.builtin.template:
+    src: roles/google-gre/templates/tunnel.service.j2
+    dest: '/etc/systemd/system/{{ item.linux_interface }}.service'
+    mode: '0644'
+  loop: '{{ google_gre_links }}'
+  register: google_gre_units
+- name: Install forwarding firewall
+  ansible.builtin.template:
+    src: roles/google-gre/templates/firewall.sh.j2
+    dest: /usr/local/sbin/google-gre-firewall
+    mode: '0755'
+- name: Install firewall boot service
+  ansible.builtin.template:
+    src: roles/google-gre/templates/firewall.service.j2
+    dest: /etc/systemd/system/google-gre-firewall.service
+    mode: '0644'
+- name: Persist IPv4 forwarding
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/70-google-gre.conf
+    content: "net.ipv4.ip_forward=1\n"
+    mode: '0644'
+- name: Start forwarding firewall
+  ansible.builtin.systemd_service:
+    name: google-gre-firewall
+    enabled: true
+    daemon_reload: true
+    state: restarted
+- name: Start all four GRE links
+  ansible.builtin.systemd_service:
+    name: '{{ item.item.linux_interface }}'
+    enabled: true
+    state: '{{ "restarted" if item.changed else "started" }}'
+  loop: '{{ google_gre_units.results }}'
+- name: Save firewall state for boot
+  ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+  changed_when: false

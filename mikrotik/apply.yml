@@ -71,6 +71,18 @@
       failed_when: chr_restore_image.rc != 0 or 'failure:' in chr_restore_image.stdout
       when: router_identity == 'vds7_CHR'
 
+    - name: Stage ARM64 AWG image for rebuilt K16
+      ansible.builtin.include_tasks: ../roles/k16-amneziawg/tasks/stage-image.yml
+      when:
+        - router_identity == 'K16_112'
+        - k16_amneziawg_enabled | default(false) | bool
+
+    - name: Stage ARM AWG image on USB for rebuilt Misha
+      ansible.builtin.include_tasks: ../roles/misha-amneziawg/tasks/stage-image.yml
+      when:
+        - router_identity == "Misha"
+        - misha_amneziawg_enabled | default(false) | bool
+
     - name: Reconcile exported configuration
       routeros_ssh:
         host: "{{ router_host }}"

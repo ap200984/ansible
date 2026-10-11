@@ -1,0 +1,188 @@
+---
+- name: Migrate the two K16 links to container-backed AmneziaWG
+  hosts: vds1:vds8
+  serial: 1
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars_files:
+    - mikrotik/host_vars/K16_112.yml
+  vars:
+    k16_awg_number: '{{ inventory_hostname[3:] | int }}'
+    k16_awg_gateway: '{{ "172.31.71.1" if inventory_hostname == "vds1" else "172.31.71.5" }}'
+    k16_awg_container: '{{ "172.31.71.2" if inventory_hostname == "vds1" else "172.31.71.6" }}'
+    k16_query_container: ":put [:serialize to=json [/container print as-value where name=k16-awg-vds{{ k16_awg_number }}]]"
+    k16_start_container: "/container start [find where name=k16-awg-vds{{ k16_awg_number }}]"
+    k16_ssh:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=12
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+  tasks:
+    - name: Confirm native AWG tooling and the existing public identity
+      ansible.builtin.command: wg show wg0 public-key
+      register: k16_linux_public
+      changed_when: false
+    - name: Confirm native module is available
+      ansible.builtin.command: modprobe amneziawg
+      changed_when: false
+    - name: Preserve private rollback files on the VDS
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        mkdir -p /root/before-k16-awg-20261011
+        cp -an /etc/wireguard/wg0.conf /etc/frr/frr.conf /root/before-k16-awg-20261011/
+      changed_when: false
+    - name: Install the focused native tunnel helper
+      ansible.builtin.copy:
+        src: roles/k16-amneziawg/files/configure.py
+        dest: /usr/local/sbin/k16-amneziawg-configure
+        mode: '0700'
+    - name: Prepare a dedicated native link without touching ordinary peers
+      ansible.builtin.command: '/usr/local/sbin/k16-amneziawg-configure prepare --number {{ k16_awg_number }}'
+      register: k16_native_config
+      changed_when: "'CONFIG_CHANGED' in k16_native_config.stdout"
+      no_log: true
+    - name: Permit native AmneziaWG packets from K16
+      ansible.builtin.shell: |
+        iptables -C INPUT -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT 2>/dev/null ||
+        iptables -I INPUT 1 -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT
+        iptables -C INPUT -i wg3 -s 10.255.2.112/32 -j ACCEPT 2>/dev/null ||
+        iptables -I INPUT 1 -i wg3 -s 10.255.2.112/32 -j ACCEPT
+      changed_when: false
+    - name: Start the native interface
+      ansible.builtin.systemd_service:
+        name: awg-quick@wg3
+        enabled: true
+        state: started
+    - name: Stage the pinned ARM64 proxy image
+      ansible.builtin.include_tasks: roles/k16-amneziawg/tasks/stage-image.yml
+    - name: Prepare container networking, environment and firewall
+      ansible.builtin.command:
+        argv: '{{ k16_ssh + [lookup("template", "roles/k16-amneziawg/templates/prepare.rsc.j2").splitlines() | join(" ")] }}'
+      delegate_to: localhost
+      become: false
+      register: k16_prepare
+      failed_when: k16_prepare.rc != 0 or 'K16_AWG_PREPARED' not in k16_prepare.stdout or 'failure:' in k16_prepare.stdout or 'syntax error' in k16_prepare.stdout
+    - name: Wait for image extraction
+      ansible.builtin.command:
+        argv: '{{ k16_ssh + [k16_query_container] }}'
+      delegate_to: localhost
+      become: false
+      register: k16_extract
+      changed_when: false
+      until: ((k16_extract.stdout | from_json | first).stopped | default(false)) or ((k16_extract.stdout | from_json | first).running | default(false))
+      retries: 12
+      delay: 5
+    - name: Start the prepared proxy
+      ansible.builtin.command:
+        argv: '{{ k16_ssh + [k16_start_container] }}'
+      delegate_to: localhost
+      become: false
+      when: (k16_extract.stdout | from_json | first).stopped | default(false)
+    - name: Migrate and verify before removing the ordinary Linux peer
+      block:
+        - name: Enable OSPF and BFD on the native link
+          ansible.builtin.command:
+            argv:
+              - vtysh
+              - -c
+              - configure terminal
+              - -c
+              - interface wg3
+              - -c
+              - 'ip ospf area 0.0.0.0 10.255.2.{{ k16_awg_number }}'
+              - -c
+              - ip ospf network point-to-point
+              - -c
+              - 'ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}'
+              - -c
+              - ip ospf hello-interval 60
+              - -c
+              - ip ospf dead-interval 240
+              - -c
+              - ip ospf bfd
+              - -c
+              - end
+              - -c
+              - write memory
+        - name: Switch the existing K16 interface to the container
+          ansible.builtin.command:
+            argv: '{{ k16_ssh + [lookup("template", "roles/k16-amneziawg/templates/cutover.rsc.j2").splitlines() | join(" ")] }}'
+          delegate_to: localhost
+          become: false
+          register: k16_cutover
+          failed_when: k16_cutover.rc != 0 or 'K16_AWG_CUTOVER' not in k16_cutover.stdout or 'failure:' in k16_cutover.stdout or 'syntax error' in k16_cutover.stdout
+        - name: Stop the old live peer from relearning the public endpoint
+          ansible.builtin.command: wg set wg0 peer 09+N44Dl/exqOELQAoECIev+VASLf3ki8lxJFDf10Bw= remove
+        - name: Reset only this K16 peer to initiate a fresh native handshake
+          ansible.builtin.command:
+            argv: '{{ k16_ssh + ["/interface wireguard peers disable [find where name=wg_to_vds" ~ k16_awg_number ~ "]; /interface wireguard peers enable [find where name=wg_to_vds" ~ k16_awg_number ~ "]"] }}'
+          delegate_to: localhost
+          become: false
+        - name: Wait for Full native OSPF adjacency
+          ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
+          register: k16_neighbors
+          changed_when: false
+          until: k16_neighbors.stdout is search('10\.255\.0\.112\s+.*Full/.*10\.255\.2\.112\s+wg3')
+          retries: 24
+          delay: 5
+        - name: Verify native BFD is Up
+          ansible.builtin.command: vtysh -c 'show bfd peers json'
+          register: k16_bfd
+          changed_when: false
+          until: k16_bfd.stdout | from_json | selectattr('peer', 'equalto', '10.255.2.112') | selectattr('status', 'equalto', 'up') | list | length == 1
+          retries: 12
+          delay: 5
+        - name: Verify routed K16 loopback from the VDS loopback
+          ansible.builtin.command: 'ping -I 10.255.0.{{ k16_awg_number }} -c 5 -W 3 10.255.0.112'
+          changed_when: false
+        - name: Remove the superseded ordinary WireGuard peer
+          ansible.builtin.command: '/usr/local/sbin/k16-amneziawg-configure remove-plain --number {{ k16_awg_number }}'
+          register: k16_remove
+          changed_when: "'CONFIG_CHANGED' in k16_remove.stdout"
+        - name: Remove the old unicast OSPF neighbor
+          ansible.builtin.command: vtysh -c 'configure terminal' -c 'router ospf' -c 'no neighbor 10.250.1.112' -c end -c 'write memory'
+        - name: Persist the complete routing firewall including K16 AWG
+          ansible.builtin.template:
+            src: roles/ospf/templates/firewall.sh.j2
+            dest: /usr/local/sbin/ospf-firewall
+            mode: '0755'
+        - name: Apply the persistent routing firewall
+          ansible.builtin.command: /usr/local/sbin/ospf-firewall
+          changed_when: false
+        - name: Save firewall for boot
+          ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+          changed_when: false
+      rescue:
+        - name: Restore the ordinary router transport
+          ansible.builtin.command:
+            argv: '{{ k16_ssh + [lookup("template", "roles/k16-amneziawg/templates/rollback.rsc.j2").splitlines() | join(" ")] }}'
+          delegate_to: localhost
+          become: false
+        - name: Restore Linux FRR and WireGuard files
+          ansible.builtin.shell: |
+            set -eu
+            cp /root/before-k16-awg-20261011/wg0.conf /etc/wireguard/wg0.conf
+            cp /root/before-k16-awg-20261011/frr.conf /etc/frr/frr.conf
+            wg syncconf wg0 <(wg-quick strip wg0)
+            ip route replace 10.250.1.112/32 dev wg0 src 10.250.1.{{ k16_awg_number }}
+            systemctl reload frr
+          args: {executable: /bin/bash}
+          no_log: true
+        - ansible.builtin.fail:
+            msg: Native K16 verification failed; ordinary transport was restored.

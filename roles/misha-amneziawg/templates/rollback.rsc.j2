@@ -1,0 +1,8 @@
+/interface wireguard set [find where name="wg_vds{{ misha_awg_number }}"] mtu=1420;
+/interface wireguard peers set [find where name="wg_to_vds{{ misha_awg_number }}"] endpoint-address={{ amneziawg_endpoints[inventory_hostname] }} endpoint-port={{ 56685 if misha_awg_number | int == 1 else 56699 }} allowed-address=10.0.0.0/8 persistent-keepalive=0;
+/ip address set [find where interface="wg_vds{{ misha_awg_number }}"] address=10.250.1.24/24 network=10.250.1.0;
+/routing ospf interface-template set [find where comment="OSPF existing wg_vds{{ misha_awg_number }}"] type=ptmp use-bfd=yes;
+/routing ospf static-neighbor set [find where address="10.250.1.{{ misha_awg_number }}%wg_vds{{ misha_awg_number }}" or address="10.255.2.{{ misha_awg_number }}%wg_vds{{ misha_awg_number }}"] address=10.250.1.{{ misha_awg_number }}%wg_vds{{ misha_awg_number }};
+/ip route set [find where comment="vds{{ misha_awg_number }} WireGuard server"] dst-address=10.250.1.{{ misha_awg_number }}/32;
+/ip route set [find where routing-table="bfd-vds{{ misha_awg_number }}" and comment="BFD peer interface"] dst-address=10.250.1.{{ misha_awg_number }}/32;
+/ip firewall mangle set [find where comment="BFD force vds{{ misha_awg_number }} interface"] src-address=10.250.1.24 dst-address=10.250.1.{{ misha_awg_number }};

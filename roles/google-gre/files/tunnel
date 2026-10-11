@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+operation=$1
+interface=$2
+if [ "$operation" = stop ]; then
+    ip link delete "$interface" 2>/dev/null || true
+    exit 0
+fi
+local_endpoint=$3
+remote_endpoint=$4
+address=$5
+mtu=$6
+if ip link show "$interface" >/dev/null 2>&1; then
+    ip tunnel change "$interface" mode gre local "$local_endpoint" remote "$remote_endpoint" ttl 64
+else
+    ip tunnel add "$interface" mode gre local "$local_endpoint" remote "$remote_endpoint" ttl 64
+fi
+ip address replace "$address" dev "$interface"
+ip link set "$interface" mtu "$mtu" up

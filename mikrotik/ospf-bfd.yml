@@ -29,11 +29,11 @@
         flags: [fib]
         values: {name: 'bfd-vds{{ peer }}', fib: 'yes'}
       - path: /ip route
-        selector: {routing-table: 'bfd-vds{{ peer }}', dst-address: '10.250.1.{{ peer }}/32'}
+        selector: {routing-table: 'bfd-vds{{ peer }}', dst-address: '{{ "10.255.2" if ((ospf_router.identity == "K16_112" and k16_amneziawg_enabled | default(false) | bool) or (ospf_router.identity == "Misha" and misha_amneziawg_enabled | default(false) | bool)) else "10.250.1" }}.{{ peer }}/32'}
         create: true
         values:
           routing-table: 'bfd-vds{{ peer }}'
-          dst-address: '10.250.1.{{ peer }}/32'
+          dst-address: '{{ "10.255.2" if ((ospf_router.identity == "K16_112" and k16_amneziawg_enabled | default(false) | bool) or (ospf_router.identity == "Misha" and misha_amneziawg_enabled | default(false) | bool)) else "10.250.1" }}.{{ peer }}/32'
           gateway: 'wg_vds{{ peer }}'
           scope: '10'
           comment: BFD peer interface
@@ -45,8 +45,8 @@
           comment: 'BFD force vds{{ peer }} interface'
           chain: output
           protocol: udp
-          src-address: '10.250.1.{{ ospf_router.loopback.split(".")[-1] }}'
-          dst-address: '10.250.1.{{ peer }}'
+          src-address: '{{ "10.255.2" if ((ospf_router.identity == "K16_112" and k16_amneziawg_enabled | default(false) | bool) or (ospf_router.identity == "Misha" and misha_amneziawg_enabled | default(false) | bool)) else "10.250.1" }}.{{ ospf_router.loopback.split(".")[-1] }}'
+          dst-address: '{{ "10.255.2" if ((ospf_router.identity == "K16_112" and k16_amneziawg_enabled | default(false) | bool) or (ospf_router.identity == "Misha" and misha_amneziawg_enabled | default(false) | bool)) else "10.250.1" }}.{{ peer }}'
           dst-port: '3784'
           action: mark-routing
           new-routing-mark: 'bfd-vds{{ peer }}'

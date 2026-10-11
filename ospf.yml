@@ -11,7 +11,7 @@
     ospf_transport: 10.250.1.{{ ospf_hub }}
     ospf_router_id: 10.255.0.{{ ospf_hub }}
     ospf_cost: '{{ ospf_wireguard_costs[inventory_hostname] }}'
-    ospf_neighbors: '{{ ["10.250.1.112", "10.250.1.64", "10.250.1.21", "10.250.1.24", "10.250.1.7"] if inventory_hostname in ["vds1", "vds8"] else ["10.250.1.7"] }}'
+    ospf_neighbors: '{{ ospf_direct_neighbors | default(["10.250.1.112", "10.250.1.64", "10.250.1.21", "10.250.1.24", "10.250.1.7"] if inventory_hostname in ["vds1", "vds8"] else ["10.250.1.7"]) }}'
     ospf_wireguard_enabled: true
   tasks:
   - name: Check for existing FRR configuration

@@ -1,0 +1,19 @@
+:if ([/system device-mode get container] != true) do={:error "Container permission not activated"};
+:if ([:len [/interface veth find where name="veth-k16-awg-vds{{ k16_awg_number }}"]] = 0) do={
+/interface veth add name=veth-k16-awg-vds{{ k16_awg_number }} address={{ k16_awg_container }}/30 gateway={{ k16_awg_gateway }};
+/ip address add address={{ k16_awg_gateway }}/30 interface=veth-k16-awg-vds{{ k16_awg_number }} comment="K16 AWG vds{{ k16_awg_number }} gateway"};
+{% set env = {'AWG_MODE': 'normal', 'AWG_LISTEN': ':51820', 'AWG_REMOTE': amneziawg_endpoints[inventory_hostname] ~ ':56708', 'AWG_JC': '4', 'AWG_JMIN': '40', 'AWG_JMAX': '80', 'AWG_S1': '65', 'AWG_S2': '107', 'AWG_H1': '1723456781', 'AWG_H2': '1723456782', 'AWG_H3': '1723456783', 'AWG_H4': '1723456784', 'AWG_SERVER_PUB': k16_linux_public.stdout | trim, 'AWG_CLIENT_PUB': '09+N44Dl/exqOELQAoECIev+VASLf3ki8lxJFDf10Bw=', 'AWG_LOG_LEVEL': 'info'} %}
+{% for key,value in env.items() %}
+:local e{{ loop.index }} [/container envs find where list="k16-awg-vds{{ k16_awg_number }}" and key="{{ key }}"];
+:if ([:len $e{{ loop.index }}] = 0) do={/container envs add list=k16-awg-vds{{ k16_awg_number }} key={{ key }} value="{{ value }}"}
+else={/container envs set $e{{ loop.index }} value="{{ value }}"};
+{% endfor %}
+:if ([:len [/ip firewall filter find where comment="K16 AWG vds{{ k16_awg_number }} local"]] = 0) do={
+/ip firewall filter add chain=input action=accept in-interface=veth-k16-awg-vds{{ k16_awg_number }} src-address={{ k16_awg_container }} protocol=udp dst-port={{ 37972 if k16_awg_number | int == 1 else 37973 }} comment="K16 AWG vds{{ k16_awg_number }} local" place-before=0};
+:if ([:len [/ip firewall filter find where comment="K16 AWG vds{{ k16_awg_number }} uplink"]] = 0) do={
+/ip firewall filter add chain=forward action=accept in-interface=veth-k16-awg-vds{{ k16_awg_number }} src-address={{ k16_awg_container }} dst-address={{ amneziawg_endpoints[inventory_hostname] }} protocol=udp dst-port=56708 comment="K16 AWG vds{{ k16_awg_number }} uplink" place-before=0};
+:if ([:len [/ip firewall nat find where comment="K16 AWG vds{{ k16_awg_number }} WAN"]] = 0) do={
+/ip firewall nat add chain=srcnat action=masquerade src-address={{ k16_awg_container }} dst-address={{ amneziawg_endpoints[inventory_hostname] }} protocol=udp dst-port=56708 comment="K16 AWG vds{{ k16_awg_number }} WAN"};
+:if ([:len [/container find where name="k16-awg-vds{{ k16_awg_number }}"]] = 0) do={
+/container add name=k16-awg-vds{{ k16_awg_number }} file=k16-awg-proxy-v1.4.2-arm64.tar.gz interface=veth-k16-awg-vds{{ k16_awg_number }} envlists=k16-awg-vds{{ k16_awg_number }} hostname=k16-awg-vds{{ k16_awg_number }} root-dir=k16-awg-vds{{ k16_awg_number }} logging=yes shm-size=4M start-on-boot=yes comment="K16 AWG vds{{ k16_awg_number }}"};
+:put "K16_AWG_PREPARED";

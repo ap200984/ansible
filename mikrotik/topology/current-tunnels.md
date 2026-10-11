@@ -1,4 +1,4 @@
-# Current tunnel topology — 2026-10-05
+# Current tunnel topology — 2026-10-11
 
 Live interfaces and OSPF adjacencies were checked after deployment. Retired
 interfaces and phone VPNs are omitted. Linux `wg0` retains ordinary site
@@ -7,7 +7,12 @@ connect to vds1/vds8 native `wg2`. vds2/vds6 now use ordinary `wg0` to CHR
 and ordinary `wg1` to vds5; vds5 uses `wg0` to CHR and independent
 `wg-vds2`/`wg-vds6` ordinary mesh interfaces. Linux C
 proxy services have been removed from vds1/vds2/vds5/vds6/vds8. Addresses,
-keys and OSPF costs are unchanged; dedicated CHR links use point-to-point OSPF.
+dedicated CHR links use point-to-point OSPF. K16 uses two ARM64 C containers to vds1/vds8 native `wg3`; Misha uses
+two ARM C containers on USB storage to native `wg4`. Both use
+transport `10.255.2.0/24`.
+All 25 OSPF links have BFD enabled; SSTP is a backup with cost 60000.
+Four GRE tunnels now connect K16, 3Ekipazhnyi64, k16_21 and Misha to VDS6
+for Google IPv4 policy traffic over OSPF loopback endpoints.
 
 [SVG drawing](current-tunnels.svg) · [PNG drawing](current-tunnels.png)
 
@@ -30,15 +35,20 @@ flowchart LR
   V2["vds2 · wg0 · .2"]
   V5["vds5 · wg0 · .5"]
   V6["vds6 · wg0 · .6"]
-  V1 <-->|WG| K & E & R & M
-  V8 <-->|WG| K & E & R & M
+  V1 <-->|WG| E & R
+  K <-->|AWG wg3 · 10.255.2.112 ↔ 10.255.2.1 · cost 1000| V1
+  V8 <-->|WG| E & R
+  K <-->|AWG wg3 · 10.255.2.112 ↔ 10.255.2.8 · cost 30000| V8
+  M <-->|AWG wg4 · 10.255.2.24 ↔ 10.255.2.1 · cost 1000| V1
+  M <-->|AWG wg4 · 10.255.2.24 ↔ 10.255.2.8 · cost 30000| V8
   C <-->|CHR C container ↔ Linux native AWG wg2| V1 & V8
   C <-->|WireGuard wg0| V2 & V5 & V6
   V5 <-->|WireGuard| V2 & V6
   V5 <-->|AmneziaWG| V1 & V8
   V1 <-->|AmneziaWG| V8
-  K & E & R & M <-->|SSTP| C
+  K & E & R & M <-->|SSTP · cost 60000| C
   E & R & M <-->|L2TP| K
+  K & E & R & M <-->|GRE · Google policy · separate /30s| V6
   K --- LAN["10.9.0.0/24 main · 10.9.1.0/24 Kubernetes"]
   LAN --- L["Logia_Kitchen .2 · SouthRoom .3 · vds3 .120"]
 ```
@@ -47,21 +57,48 @@ Transport addressing uses each node's suffix above:
 
 | Transport | Client address | Server | OSPF cost |
 | --- | --- | --- | --- |
-| WireGuard to vds1 | 10.250.1.N/24 | 10.250.1.1 | 1000 |
-| WireGuard to vds8 | 10.250.1.N/24 | 10.250.1.8 | 30000 |
-| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.1.7/24 | vds1/vds8 10.250.1.N/24 | 1000; vds8 30000 |
-| CHR ↔ ordinary Linux wg0 | CHR 10.250.1.7/24 | vds2/vds5/vds6 10.250.1.N/24 | 1000; vds5 1001 |
+| WireGuard sites 64/21 to vds1 | 10.250.1.N/24 | 10.250.1.1 | 1000 |
+| WireGuard sites 64/21 to vds8 | 10.250.1.N/24 | 10.250.1.8 | 30000 |
+| K16 C container ↔ vds1 native AWG wg3 | 10.255.2.112/32 | 10.255.2.1/24 | 1000 |
+| K16 C container ↔ vds8 native AWG wg3 | 10.255.2.112/32 | 10.255.2.8/24 | 30000 |
+| Misha C container ↔ vds1 native AWG wg4 | 10.255.2.24/32 | 10.255.2.1/24 | 1000 |
+| Misha C container ↔ vds8 native AWG wg4 | 10.255.2.24/32 | 10.255.2.8/24 | 30000 |
+| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.1.7/32 | vds1/vds8 10.250.1.N/24 | 1000; vds8 30000 |
+| CHR ↔ ordinary Linux wg0 | CHR 10.250.1.7/32 | vds2/vds5/vds6 10.250.1.N/24 | 1000; vds5 1001 |
 | Ordinary WG star to vds5 | vds2/vds6 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG star to vds5 | vds1/vds8 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG vds1 ↔ vds8 | 10.250.2.1/24 | 10.250.2.8/24 | 200 |
-| SSTP to CHR | 10.250.0.N/32 | Legacy PPP endpoint 10.251.0.7 | 10 |
+| SSTP to CHR | 10.250.0.N/32 | Legacy PPP endpoint 10.251.0.7 | 60000 |
 | L2TP to K16_112 | 10.250.3.N/32 | 10.250.3.112 | 100 |
 
-There are thirteen ordinary WireGuard, five AmneziaWG (two CHR links and
-three native mesh links), four SSTP and three L2TP links (25 total). Site WG
-MTU is 1420; CHR and inter-VDS tunnels use 1340. Loopbacks are `10.255.0.N/32`.
+There are nine ordinary WireGuard, nine AmneziaWG (two K16 links, two Misha
+links, two CHR links and three native mesh links), four SSTP and three L2TP links, plus four GRE policy links (29 total). Ordinary site WG
+MTU is 1420; K16/Misha AWG, CHR and inter-VDS tunnels use 1340. Loopbacks are `10.255.0.N/32`.
 vds3 is a LAN host, not a WireGuard endpoint. LAN labels `.2/.3/.120` above
 are addresses in `10.9.0.0/24`, not transport suffixes.
+
+## Routing, BFD and restoration
+
+All 25 tunnel adjacencies were Full and all 50 BFD endpoints were Up after
+migration on 2026-10-11. All 90 directed loopback checks across ten routers/VDSes
+passed using dynamically learned OSPF routes. Loopbacks remain in
+`10.255.0.0/24`; the K16/Misha AWG transport is separately `10.255.2.0/24`.
+Existing inter-VDS mesh transport remains `10.250.2.0/24`.
+
+BFD uses platform defaults: FRR transmit/receive 300 ms, multiplier 3;
+RouterOS 200 ms, multiplier 5, with echo disabled. Negotiation determines the
+actual detection time. OSPF hello/dead timers remain 60/240 seconds. SSTP
+cost 60000 allows it to carry traffic when preferred WG/AWG routes disappear.
+Path selection uses total OSPF cost across all links.
+
+K16 keeps interface names `wg_vds1`/`wg_vds8` and its original key identity,
+while their endpoints are local proxy containers. Each numbered `/32`
+interface has the corresponding VDS transport address as its peer network.
+See [K16 deployment and recovery](../../docs/k16-amneziawg.md) and
+[Misha deployment and recovery](../../docs/misha-amneziawg.md), and
+[proxy/OSPF restoration](../../docs/restore-proxies-ospf.md). Host variables,
+shared MikroTik topology policy, router exports and encrypted Vault manifests
+capture the deployed state for restoring new machines.
 
 ## AmneziaWG deployment
 
@@ -98,7 +135,8 @@ pinned to AmneziaWG packages only. Archived signed Debian headers match
 the running kernel where needed; no kernel upgrade or reboot is required.
 
 `/etc/amnezia/amneziawg/wg1.conf` is independent of ordinary WireGuard.
-Private keys are generated and retained on each host, not in Git. UDP 56702
+Private keys remain on hosts and are also captured in encrypted Vault restore
+manifests; plaintext keys are not stored in Git. UDP 56702
 is permitted only from the peer public endpoint addresses. MTU is 1340,
 `Table = off`, OSPF cost 200, hello/dead timers 60/240 seconds, and
 `PersistentKeepalive = 0`. OSPF hellos and AmneziaWG's normal handshake/rekey
@@ -114,7 +152,7 @@ routed traffic and failover should use the `10.255.0.N` loopbacks. FRR retains
 
 Unlike the former CHR-only connectivity, vds5 can now be reached through
 vds1 or vds8 without CHR. Cost 200 prefers direct AmneziaWG between VDSes,
-while existing lower-cost site-to-CHR SSTP paths remain available.
+while site-to-CHR SSTP paths remain available as higher-cost backups.
 
 The existing CHR↔vds5 link, now ordinary WireGuard, uses cost **1001 on both ends**.
 Without that one-unit distinction, CHR has equal-cost routes to vds8 via
@@ -141,6 +179,22 @@ was not flushed to avoid interrupting unrelated connections.
 FRR is installed by the `Install FRR` task in root `ospf.yml`, which includes
 `roles/ospf/tasks/compatible-frr.yml` for the signed official `frr-10.4`
 repository on older distributions. It renders
-`roles/ospf/templates/frr.conf.j2` to `/etc/frr/frr.conf`, enables `ospfd` in
+`roles/ospf/templates/frr.conf.j2` to `/etc/frr/frr.conf`, enables `ospfd` and `bfdd` in
 `/etc/frr/daemons`, and starts the `frr` service. This play includes role
 files directly rather than invoking a conventional `roles: [ospf]` entry.
+
+## Google GRE egress
+
+| Router | GRE subnet | Router IP | VDS6 IP |
+| --- | --- | --- | --- |
+| K16_112 | 10.250.4.0/30 | 10.250.4.1 | 10.250.4.2 |
+| 3Ekipazhnyi64 | 10.250.4.4/30 | 10.250.4.5 | 10.250.4.6 |
+| k16_21 | 10.250.4.12/30 | 10.250.4.13 | 10.250.4.14 |
+| Misha | 10.250.4.16/30 | 10.250.4.17 | 10.250.4.18 |
+
+`10.250.4.8/30` is reserved. GRE outer endpoints are each router's
+`10.255.0.N` loopback and VDS6 `10.255.0.6`. These four GRE links carry Google
+IPv4 traffic marked into `google_ips_table`; they do not participate in OSPF.
+Scripts refresh `google_ips` daily from Google's official prefix feed. Router
+GRE source NAT and VDS6 WAN NAT provide symmetric Internet return paths.
+See [GRE deployment and recovery](../../docs/google-gre.md).

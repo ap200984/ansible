@@ -1,0 +1,62 @@
+---
+- name: Require mounted writable USB storage before staging containers
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+      - >-
+        :local d [/disk find where mount-point="usb1"];
+        :if ([:len $d] != 1) do={:error "Expected usb1 storage"};
+        :if ([/disk get $d mount-read-only] = true) do={:error "USB storage is read-only"};
+        :if ([/disk get $d free] < 1048576) do={:error "Insufficient USB storage"};
+        :put "USB_READY";
+  delegate_to: localhost
+  become: false
+  register: misha_usb_check
+  changed_when: false
+  failed_when: misha_usb_check.rc != 0 or 'USB_READY' not in misha_usb_check.stdout
+- name: Download and verify the pinned ARM image
+  ansible.builtin.get_url:
+    url: https://github.com/timbrs/amneziawg-mikrotik-c/releases/download/v1.4.2/awg-proxy-arm.tar.gz
+    dest: /tmp/misha-awg-proxy-v1.4.2-arm.tar.gz
+    checksum: sha256:acd0338297dc445b56a32a9b8be4a91632015d7adee08059a286e4b2fa63acf6
+    mode: '0644'
+  delegate_to: localhost
+  become: false
+- name: Upload the verified container image
+  ansible.builtin.command:
+    argv:
+      - scp
+      - -O
+      - -F
+      - /dev/null
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -P
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - /tmp/misha-awg-proxy-v1.4.2-arm.tar.gz
+      - '{{ router_user }}@{{ router_host }}:usb1/misha-awg-proxy-v1.4.2-arm.tar.gz'
+  delegate_to: localhost
+  become: false

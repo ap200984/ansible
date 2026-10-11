@@ -35,23 +35,11 @@ wireguard_peers:
     allowed_ips:
       - 10.250.1.64/32
       - 10.10.0.0/16
-  - name: mikrotik-k16-k112
-    public_key: 09+N44Dl/exqOELQAoECIev+VASLf3ki8lxJFDf10Bw=
-    endpoint: 86.110.170.70:37973
-    source_address: 10.250.1.8
-    persistent_keepalive: 0
-    allowed_ips:
-      - 10.250.1.112/32
   - name: mikrotik-k16-k21
     public_key: l96oFyJcZem8MXw6CsGTLRHJuV9lmXz4IZ6KN1bWMwQ=
     source_address: 10.250.1.8
     allowed_ips:
       - 10.250.1.21/32
-  - name: mikrotik-Misha
-    public_key: 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=
-    source_address: 10.250.1.8
-    allowed_ips:
-      - 10.250.1.24/32
 
 second_octet: 20
 wg_octet: 253
@@ -79,5 +67,14 @@ ospf_tunnel_services:
 - wg-quick@wg0
 - awg-quick@wg1
 - awg-quick@wg2
+- awg-quick@wg3
+- awg-quick@wg4
 ospf_routing_services:
 - amneziawg-routing
+
+# K16 now uses a dedicated native AWG interface with container framing on RouterOS.
+k16_amneziawg_enabled: true
+ospf_direct_neighbors: [10.250.1.64, 10.250.1.21, 10.250.1.7]
+
+# Misha is behind CGNAT; its dedicated authenticated AWG port accepts roaming endpoints.
+misha_amneziawg_enabled: true

@@ -1,0 +1,29 @@
+google_gre_links:
+- identity: K16_112
+  suffix: 112
+  linux_interface: gre-k16
+  subnet: 10.250.4.0/30
+  router_address: 10.250.4.1
+  server_address: 10.250.4.2
+- identity: 3Ekipazhnyi64
+  suffix: 64
+  linux_interface: gre-3ekip
+  subnet: 10.250.4.4/30
+  router_address: 10.250.4.5
+  server_address: 10.250.4.6
+- identity: k16_21
+  suffix: 21
+  linux_interface: gre-k21
+  subnet: 10.250.4.12/30
+  router_address: 10.250.4.13
+  server_address: 10.250.4.14
+- identity: Misha
+  suffix: 24
+  linux_interface: gre-misha
+  subnet: 10.250.4.16/30
+  router_address: 10.250.4.17
+  server_address: 10.250.4.18
+google_gre_mtu: 1300
+google_gre_server_loopback: 10.255.0.6
+google_gre_feed: https://www.gstatic.com/ipranges/goog.json
+google_gre_check_hostname: api.ipify.org

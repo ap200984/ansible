@@ -35,3 +35,16 @@ iptables -C OUTPUT -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null 
     iptables -I OUTPUT 1 -m set --match-set tunnel_networks dst -j ACCEPT
 iptables -t nat -C POSTROUTING -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null ||
     iptables -t nat -I POSTROUTING 1 -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT
+
+{% if k16_amneziawg_enabled | default(false) | bool %}
+iptables -C INPUT -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT
+iptables -C INPUT -i wg3 -s 10.255.2.112/32 -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -i wg3 -s 10.255.2.112/32 -j ACCEPT
+{% endif %}
+{% if misha_amneziawg_enabled | default(false) | bool %}
+iptables -C INPUT -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT
+iptables -C INPUT -i wg4 -s 10.255.2.24/32 -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -i wg4 -s 10.255.2.24/32 -j ACCEPT
+{% endif %}

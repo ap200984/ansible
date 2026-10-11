@@ -3,9 +3,11 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+    - vars/ospf-topology.yml
   vars:
     summary_router: k16_21
-    ospf_routers: '{{ (lookup("file", playbook_dir + "/ospf.yml") | from_yaml)[0].vars.ospf_routers }}'
     owner: '{{ ospf_routers | selectattr("identity", "equalto", summary_router) | first }}'
   tasks:
     - ansible.builtin.include_vars:

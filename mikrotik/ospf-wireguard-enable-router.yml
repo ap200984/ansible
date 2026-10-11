@@ -15,7 +15,7 @@
       {% for link in ospf_router.wg_links %}
       {% set native_link = ospf_router.identity == 'vds7_CHR' and link.interface.replace('_interface', '') in (chr_native_awg_hosts | default([])) %}
       {% set plain_link = ospf_router.identity == 'vds7_CHR' and link.interface.replace('_interface', '') in (chr_plain_wg_hosts | default([])) %}
-      {% set ptp_link = native_link or plain_link %}
+      {% set ptp_link = native_link or plain_link or link.amnezia | default(false) | bool %}
       :local a{{ loop.index }} [/ip address find where interface="{{ link.interface }}"];
       :if ([:len $a{{ loop.index }}] != 1) do={:error "Expected one existing WireGuard address"};
       :local addr{{ loop.index }} [/ip address get $a{{ loop.index }} address];

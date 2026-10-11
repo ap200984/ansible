@@ -1,0 +1,21 @@
+---
+- name: Restore GRE egress links and forwarding on VDS6
+  hosts: vds6
+  become: true
+  gather_facts: false
+  vars_files:
+    - vars/google-gre.yml
+  tasks:
+    - ansible.builtin.include_tasks: roles/google-gre/tasks/main.yml
+- name: Route Google IPv4 traffic through GRE from four MikroTiks
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/all/main.yml
+    - vars/google-gre.yml
+  tasks:
+    - ansible.builtin.include_tasks: mikrotik/google-gre-router.yml
+      loop: '{{ google_gre_links }}'
+      loop_control:
+        loop_var: google_gre_link

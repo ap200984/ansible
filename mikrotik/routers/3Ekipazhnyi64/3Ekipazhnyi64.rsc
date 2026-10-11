@@ -12,6 +12,7 @@
 /interface ethernet set [ find default-name=ether10 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface ethernet set [ find default-name=sfp1 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface l2tp-client add connect-to=86.110.170.70 disabled=no keepalive-timeout=disabled name=l2tp-to-k16 user=3Ekipazhnyi64
+/interface gre add allow-fast-path=no comment="GRE to VDS6 over OSPF loopbacks" !keepalive local-address=10.255.0.64 mtu=1300 name=gre-vds6 remote-address=10.255.0.6
 /interface wireguard add comment=wg_vds1 listen-port=37972 mtu=1420 name=wg_vds1
 /interface wireguard add comment=wg_vds8 listen-port=37973 mtu=1420 name=wg_vds8
 /interface lte apn set [ find default=yes ] ip-type=ipv4 use-network-apn=no
@@ -31,7 +32,8 @@
 /routing table add disabled=no fib name=to_VPNs
 /routing table add fib name=bfd-vds1
 /routing table add fib name=bfd-vds8
-/system script add comment="Get all google IP addresses" dont-require-permissions=no name=get_google_ips owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
+/routing table add disabled=no fib name=google_ips_table
+/system script add comment="Google official IPv4 prefix feed; preserve last good list on download failure" dont-require-permissions=no name=get_google_ips owner=ansible policy=read,write,test source="<stored in secrets>"
 /user group add name=bandwidth-test policy=test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
 /interface bridge port add bridge=LAN ingress-filtering=no interface=ether2 internal-path-cost=10 path-cost=10
 /interface bridge port add bridge=LAN ingress-filtering=no interface=ether3 internal-path-cost=10 path-cost=10
@@ -55,6 +57,7 @@
 /ip address add address=10.250.1.64/24 comment=wg_vds1 interface=wg_vds1 network=10.250.1.0
 /ip address add address=10.250.1.64/24 comment=wg_vds8 interface=wg_vds8 network=10.250.1.0
 /ip address add address=10.255.0.64 comment="Router loopback" interface=loopback network=10.255.0.64
+/ip address add address=10.250.4.5/30 comment="GRE to VDS6" interface=gre-vds6 network=10.250.4.4
 /ip dhcp-client add interface=ether1 name=ether1 use-peer-dns=no
 /ip dhcp-server lease add address=10.10.0.175 client-id=1:7c:1c:68:eb:41:59 comment="Samsung Phone" mac-address=7C:1C:68:EB:41:59 server=dhcp1
 /ip dhcp-server lease add address=10.10.0.201 client-id=1:2c:dd:5f:ef:f3:9a comment=TV1 mac-address=2C:DD:5F:EF:F3:9A server=dhcp1
@@ -90,137 +93,143 @@
 /ip firewall address-list add address=10.250.3.0/24 comment="Shared tunnel networks" list=tunnels_networks
 /ip firewall address-list add address=10.255.0.0/24 comment="Shared tunnel networks" list=tunnels_networks
 /ip firewall address-list add address=10.250.2.0/24 comment="Shared tunnel networks" list=tunnels_networks
-/ip firewall address-list add address=8.8.4.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=8.8.8.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=8.34.208.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=8.35.192.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=8.228.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=8.232.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=8.236.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=23.236.48.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=23.251.128.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.0.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.2.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.0.0/23 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.3.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.4.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.8.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.16.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.32.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.3.64.0/18 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.4.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.8.0.0/13 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.16.0.0/12 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.32.0.0/11 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.64.0.0/10 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=34.128.0.0/10 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.184.0.0/13 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.192.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.196.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.198.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.199.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.199.128.0/18 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.200.0.0/13 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.208.0.0/12 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.224.0.0/12 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.240.0.0/13 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=35.252.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=64.15.112.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=64.233.160.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=66.102.0.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=66.249.64.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=70.32.128.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=72.14.192.0/18 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=74.114.24.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=74.125.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=104.154.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=104.196.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=104.237.160.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=107.167.160.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=107.178.192.0/18 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=108.59.80.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=108.170.192.0/18 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=108.177.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=130.211.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.2.0/23 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.4.0/23 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.8.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.160.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.176.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.184.0/23 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.22.186.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.23.39.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.23.48.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.23.64.0/18 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.64.0.0/11 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.107.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.108.0.0/14 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.112.0.0/13 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.120.0.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.121.8.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=136.124.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=142.250.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=146.148.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=152.238.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=152.239.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=162.120.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=162.216.148.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=162.222.176.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=172.110.32.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=172.217.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=172.253.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=173.194.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=173.255.112.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=177.176.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=177.178.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=177.208.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=179.67.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=179.69.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=179.193.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=179.199.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=186.242.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=186.245.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=187.78.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=187.79.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=187.126.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.24.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.48.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.49.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.70.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.82.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.105.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=189.106.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.0.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.2.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.40.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.44.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.45.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.46.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.212.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.216.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.218.0.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=191.220.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=192.104.160.0/23 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=192.158.28.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=192.178.0.0/15 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=193.186.4.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=199.36.154.0/23 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=199.36.156.0/24 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=199.192.112.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=199.223.232.0/21 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=200.226.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=207.175.0.0/16 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=207.223.160.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=208.65.152.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=208.68.108.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=208.81.188.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=208.117.224.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=209.85.128.0/17 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=216.58.192.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=216.73.80.0/20 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=216.239.32.0/19 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall address-list add address=216.252.220.0/22 comment="Added by scheduled script google_ips" list=google_ips
-/ip firewall filter add action=fasttrack-connection chain=forward connection-state=established,related disabled=yes
+/ip firewall address-list add address=8.8.4.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=8.8.8.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=8.34.208.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=8.35.192.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=8.228.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=8.232.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=8.236.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=23.236.48.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=23.251.128.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.0.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.2.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.0.0/23 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.3.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.4.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.8.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.16.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.32.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.3.64.0/18 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.4.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.8.0.0/13 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.16.0.0/12 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.32.0.0/11 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.64.0.0/10 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=34.128.0.0/10 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.184.0.0/13 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.192.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.196.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.198.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.199.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.199.128.0/18 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.200.0.0/13 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.208.0.0/12 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.224.0.0/12 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.240.0.0/13 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=35.252.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=64.15.112.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=64.233.160.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=66.102.0.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=66.249.64.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=70.32.128.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=72.14.192.0/18 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=74.114.24.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=74.125.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=104.154.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=104.196.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=104.237.160.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=107.167.160.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=107.178.192.0/18 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=108.59.80.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=108.170.192.0/18 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=108.177.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=130.211.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.2.0/23 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.4.0/23 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.8.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.160.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.176.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.184.0/23 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.22.186.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.23.39.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.23.48.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.23.64.0/18 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.64.0.0/11 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.107.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.108.0.0/14 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.112.0.0/13 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.120.0.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.121.8.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=136.124.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=142.250.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=146.148.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=152.238.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=152.239.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=162.120.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=162.216.148.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=162.222.176.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=172.110.32.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=172.217.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=172.253.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=173.194.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=173.255.112.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=177.176.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=177.178.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=177.208.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=179.67.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=179.69.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=179.193.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=179.199.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=186.242.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=186.245.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=187.78.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=187.79.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=187.126.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.24.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.48.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.49.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.70.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.82.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.105.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=189.106.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.0.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.2.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.40.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.44.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.45.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.46.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.212.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.216.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.218.0.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=191.220.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=192.104.160.0/23 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=192.158.28.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=192.178.0.0/15 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=193.186.4.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=199.36.154.0/23 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=199.36.156.0/24 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=199.192.112.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=199.223.232.0/21 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=200.226.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=207.175.0.0/16 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=207.223.160.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=208.65.152.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=208.68.108.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=208.81.188.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=208.117.224.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=209.85.128.0/17 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=216.58.192.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=216.73.80.0/20 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=216.239.32.0/19 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=216.252.220.0/22 comment="Google feed 1791749175744" list=google_ips
+/ip firewall address-list add address=api.ipify.org comment="Google GRE IP check hostname" list=google_gre_ip_check
+/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.64 protocol=gre src-address=10.255.0.6
+/ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
+/ip firewall filter add action=accept chain=input comment="Google GRE return input" connection-state=established,related in-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Google GRE IP check outbound" dst-address-list=google_gre_ip_check in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=fasttrack-connection chain=forward connection-mark=!google_gre connection-state=established,related disabled=yes
 /ip firewall filter add action=accept chain=input connection-state=established,related in-interface=ether1
 /ip firewall filter add action=accept chain=forward connection-state=established,related
 /ip firewall filter add action=accept chain=input comment="Trusted INPUT" src-address-list=Trusted
@@ -236,6 +245,14 @@
 /ip firewall filter add action=accept chain=input comment="OSPF trusted input 10.255.0.0/16" src-address=10.255.0.0/16
 /ip firewall filter add action=accept chain=input comment="Shared tunnel networks input" src-address-list=tunnels_networks
 /ip firewall filter add action=drop chain=input in-interface=ether1
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Google GRE connection LAN" dst-address-list=google_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Google GRE routing LAN" dst-address-list=google_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Google GRE connection router" dst-address-list=google_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Google GRE routing router" dst-address-list=google_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Google GRE IP check connection LAN" dst-address-list=google_gre_ip_check dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Google GRE IP check routing LAN" dst-address-list=google_gre_ip_check dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Google GRE IP check connection router" dst-address-list=google_gre_ip_check dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Google GRE IP check routing router" dst-address-list=google_gre_ip_check dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment=TVs new-routing-mark=to_VPNs passthrough=no src-address=10.10.0.200/30
 /ip firewall mangle add action=mark-routing chain=prerouting comment="google ips" dst-address-list=google_ips new-routing-mark=to_VPNs passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Telegram prefixes" dst-address-list="Telegram prefixes" new-routing-mark=to_VPNs passthrough=no
@@ -250,6 +267,8 @@
 /ip firewall nat add action=masquerade chain=srcnat dst-address=!10.0.0.0/8 out-interface=ether1
 /ip firewall nat add action=masquerade chain=srcnat disabled=yes out-interface=sstp-vds7
 /ip firewall nat add action=masquerade chain=srcnat disabled=yes dst-address=!10.0.0.0/8 out-interface=*12
+/ip firewall nat add action=src-nat chain=srcnat comment="Google GRE source NAT" dst-address-list=google_ips out-interface=gre-vds6 to-addresses=10.250.4.5
+/ip firewall nat add action=src-nat chain=srcnat comment="Google GRE IP check source NAT" dst-address-list=google_gre_ip_check out-interface=gre-vds6 to-addresses=10.250.4.5
 /ip ipsec profile set [ find default=yes ] dpd-interval=2m dpd-maximum-failures=5
 /ip route add disabled=no dst-address=10.9.0.0/24 gateway=10.250.3.112
 /ip route add disabled=yes distance=1 dst-address=217.144.189.206/32 gateway=10.250.3.112 routing-table=main scope=30 target-scope=10
@@ -261,6 +280,8 @@
 /ip route add blackhole comment="OSPF owned LAN summary" disabled=no distance=254 dst-address=10.10.0.0/16
 /ip route add comment="BFD peer interface" dst-address=10.250.1.1/32 gateway=wg_vds1 routing-table=bfd-vds1 scope=10
 /ip route add comment="BFD peer interface" dst-address=10.250.1.8/32 gateway=wg_vds8 routing-table=bfd-vds8 scope=10
+/ip route add check-gateway=ping comment="Google GRE default" disabled=no distance=1 dst-address=0.0.0.0/0 gateway=10.250.4.6%gre-vds6 routing-table=google_ips_table
+/ip route add blackhole comment="Google GRE unavailable" disabled=no distance=254 dst-address=0.0.0.0/0 routing-table=google_ips_table
 /ip service set ftp disabled=yes
 /ip service set www port=1955
 /ip service set api disabled=yes
@@ -285,4 +306,4 @@ set [ find default=yes ] advertise-dns=yes
 /snmp set contact=mikrotik_3Ekipazhnyi64 enabled=yes location=3Ekipazhnyi64
 /system clock set time-zone-name=Europe/Moscow
 /system identity set name=3Ekipazhnyi64
-/system scheduler add !days interval=1d name=get_google_ips on-event="<stored in secrets>" policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon start-date=2024-11-16 start-time=01:00:00
+/system scheduler add !days interval=1d name=get_google_ips on-event="<stored in secrets>" policy=read,write,test start-date=2024-11-16 start-time=01:00:00

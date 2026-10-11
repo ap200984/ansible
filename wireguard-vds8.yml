@@ -25,6 +25,7 @@
     - name: Install peer routes with the correct source address
       ansible.builtin.command:
         argv: [ip, route, replace, '{{ item }}', dev, wg0, src, 10.250.1.8]
+      when: (item != "10.250.1.112/32" or not (k16_amneziawg_enabled | default(false) | bool)) and (item != "10.250.1.24/32" or not (misha_amneziawg_enabled | default(false) | bool))
       loop:
         - 10.250.1.64/32
         - 10.250.1.112/32

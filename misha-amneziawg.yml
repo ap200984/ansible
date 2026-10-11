@@ -1,0 +1,198 @@
+---
+- name: Migrate the two Misha links to container-backed AmneziaWG
+  hosts: vds1:vds8
+  serial: 1
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars_files:
+    - mikrotik/host_vars/Misha.yml
+  vars:
+    misha_awg_number: '{{ inventory_hostname[3:] | int }}'
+    misha_awg_gateway: '{{ "172.31.72.1" if inventory_hostname == "vds1" else "172.31.72.5" }}'
+    misha_awg_container: '{{ "172.31.72.2" if inventory_hostname == "vds1" else "172.31.72.6" }}'
+    misha_query_container: ":put [:serialize to=json [/container print as-value where name=misha-awg-vds{{ misha_awg_number }}]]"
+    misha_start_container: "/container start [find where name=misha-awg-vds{{ misha_awg_number }}]"
+    misha_keepalive_command: >-
+      /interface wireguard peers set [find where name=wg_to_vds{{ misha_awg_number }}]
+      persistent-keepalive=0; :put "BOOTSTRAP_KEEPALIVE_OFF";
+    misha_ssh:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=12
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+  tasks:
+    - name: Confirm native AWG tooling and the existing public identity
+      ansible.builtin.command: wg show wg0 public-key
+      register: misha_linux_public
+      changed_when: false
+    - name: Confirm native module is available
+      ansible.builtin.command: modprobe amneziawg
+      changed_when: false
+    - name: Preserve private rollback files on the VDS
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        mkdir -p /root/before-misha-awg-20261011
+        cp /etc/wireguard/wg0.conf /etc/frr/frr.conf /root/before-misha-awg-20261011/
+      changed_when: false
+    - name: Install the focused native tunnel helper
+      ansible.builtin.copy:
+        src: roles/misha-amneziawg/files/configure.py
+        dest: /usr/local/sbin/misha-amneziawg-configure
+        mode: '0700'
+    - name: Prepare a dedicated native link without touching ordinary peers
+      ansible.builtin.command: '/usr/local/sbin/misha-amneziawg-configure prepare --number {{ misha_awg_number }}'
+      register: misha_native_config
+      changed_when: "'CONFIG_CHANGED' in misha_native_config.stdout"
+      no_log: true
+    - name: Permit native AmneziaWG packets from Misha
+      ansible.builtin.shell: |
+        iptables -C INPUT -s 0.0.0.0/0 -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT 2>/dev/null ||
+        iptables -I INPUT 1 -s 0.0.0.0/0 -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT
+        iptables -C INPUT -i wg4 -s 10.255.2.24/32 -j ACCEPT 2>/dev/null ||
+        iptables -I INPUT 1 -i wg4 -s 10.255.2.24/32 -j ACCEPT
+      changed_when: false
+    - name: Start the native interface
+      ansible.builtin.systemd_service:
+        name: awg-quick@wg4
+        enabled: true
+        state: started
+    - name: Stage the pinned ARM proxy image
+      ansible.builtin.include_tasks: roles/misha-amneziawg/tasks/stage-image.yml
+    - name: Prepare container networking, environment and firewall
+      ansible.builtin.command:
+        argv: '{{ misha_ssh + [lookup("template", "roles/misha-amneziawg/templates/prepare.rsc.j2").splitlines() | join(" ")] }}'
+      delegate_to: localhost
+      become: false
+      register: misha_prepare
+      failed_when: misha_prepare.rc != 0 or 'Misha_AWG_PREPARED' not in misha_prepare.stdout or 'failure:' in misha_prepare.stdout or 'syntax error' in misha_prepare.stdout
+    - name: Wait for image extraction
+      ansible.builtin.command:
+        argv: '{{ misha_ssh + [misha_query_container] }}'
+      delegate_to: localhost
+      become: false
+      register: misha_extract
+      changed_when: false
+      until: ((misha_extract.stdout | from_json | first).stopped | default(false)) or ((misha_extract.stdout | from_json | first).running | default(false))
+      retries: 12
+      delay: 5
+    - name: Start the prepared proxy
+      ansible.builtin.command:
+        argv: '{{ misha_ssh + [misha_start_container] }}'
+      delegate_to: localhost
+      become: false
+      when: (misha_extract.stdout | from_json | first).stopped | default(false)
+    - name: Migrate and verify before removing the ordinary Linux peer
+      block:
+        - name: Enable OSPF and BFD on the native link
+          ansible.builtin.command:
+            argv:
+              - vtysh
+              - -c
+              - configure terminal
+              - -c
+              - interface wg4
+              - -c
+              - 'ip ospf area 0.0.0.0 10.255.2.{{ misha_awg_number }}'
+              - -c
+              - ip ospf network point-to-point
+              - -c
+              - 'ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}'
+              - -c
+              - ip ospf hello-interval 60
+              - -c
+              - ip ospf dead-interval 240
+              - -c
+              - ip ospf bfd
+              - -c
+              - end
+              - -c
+              - write memory
+        - name: Switch the existing Misha interface to the container
+          ansible.builtin.command:
+            argv: '{{ misha_ssh + [lookup("template", "roles/misha-amneziawg/templates/cutover.rsc.j2").splitlines() | join(" ")] }}'
+          delegate_to: localhost
+          become: false
+          register: misha_cutover
+          failed_when: misha_cutover.rc != 0 or 'Misha_AWG_CUTOVER' not in misha_cutover.stdout or 'failure:' in misha_cutover.stdout or 'syntax error' in misha_cutover.stdout
+        - name: Stop the old live peer from relearning the public endpoint
+          ansible.builtin.command: wg set wg0 peer 6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg= remove
+        - name: Reset only this Misha peer to initiate a fresh native handshake
+          ansible.builtin.command:
+            argv: '{{ misha_ssh + ["/interface wireguard peers disable [find where name=wg_to_vds" ~ misha_awg_number ~ "]; /interface wireguard peers enable [find where name=wg_to_vds" ~ misha_awg_number ~ "]"] }}'
+          delegate_to: localhost
+          become: false
+        - name: Wait for Full native OSPF adjacency
+          ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
+          register: misha_neighbors
+          changed_when: false
+          until: misha_neighbors.stdout is search('10\.255\.0\.24\s+.*Full/.*10\.255\.2\.24\s+wg4')
+          retries: 48
+          delay: 5
+        - name: Verify native BFD is Up
+          ansible.builtin.command: vtysh -c 'show bfd peers json'
+          register: misha_bfd
+          changed_when: false
+          until: misha_bfd.stdout | from_json | selectattr('peer', 'equalto', '10.255.2.24') | selectattr('status', 'equalto', 'up') | list | length == 1
+          retries: 12
+          delay: 5
+        - name: Verify routed Misha loopback from the VDS loopback
+          ansible.builtin.command: 'ping -I 10.255.0.{{ misha_awg_number }} -c 5 -W 3 10.255.0.24'
+          changed_when: false
+        - name: Turn off bootstrap keepalive once OSPF and BFD are healthy
+          ansible.builtin.command:
+            argv: '{{ misha_ssh + [misha_keepalive_command] }}'
+          delegate_to: localhost
+          become: false
+          register: misha_keepalive_off
+          failed_when: misha_keepalive_off.rc != 0 or 'BOOTSTRAP_KEEPALIVE_OFF' not in misha_keepalive_off.stdout
+        - name: Remove the superseded ordinary WireGuard peer
+          ansible.builtin.command: '/usr/local/sbin/misha-amneziawg-configure remove-plain --number {{ misha_awg_number }}'
+          register: misha_remove
+          changed_when: "'CONFIG_CHANGED' in misha_remove.stdout"
+        - name: Remove the old unicast OSPF neighbor
+          ansible.builtin.command: vtysh -c 'configure terminal' -c 'router ospf' -c 'no neighbor 10.250.1.24' -c end -c 'write memory'
+        - name: Persist the complete routing firewall including Misha AWG
+          ansible.builtin.template:
+            src: roles/ospf/templates/firewall.sh.j2
+            dest: /usr/local/sbin/ospf-firewall
+            mode: '0755'
+        - name: Apply the persistent routing firewall
+          ansible.builtin.command: /usr/local/sbin/ospf-firewall
+          changed_when: false
+        - name: Save firewall for boot
+          ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+          changed_when: false
+      rescue:
+        - name: Restore the ordinary router transport
+          ansible.builtin.command:
+            argv: '{{ misha_ssh + [lookup("template", "roles/misha-amneziawg/templates/rollback.rsc.j2").splitlines() | join(" ")] }}'
+          delegate_to: localhost
+          become: false
+        - name: Restore Linux FRR and WireGuard files
+          ansible.builtin.shell: |
+            set -eu
+            cp /root/before-misha-awg-20261011/wg0.conf /etc/wireguard/wg0.conf
+            cp /root/before-misha-awg-20261011/frr.conf /etc/frr/frr.conf
+            wg syncconf wg0 <(wg-quick strip wg0)
+            ip route replace 10.250.1.24/32 dev wg0 src 10.250.1.{{ misha_awg_number }}
+            systemctl reload frr
+          args: {executable: /bin/bash}
+          no_log: true
+        - ansible.builtin.fail:
+            msg: Native Misha verification failed; ordinary transport was restored.

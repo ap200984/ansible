@@ -1,0 +1,19 @@
+:if ([/system device-mode get container] != true) do={:error "Container permission not activated"};
+:if ([:len [/interface veth find where name="veth-misha-awg-vds{{ misha_awg_number }}"]] = 0) do={
+/interface veth add name=veth-misha-awg-vds{{ misha_awg_number }} address={{ misha_awg_container }}/30 gateway={{ misha_awg_gateway }};
+/ip address add address={{ misha_awg_gateway }}/30 interface=veth-misha-awg-vds{{ misha_awg_number }} comment="Misha AWG vds{{ misha_awg_number }} gateway"};
+{% set env = {'AWG_MODE': 'normal', 'AWG_LISTEN': ':51820', 'AWG_REMOTE': amneziawg_endpoints[inventory_hostname] ~ ':56709', 'AWG_JC': '4', 'AWG_JMIN': '40', 'AWG_JMAX': '80', 'AWG_S1': '65', 'AWG_S2': '107', 'AWG_H1': '1723456781', 'AWG_H2': '1723456782', 'AWG_H3': '1723456783', 'AWG_H4': '1723456784', 'AWG_SERVER_PUB': misha_linux_public.stdout | trim, 'AWG_CLIENT_PUB': '6BSbDkZdUVEfDVPhe3yrsRlgvnr0i4wT+bXjXppWTVg=', 'AWG_LOG_LEVEL': 'info'} %}
+{% for key,value in env.items() %}
+:local e{{ loop.index }} [/container envs find where list="misha-awg-vds{{ misha_awg_number }}" and key="{{ key }}"];
+:if ([:len $e{{ loop.index }}] = 0) do={/container envs add list=misha-awg-vds{{ misha_awg_number }} key={{ key }} value="{{ value }}"}
+else={/container envs set $e{{ loop.index }} value="{{ value }}"};
+{% endfor %}
+:if ([:len [/ip firewall filter find where comment="Misha AWG vds{{ misha_awg_number }} local"]] = 0) do={
+/ip firewall filter add chain=input action=accept in-interface=veth-misha-awg-vds{{ misha_awg_number }} src-address={{ misha_awg_container }} protocol=udp dst-port={{ 37972 if misha_awg_number | int == 1 else 37973 }} comment="Misha AWG vds{{ misha_awg_number }} local" place-before=0};
+:if ([:len [/ip firewall filter find where comment="Misha AWG vds{{ misha_awg_number }} uplink"]] = 0) do={
+/ip firewall filter add chain=forward action=accept in-interface=veth-misha-awg-vds{{ misha_awg_number }} src-address={{ misha_awg_container }} dst-address={{ amneziawg_endpoints[inventory_hostname] }} protocol=udp dst-port=56709 comment="Misha AWG vds{{ misha_awg_number }} uplink" place-before=0};
+:if ([:len [/ip firewall nat find where comment="Misha AWG vds{{ misha_awg_number }} WAN"]] = 0) do={
+/ip firewall nat add chain=srcnat action=masquerade src-address={{ misha_awg_container }} dst-address={{ amneziawg_endpoints[inventory_hostname] }} protocol=udp dst-port=56709 comment="Misha AWG vds{{ misha_awg_number }} WAN"};
+:if ([:len [/container find where name="misha-awg-vds{{ misha_awg_number }}"]] = 0) do={
+/container add name=misha-awg-vds{{ misha_awg_number }} file=usb1/misha-awg-proxy-v1.4.2-arm.tar.gz interface=veth-misha-awg-vds{{ misha_awg_number }} envlists=misha-awg-vds{{ misha_awg_number }} hostname=misha-awg-vds{{ misha_awg_number }} root-dir=usb1/misha-awg-vds{{ misha_awg_number }} logging=yes shm-size=4M start-on-boot=yes comment="Misha AWG vds{{ misha_awg_number }}"};
+:put "Misha_AWG_PREPARED";

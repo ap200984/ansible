@@ -21,7 +21,7 @@ vds1, vds2, vds5, vds6, vds8 and the five main MikroTiks.
 - `mikrotik/host_vars/`: management access and BFD/SSTP policy.
   `mikrotik/routers/<identity>/`: current declarative full-router records,
   redacted export and encrypted credentials/sensitive export.
-- `mikrotik/ospf*.yml`: reapply OSPF, passive loopbacks, BFD defaults and site
+- `mikrotik/vars/ospf-topology.yml` and `mikrotik/ospf*.yml`: reapply OSPF, passive loopbacks, BFD defaults and site
   interface-specific BFD routing. SSTP cost is 60000; WireGuard costs remain
   1000/1001/30000, mesh links 200, L2TP 100.
 
@@ -45,7 +45,7 @@ provide an SSH management address and the authorized `ansible` key. CHR also
 needs the container package, container device-mode permission and sufficient
 storage. RouterOS device-mode activation can require console/physical access.
 The capture does not include OS images, private SSH keys or uploaded files.
-The apply playbook downloads the pinned CHR AWG image before container creation;
+The apply playbook stages the pinned CHR image or verified K16 ARM64 AWG image before container creation;
 environment lists are reconciled before containers. RouterOS `start-on-boot`
 starts the restored containers at boot; reboot the rebuilt CHR after applying.
 
@@ -114,3 +114,15 @@ Validation completed on 2026-10-11: all five generated FRR configurations pass
 MikroTik checks match OSPF, BFD and routing-table records on all five main
 routers (zero changes). The 11 existing MikroTik regression tests pass, as do
 both recovery playbooks' syntax checks and certificate-chain verification.
+
+The K16 ↔ vds1/vds8 links were subsequently migrated to AmneziaWG on
+`10.255.2.0/24`. Their current encrypted identities and `awg-quick@wg3` units
+are included in recovery. See [the K16 migration](k16-amneziawg.md).
+
+Misha also uses two USB-backed ARM proxy containers to vds1/vds8 native `wg4`.
+Restore its mounted `usb1` storage before router configuration. See
+[Misha AWG deployment and recovery](misha-amneziawg.md).
+
+Google IPv4 egress through VDS6 uses four persistent GRE services over OSPF
+loopbacks, plus forwarding/NAT. The VDS6 restore manifest and MikroTik captures
+include these settings. See [Google GRE deployment](google-gre.md).

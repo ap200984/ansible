@@ -1,6 +1,6 @@
 # Tunnel topology
 
-Current deployment (2026-10-05): [SVG](current-tunnels.svg),
+Current deployment (2026-10-11): [SVG](current-tunnels.svg),
 [PNG](current-tunnels.png), and [addressing / policy notes](current-tunnels.md).
 
 ![Current tunnel topology](current-tunnels.png)

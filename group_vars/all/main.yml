@@ -10,6 +10,8 @@ wireguard_tunnels_network: 10.250.1.0/24
 amneziawg_tunnels_network: 10.250.2.0/24
 l2tp_tunnels_network: 10.250.3.0/24
 loopback_network: 10.255.0.0/24
+# Requested dedicated K16 AWG transport; independent of the 10.250.2 mesh.
+k16_amneziawg_network: 10.255.2.0/24
 tunnel_networks:
   - '{{ k16_k112_main_network }}'
   - '{{ k16_k112_k8s_network }}'
@@ -18,6 +20,7 @@ tunnel_networks:
   - '{{ amneziawg_tunnels_network }}'
   - '{{ l2tp_tunnels_network }}'
   - '{{ loopback_network }}'
+  - '{{ k16_amneziawg_network }}'
 
 # Shared-interface destinations have one owner; direct neighbor /32s take precedence.
 ospf_peer_allowed_ips:

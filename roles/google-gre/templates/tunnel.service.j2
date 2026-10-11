@@ -1,0 +1,11 @@
+[Unit]
+Description=Google GRE to {{ item.identity }} over OSPF loopbacks
+Wants=network-online.target frr.service
+After=network-online.target frr.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/google-gre-tunnel start {{ item.linux_interface }} {{ google_gre_server_loopback }} 10.255.0.{{ item.suffix }} {{ item.server_address }}/30 {{ google_gre_mtu }}
+ExecStop=/usr/local/sbin/google-gre-tunnel stop {{ item.linux_interface }}
+[Install]
+WantedBy=multi-user.target

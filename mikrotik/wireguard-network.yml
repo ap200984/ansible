@@ -3,8 +3,10 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+    - vars/ospf-topology.yml
   vars:
-    ospf_routers: '{{ (lookup("file", playbook_dir + "/ospf.yml") | from_yaml)[0].vars.ospf_routers }}'
     ospf_wireguard_enabled: true
   tasks:
     - ansible.builtin.include_vars:

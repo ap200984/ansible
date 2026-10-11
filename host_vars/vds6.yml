@@ -43,7 +43,16 @@ ospf_restore_manifest: vars/ospf-restore/vds6.vault.yml
 ospf_firewall_services:
 - ospf-firewall
 - plain-wireguard-firewall
+- google-gre-firewall
 ospf_tunnel_services:
 - wg-quick@wg0
 - wg-quick@wg1
+- gre-k16
+- gre-3ekip
+- gre-k21
+- gre-misha
 ospf_routing_services: []
+
+# Google GRE egress is restored by google-gre.yml and the routing manifest.
+google_gre_enabled: true
+google_gre_wan_interface: eth0

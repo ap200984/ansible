@@ -6,3 +6,12 @@ router_ssh_key: ~/.ssh/priv/ansible
 
 ospf_bfd_enabled: true
 ospf_sstp_cost: 60000
+
+misha_amneziawg_enabled: true
+misha_amneziawg_address: 10.255.2.24
+misha_amneziawg_containers: [misha-awg-vds1, misha-awg-vds8]
+
+google_gre_enabled: true
+google_gre_interface: gre-vds6
+google_gre_address: 10.250.4.17/30
+google_gre_gateway: 10.250.4.18
