@@ -3,6 +3,8 @@
   ansible.builtin.command:
     argv:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - /home/user/.ssh/priv/ansible
       - -p
@@ -19,6 +21,8 @@
   ansible.builtin.command:
     argv:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - /home/user/.ssh/priv/ansible
       - -p
@@ -47,6 +51,8 @@
   ansible.builtin.command:
     argv:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - /home/user/.ssh/priv/ansible
       - -p

@@ -1,0 +1,59 @@
+---
+- name: Allow BFD on tunnel interfaces with RouterOS default timers
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+      - path: /routing bfd configuration
+        selector: {interfaces: all}
+        create: true
+        values: {interfaces: all, disabled: 'no'}
+  when: ospf_bfd_enabled | default(false) | bool
+
+- name: Pin site BFD packets to the matching WireGuard interface
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+      - path: /routing table
+        selector: {name: 'bfd-vds{{ peer }}'}
+        create: true
+        flags: [fib]
+        values: {name: 'bfd-vds{{ peer }}', fib: 'yes'}
+      - path: /ip route
+        selector: {routing-table: 'bfd-vds{{ peer }}', dst-address: '10.250.1.{{ peer }}/32'}
+        create: true
+        values:
+          routing-table: 'bfd-vds{{ peer }}'
+          dst-address: '10.250.1.{{ peer }}/32'
+          gateway: 'wg_vds{{ peer }}'
+          scope: '10'
+          comment: BFD peer interface
+          disabled: 'no'
+      - path: /ip firewall mangle
+        selector: {comment: 'BFD force vds{{ peer }} interface'}
+        create: true
+        values:
+          comment: 'BFD force vds{{ peer }} interface'
+          chain: output
+          protocol: udp
+          src-address: '10.250.1.{{ ospf_router.loopback.split(".")[-1] }}'
+          dst-address: '10.250.1.{{ peer }}'
+          dst-port: '3784'
+          action: mark-routing
+          new-routing-mark: 'bfd-vds{{ peer }}'
+          passthrough: 'no'
+          disabled: 'no'
+  loop: [1, 8]
+  loop_control: {loop_var: peer}
+  when:
+    - ospf_bfd_enabled | default(false) | bool
+    - ospf_router.identity != 'vds7_CHR'

@@ -45,8 +45,8 @@ address through an independent vds2 SSH jump. Keep private Linux backups under
 `/root/before-chr-native-awg-20261005/` and ignored off-router CHR backups in
 `.local-backups/chr-20261005/`. The old `chr-amneziawg.yml` documents the
 superseded C-proxy-on-both-ends rollout and must not be used on native hosts.
-The older captured full-router snapshots predate this migration; do not
-reapply them expecting to preserve the new containers and peer endpoints.
+The five main full-router snapshots were refreshed on 2026-10-11 and include
+the current containers, peer endpoints, BFD and SSTP backup costs.
 `network-policy.yml` at the repository root enforces routed `10/8` traffic
 without source NAT and WAN-only host/router masquerading. See the drawing's
 NAT notes for preserved container rules and the LAN hairpin change.
@@ -98,8 +98,8 @@ ansible-playbook -i inventory/vds1 -i inventory/vds2 -i inventory/vds3 \
 
 `ospf.yml` configures OSPFv2 area `0.0.0.0` on the existing SSTP and L2TP
 links and hub-bound WireGuard links of the five main MikroTiks. It does not create tunnel interfaces.
-SSTP costs 10 and L2TP costs 100. Active links use 60-second Hellos and a
-240-second dead interval, with BFD disabled. Loopbacks and other existing WireGuard interface addresses are advertised
+SSTP costs 60,000 and L2TP costs 100. Active links use 60-second Hellos and a
+240-second dead interval, with BFD enabled using default timers. Loopbacks and other existing WireGuard interface addresses are advertised
 passively; links to vds1/vds8 run active OSPF. Public uplinks and unrelated
 LANs are excluded. Only K16_112 originates `10.9.0.0/16`, and only
 3Ekipazhnyi64 originates `10.10.0.0/16`, and k16_21 originates `10.11.0.0/16`, through explicit discard summaries
@@ -297,3 +297,14 @@ The playbook loads either plaintext or Vault-encrypted secrets and uses
 `no_log: true`. Do not use `--diff` or print the sensitive export.
 
 WireGuard router addresses are consolidated in `10.250.1.0/24`: Linux vds1/vds2/vds5/vds6/vds8 use `.1/.2/.5/.6/.8`, vds7 uses `.7`, and MikroTik clients use `.21/.24/.64/.112`. All active OSPF WireGuard interfaces use `/24`, including vds2/vds5/vds6. Run `wireguard-network.yml` with all five Linux inventories and localhost to migrate the existing links. The obsolete vds5 wg0 mesh and K16 legacy WireGuard interfaces are retired; the phone VPN is disabled and its old range removed. PPP address ranges remain separate.
+
+
+Recovery for HTTPS proxies and OSPF is documented in
+[the rebuild guide](../docs/restore-proxies-ospf.md). The captured `.yml` and
+redacted `.rsc` exports of the five main routers reflect the live configuration
+on 2026-10-11; sensitive exports and credentials stay in their encrypted vaults.
+`ospf-bfd.yml` restores the two site BFD routing tables and UDP/3784 output
+rules. CHR point-to-point interfaces use local `10.250.1.7/32` with each
+remote peer as `network`; site point-to-multipoint interfaces retain `/24`.
+Linux templates enable `ip ospf bfd` on every active tunnel and `ospf.yml`
+enables `bfdd`. Loopbacks remain passive. No custom BFD timer profiles are set.

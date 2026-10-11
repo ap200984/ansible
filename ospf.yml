@@ -180,6 +180,12 @@
       line: ospfd=yes
     register: daemon_config
     when: ospf_wireguard_enabled | default(false) | bool
+  - name: Enable BFD daemon with default timers
+    ansible.builtin.lineinfile:
+      path: /etc/frr/daemons
+      regexp: ^bfdd=
+      line: 'bfdd={{ "yes" if ospf_bfd_enabled | default(false) | bool else "no" }}'
+    register: bfd_daemon_config
   - name: Configure direct unicast OSPF
     ansible.builtin.template:
       src: roles/ospf/templates/frr.conf.j2
@@ -195,7 +201,7 @@
     ansible.builtin.systemd_service:
       name: frr
       enabled: true
-      state: '{{ "restarted" if daemon_config.changed or ospf_config.changed or ospf_prefix.changed or frr_compat_upgrade.changed | default(false) else
+      state: '{{ "restarted" if daemon_config.changed or bfd_daemon_config.changed or ospf_config.changed or ospf_prefix.changed or frr_compat_upgrade.changed | default(false) else
         "started" }}'
     when: ospf_wireguard_enabled | default(false) | bool
 - ansible.builtin.import_playbook: mikrotik/ospf.yml

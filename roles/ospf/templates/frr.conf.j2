@@ -14,6 +14,9 @@ interface {{ ospf_interface }}
  ip ospf cost {{ ospf_cost }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
+{% if ospf_bfd_enabled | default(false) | bool %}
+ ip ospf bfd
+{% endif %}
 !
 {% if amneziawg_enabled | default(false) | bool %}
 interface {{ amneziawg_interface }}
@@ -22,6 +25,9 @@ interface {{ amneziawg_interface }}
  ip ospf cost {{ amneziawg_ospf_cost }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
+{% if ospf_bfd_enabled | default(false) | bool %}
+ ip ospf bfd
+{% endif %}
 !
 {% endif %}
 {% for name in (['wg-vds2', 'wg-vds6'] if inventory_hostname == 'vds5' else ['wg1'] if inventory_hostname in (plain_wg_mesh_leaf_hosts | default([])) else []) %}
@@ -31,6 +37,9 @@ interface {{ name }}
  ip ospf cost 200
  ip ospf hello-interval 60
  ip ospf dead-interval 240
+{% if ospf_bfd_enabled | default(false) | bool %}
+ ip ospf bfd
+{% endif %}
 !
 {% endfor %}
 {% if chr_native_this_host | default(false) | bool or inventory_hostname in (chr_native_awg_hosts | default([])) %}
@@ -40,6 +49,9 @@ interface wg2
  ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
+{% if ospf_bfd_enabled | default(false) | bool %}
+ ip ospf bfd
+{% endif %}
 !
 {% endif %}
 router ospf

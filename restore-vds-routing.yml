@@ -1,0 +1,84 @@
+---
+# Rebuild managed routing from encrypted active files, without one-time migrations.
+- ansible.builtin.import_playbook: amneziawg-install.yml
+- name: Restore VDS tunnel identities and OSPF routing
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  vars:
+    ospf_interface: wg0
+    ospf_transport: '10.250.1.{{ inventory_hostname[3:] }}'
+    ospf_cost: '{{ ospf_wireguard_costs[inventory_hostname] }}'
+    ospf_neighbors: '{{ ["10.250.1.112", "10.250.1.64", "10.250.1.21", "10.250.1.24", "10.250.1.7"] if inventory_hostname in ["vds1", "vds8"] else ["10.250.1.7"] }}'
+  tasks:
+    - name: Load the encrypted active routing manifest
+      ansible.builtin.include_vars:
+        file: '{{ ospf_restore_manifest }}'
+      no_log: true
+    - name: Install routing dependencies
+      ansible.builtin.apt:
+        name: [frr, wireguard-tools, iproute2, iptables, ipset, python3]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+    - ansible.builtin.include_tasks: roles/ospf/tasks/compatible-frr.yml
+    - name: Create routing directories
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        mode: '{{ "0700" if item in ["/etc/wireguard", "/etc/amnezia/amneziawg"] else "0755" }}'
+      loop: '{{ ospf_restore_files | map(attribute="path") | map("dirname") | unique | list }}'
+      no_log: true
+    - name: Restore active tunnel keys, firewall and daemon settings
+      ansible.builtin.copy:
+        dest: '{{ item.path }}'
+        content: '{{ item.content | b64decode }}'
+        mode: '{{ item.mode }}'
+        owner: '{{ item.owner }}'
+        group: '{{ item.group }}'
+      loop: '{{ ospf_restore_files }}'
+      when: item.path != '/etc/frr/frr.conf'
+      no_log: true
+    - name: Generate FRR from the current host policy
+      ansible.builtin.template:
+        src: roles/ospf/templates/frr.conf.j2
+        dest: /etc/frr/frr.conf
+        owner: frr
+        group: frr
+        mode: '0640'
+        validate: /usr/bin/vtysh -C -f %s
+      register: restored_frr
+    - name: Enable OSPF and BFD with default timers
+      ansible.builtin.lineinfile:
+        path: /etc/frr/daemons
+        regexp: '^{{ item }}='
+        line: '{{ item }}=yes'
+      loop: [ospfd, bfdd]
+      register: restored_daemons
+    - name: Apply forwarding
+      ansible.builtin.command: sysctl -p /etc/sysctl.d/90-ospf-forwarding.conf
+      changed_when: false
+    - name: Enable firewall before tunnels
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        daemon_reload: true
+        enabled: true
+        state: started
+      loop: '{{ ospf_firewall_services }}'
+    - name: Enable restored tunnel interfaces
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        enabled: true
+        state: started
+      loop: '{{ ospf_tunnel_services }}'
+    - name: Start routing
+      ansible.builtin.systemd_service:
+        name: frr
+        enabled: true
+        state: '{{ "restarted" if restored_frr.changed or restored_daemons.changed else "started" }}'
+    - name: Start dynamic cryptokey route reconciliation
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        enabled: true
+        state: started
+      loop: '{{ ospf_routing_services }}'

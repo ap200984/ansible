@@ -40,3 +40,15 @@ https_proxy_users:
     password: "{{ socks5_proxy_password }}"
 
 https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"
+
+# Enable BFD on every active OSPF tunnel; keep daemon timer defaults.
+ospf_bfd_enabled: true
+ospf_router_id: 10.255.0.2
+ospf_restore_manifest: vars/ospf-restore/vds2.vault.yml
+ospf_firewall_services:
+- ospf-firewall
+- plain-wireguard-firewall
+ospf_tunnel_services:
+- wg-quick@wg0
+- wg-quick@wg1
+ospf_routing_services: []

@@ -15,7 +15,7 @@ https_proxy_nat_user: ansible
 https_proxy_nat_ssh_key: ~/.ssh/priv/ansible
 https_proxy_nat_jump_command: >-
   ssh -F /dev/null -i ~/.ssh/priv/user -p 19020
-  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/tmp/ansible-known-hosts
+  -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ router_known_hosts_file }}
   -W %h:%p user@86.110.170.70
 
 https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"

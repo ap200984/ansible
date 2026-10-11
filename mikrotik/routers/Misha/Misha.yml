@@ -1,73 +1,19 @@
 routeros_records:
 - path: /interface bridge
   values:
-    name: loopback
-    protocol-mode: none
-    comment: Router loopback
-  selector:
-    name: loopback
-  create: true
-- path: /ip address
-  values:
-    address: 10.255.0.24/32
-    interface: loopback
-    comment: Router loopback
-  selector:
-    interface: loopback
-  create: true
-- path: /interface wireguard
-  values:
-    name: wg_vds8
-    listen-port: '37973'
-    mtu: '1420'
-    private-key: '{{ wg_vds8_private_key_Misha }}'
-  selector:
-    name: wg_vds8
-  create: true
-- path: /interface wireguard peers
-  values:
-    interface: wg_vds8
-    name: wg_to_vds8
-    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
-    endpoint-address: 194.113.106.136
-    endpoint-port: '56699'
-    allowed-address: 10.250.0.0/16,10.255.0.0/16
-    persistent-keepalive: 25s
-  selector:
-    name: wg_to_vds8
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.1.24/24
-    interface: wg_vds8
-  selector:
-    interface: wg_vds8
-  create: true
-- path: /ip route
-  values:
-    dst-address: 10.250.1.8/32
-    gateway: wg_vds8
-    comment: vds8 WireGuard server
-  selector:
-    dst-address: 10.250.1.8/32
-    gateway: wg_vds8
-  create: true
-- path: /ip firewall address-list
-  values:
-    list: 'Trusted'
-    address: 10.250.3.0/24
-    comment: L2TP main routers
-  selector:
-    list: 'Trusted'
-    address: 10.250.3.0/24
-  create: true
-- path: /interface bridge
-  values:
     name: LAN
     port-cost-mode: short
     protocol-mode: none
   selector:
     name: LAN
+  create: true
+- path: /interface bridge
+  values:
+    comment: Router loopback
+    name: loopback
+    protocol-mode: none
+  selector:
+    name: loopback
   create: true
 - path: /interface wireless
   selector:
@@ -108,23 +54,40 @@ routeros_records:
     default-name: ether4
   values:
     comment: ISP1 (Beeline)
-    disabled: 'yes'
 - path: /interface ethernet
   selector:
     default-name: ether5
   values:
     comment: ISP2 (TTK)
+    disabled: 'yes'
 - path: /interface l2tp-client
   values:
     connect-to: 86.110.170.70
     disabled: 'no'
     keepalive-timeout: disabled
     name: l2tp-to-d24
-    use-ipsec: 'no'
-    password: '{{ l2tp_k16_password }}'
+    password: '{{ routeros_secrets.record_d9c01d67ff52fc5e98765ad0 }}'
     user: misha
   selector:
     name: l2tp-to-d24
+  create: true
+- path: /interface wireguard
+  values:
+    listen-port: '37972'
+    mtu: '1420'
+    name: wg_vds1
+    private-key: '{{ routeros_secrets.record_ca382fabff5505b65026e34a }}'
+  selector:
+    name: wg_vds1
+  create: true
+- path: /interface wireguard
+  values:
+    listen-port: '37973'
+    mtu: '1420'
+    name: wg_vds8
+    private-key: '{{ routeros_secrets.record_8780e4a8fd8aaf11f9a77616 }}'
+  selector:
+    name: wg_vds8
   create: true
 - path: /interface list
   values:
@@ -175,12 +138,31 @@ routeros_records:
     disabled: 'no'
     http-proxy: 0.0.0.0
     name: sstp-vds7
-    password: '{{ sstp_vds7_password }}'
+    password: '{{ routeros_secrets.record_738f74a5af01b575b40bb4a8 }}'
     profile: default-encryption
     tls-version: only-1.2
     user: Misha
   selector:
     name: sstp-vds7
+  create: true
+- path: /routing ospf instance
+  values:
+    disabled: 'no'
+    name: tunnel-ospf
+    originate-default: never
+    out-filter-chain: ''
+    redistribute: ''
+    router-id: 10.255.0.24
+  selector:
+    name: tunnel-ospf
+  create: true
+- path: /routing ospf area
+  values:
+    disabled: 'no'
+    instance: tunnel-ospf
+    name: tunnel-backbone
+  selector:
+    name: tunnel-backbone
   create: true
 - path: /routing table
   values:
@@ -210,6 +192,20 @@ routeros_records:
     name: SSTP_to_VDS7
   selector:
     name: SSTP_to_VDS7
+  create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: bfd-vds1
+  selector:
+    name: bfd-vds1
+  create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: bfd-vds8
+  selector:
+    name: bfd-vds8
   create: true
 - path: /system script
   values:
@@ -251,6 +247,13 @@ routeros_records:
     source: '{{ routeros_secrets.record_22_source }}'
   selector:
     name: get_google_ips
+  create: true
+- path: /user group
+  values:
+    name: bandwidth-test
+    policy: test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
+  selector:
+    name: bandwidth-test
   create: true
 - path: /container config
   values:
@@ -384,6 +387,30 @@ routeros_records:
   selector:
     name: ovpn-server1
   create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16
+    endpoint-address: 194.113.106.136
+    endpoint-port: '56699'
+    interface: wg_vds8
+    name: wg_to_vds8
+    persistent-keepalive: 25s
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    name: wg_to_vds8
+  create: true
+- path: /interface wireguard peers
+  values:
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16
+    endpoint-address: 45.141.102.72
+    endpoint-port: '56685'
+    interface: wg_vds1
+    name: wg_to_vds1
+    persistent-keepalive: 25s
+    public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    name: wg_to_vds1
+  create: true
 - path: /interface wireless access-list
   values:
     comment: "\xD0\_\xD0\xB5\xD0\xBF\xD0\xB8\xD1\x82\xD0\xB5\xD1\x80 TP-Link"
@@ -411,6 +438,34 @@ routeros_records:
   selector:
     address: 192.168.254.1/24
     interface: '*B'
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.1.24/24
+    interface: wg_vds8
+    network: 10.250.1.0
+  selector:
+    address: 10.250.1.24/24
+    interface: wg_vds8
+  create: true
+- path: /ip address
+  values:
+    address: 10.250.1.24/24
+    interface: wg_vds1
+    network: 10.250.1.0
+  selector:
+    address: 10.250.1.24/24
+    interface: wg_vds1
+  create: true
+- path: /ip address
+  values:
+    address: 10.255.0.24
+    comment: Router loopback
+    interface: loopback
+    network: 10.255.0.24
+  selector:
+    address: 10.255.0.24
+    interface: loopback
   create: true
 - path: /ip dhcp-client
   values:
@@ -824,6 +879,144 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
+    address: 10.250.3.0/24
+    comment: L2TP main routers
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 10.250.3.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.255.0.0/16
+    comment: OSPF trusted routed networks
+    list: Trusted
+  selector:
+    list: Trusted
+    address: 10.255.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.250.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.251.0.0/24
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.251.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.252.7.0/24
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.252.7.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.255.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.255.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.9.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.10.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.10.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.11.0.0/16
+    comment: OSPF routed LAN summary
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.11.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.0.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.9.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.1.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.9.1.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.0.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.1.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.1.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.3.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.3.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.255.0.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.255.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.2.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.2.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
     address: 8.8.4.0/24
     comment: Added by scheduled script google_ips
     list: google_ips
@@ -950,12 +1143,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 34.3.8.0/24
+    address: 34.3.8.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 34.3.8.0/24
+    address: 34.3.8.0/21
   create: true
 - path: /ip firewall address-list
   values:
@@ -1193,12 +1386,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 74.114.24.0/24
+    address: 74.114.24.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 74.114.24.0/24
+    address: 74.114.24.0/21
   create: true
 - path: /ip firewall address-list
   values:
@@ -1328,12 +1521,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 136.22.176.0/24
+    address: 136.22.176.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 136.22.176.0/24
+    address: 136.22.176.0/21
   create: true
 - path: /ip firewall address-list
   values:
@@ -1427,12 +1620,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 136.121.8.0/24
+    address: 136.121.8.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 136.121.8.0/24
+    address: 136.121.8.0/21
   create: true
 - path: /ip firewall address-list
   values:
@@ -1499,21 +1692,21 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 162.222.176.0/24
+    address: 162.222.176.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 162.222.176.0/24
+    address: 162.222.176.0/21
   create: true
 - path: /ip firewall address-list
   values:
-    address: 172.110.32.0/24
+    address: 172.110.32.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 172.110.32.0/24
+    address: 172.110.32.0/21
   create: true
 - path: /ip firewall address-list
   values:
@@ -1877,12 +2070,12 @@ routeros_records:
   create: true
 - path: /ip firewall address-list
   values:
-    address: 199.223.232.0/24
+    address: 199.223.232.0/21
     comment: Added by scheduled script google_ips
     list: google_ips
   selector:
     list: google_ips
-    address: 199.223.232.0/24
+    address: 199.223.232.0/21
   create: true
 - path: /ip firewall address-list
   values:
@@ -1995,6 +2188,100 @@ routeros_records:
 - path: /ip firewall filter
   values:
     action: accept
+    chain: input
+    comment: OSPF trusted input 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  selector:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  selector:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP hello
+    in-interface: all-ppp
+    protocol: ospf
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP hello
+    in-interface: all-ppp
+    protocol: ospf
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP routed input
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP routed input
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: OSPF existing PPP routed forward
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  selector:
+    action: accept
+    chain: forward
+    comment: OSPF existing PPP routed forward
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
     chain: forward
     connection-state: established,related
   selector:
@@ -2084,11 +2371,35 @@ routeros_records:
   create: true
 - path: /ip firewall filter
   values:
+    action: accept
+    chain: input
+    comment: Shared tunnel networks input
+    src-address-list: tunnels_networks
+  selector:
+    action: accept
+    chain: input
+    comment: Shared tunnel networks input
+    src-address-list: tunnels_networks
+  create: true
+- path: /ip firewall filter
+  values:
     action: drop
     chain: input
   selector:
     action: drop
     chain: input
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Shared tunnel networks forward
+    src-address-list: tunnels_networks
+  selector:
+    action: accept
+    chain: forward
+    comment: Shared tunnel networks forward
+    src-address-list: tunnels_networks
   create: true
 - path: /ip firewall filter
   values:
@@ -2143,16 +2454,119 @@ routeros_records:
     new-routing-mark: OUT_ISP2
     passthrough: 'no'
     protocol: tcp
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: BFD force vds1 interface
+    dst-address: 10.250.1.1
+    dst-port: '3784'
+    new-routing-mark: bfd-vds1
+    passthrough: 'no'
+    protocol: udp
+    src-address: 10.250.1.24
+  selector:
+    action: mark-routing
+    chain: output
+    comment: BFD force vds1 interface
+    dst-address: 10.250.1.1
+    dst-port: '3784'
+    new-routing-mark: bfd-vds1
+    passthrough: 'no'
+    protocol: udp
+    src-address: 10.250.1.24
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: BFD force vds8 interface
+    dst-address: 10.250.1.8
+    dst-port: '3784'
+    new-routing-mark: bfd-vds8
+    passthrough: 'no'
+    protocol: udp
+    src-address: 10.250.1.24
+  selector:
+    action: mark-routing
+    chain: output
+    comment: BFD force vds8 interface
+    dst-address: 10.250.1.8
+    dst-port: '3784'
+    new-routing-mark: bfd-vds8
+    passthrough: 'no'
+    protocol: udp
+    src-address: 10.250.1.24
+  create: true
+- path: /ip firewall nat
+  values:
+    action: accept
+    chain: srcnat
+    comment: Internal 10/8 no source NAT
+    dst-address: 10.0.0.0/8
+    src-address: 10.0.0.0/8
+  selector:
+    action: accept
+    chain: srcnat
+    comment: Internal 10/8 no source NAT
+    dst-address: 10.0.0.0/8
+    src-address: 10.0.0.0/8
+  create: true
+- path: /ip firewall nat
+  values:
+    action: accept
+    chain: srcnat
+    comment: OSPF routed networks no NAT
+    dst-address-list: ospf-routed-networks
+    src-address-list: ospf-routed-networks
+  selector:
+    action: accept
+    chain: srcnat
+    comment: OSPF routed networks no NAT
+    dst-address-list: ospf-routed-networks
+    src-address-list: ospf-routed-networks
+  create: true
+- path: /ip firewall nat
+  values:
+    action: accept
+    chain: srcnat
+    comment: OSPF protocol no NAT
+    protocol: ospf
+  selector:
+    action: accept
+    chain: srcnat
+    comment: OSPF protocol no NAT
+    protocol: ospf
+  create: true
+- path: /ip firewall nat
+  values:
+    action: accept
+    chain: srcnat
+    comment: Shared tunnel networks no NAT
+    dst-address-list: tunnels_networks
+    src-address-list: tunnels_networks
+  selector:
+    action: accept
+    chain: srcnat
+    comment: Shared tunnel networks no NAT
+    dst-address-list: tunnels_networks
+    src-address-list: tunnels_networks
   create: true
 - path: /ip firewall nat
   values:
     action: masquerade
     chain: srcnat
+    comment: Internet uplinks only
+    dst-address: '!10.0.0.0/8'
+    out-interface-list: EXTERNAL
   selector:
     action: masquerade
     chain: srcnat
+    comment: Internet uplinks only
+    dst-address: '!10.0.0.0/8'
+    out-interface-list: EXTERNAL
   create: true
-  occurrence: 0
 - path: /ip firewall nat
   values:
     action: masquerade
@@ -2195,12 +2609,12 @@ routeros_records:
     disabled: 'yes'
     distance: '7'
     dst-address: 0.0.0.0/0
-    gateway: 100.119.0.1
+    gateway: 100.105.0.1
     routing-table: out_ISP1_only
   selector:
     dst-address: 0.0.0.0/0
     routing-table: out_ISP1_only
-    gateway: 100.119.0.1
+    gateway: 100.105.0.1
     distance: '7'
   create: true
 - path: /ip route
@@ -2247,12 +2661,12 @@ routeros_records:
     disabled: 'no'
     distance: '10'
     dst-address: 0.0.0.0/0
-    gateway: 100.92.176.1
+    gateway: 100.105.0.1
     routing-table: main
   selector:
     dst-address: 0.0.0.0/0
     routing-table: main
-    gateway: 100.92.176.1
+    gateway: 100.105.0.1
     distance: '10'
   create: true
 - path: /ip route
@@ -2331,6 +2745,51 @@ routeros_records:
   selector:
     dst-address: 10.9.0.0/16
     gateway: 10.250.3.112
+    distance: '250'
+  create: true
+- path: /ip route
+  values:
+    comment: vds8 WireGuard server
+    dst-address: 10.250.1.8/32
+    gateway: wg_vds8
+  selector:
+    dst-address: 10.250.1.8/32
+    gateway: wg_vds8
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    comment: vds1 WireGuard server
+    dst-address: 10.250.1.1/32
+    gateway: wg_vds1
+  selector:
+    dst-address: 10.250.1.1/32
+    gateway: wg_vds1
+  create: true
+  occurrence: 0
+- path: /ip route
+  values:
+    comment: BFD peer interface
+    dst-address: 10.250.1.1/32
+    gateway: wg_vds1
+    routing-table: bfd-vds1
+    scope: '10'
+  selector:
+    dst-address: 10.250.1.1/32
+    routing-table: bfd-vds1
+    gateway: wg_vds1
+  create: true
+- path: /ip route
+  values:
+    comment: BFD peer interface
+    dst-address: 10.250.1.8/32
+    gateway: wg_vds8
+    routing-table: bfd-vds8
+    scope: '10'
+  selector:
+    dst-address: 10.250.1.8/32
+    routing-table: bfd-vds8
+    gateway: wg_vds8
   create: true
 - path: /ip service
   selector:
@@ -2377,6 +2836,142 @@ routeros_records:
     min-tx: 200ms
     multiplier: '5'
   selector: {}
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF loopback
+    disabled: 'no'
+    interfaces: loopback
+    passive: 'yes'
+    use-bfd: 'no'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF loopback
+    interfaces: loopback
+    passive: 'yes'
+    use-bfd: 'no'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing sstp
+    cost: '60000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: sstp-vds7
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing sstp
+    cost: '60000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: sstp-vds7
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing l2tp
+    cost: '100'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: l2tp-to-d24
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing l2tp
+    cost: '100'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: l2tp-to-d24
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing WireGuard addresses
+    disabled: 'yes'
+    interfaces: wg_vds1,wg_vds8
+    passive: 'yes'
+    use-bfd: 'no'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing WireGuard addresses
+    interfaces: wg_vds1,wg_vds8
+    passive: 'yes'
+    use-bfd: 'no'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing wg_vds1
+    cost: '1000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: wg_vds1
+    type: ptmp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing wg_vds1
+    cost: '1000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: wg_vds1
+    type: ptmp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing wg_vds8
+    cost: '30000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: wg_vds8
+    type: ptmp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing wg_vds8
+    cost: '30000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: wg_vds8
+    type: ptmp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.1%wg_vds1
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.1%wg_vds1
+    area: tunnel-backbone
+    poll-interval: 1m
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.8%wg_vds8
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.8%wg_vds8
+    area: tunnel-backbone
+    poll-interval: 1m
   create: true
 - path: /routing rule
   values:

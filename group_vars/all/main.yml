@@ -86,3 +86,9 @@ amneziawg_endpoints:
   vds5: 217.144.189.206
   vds6: 195.245.239.82
   vds8: 194.113.106.136
+
+# BFD timers use FRR/RouterOS defaults; SSTP is the OSPF backup.
+ospf_sstp_cost: 60000
+
+# Run router playbooks from the repository root; pin recorded device keys.
+router_known_hosts_file: '{{ lookup("env", "PWD") }}/mikrotik/known_hosts'

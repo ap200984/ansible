@@ -1,9 +1,10 @@
-# 2026-10-03 21:16:00 by RouterOS 7.24.5
+# by RouterOS 7.24.5
 # software id = EGMW-0NE7
 #
 # model = RB2011UiAS-2HnD
 # serial number = 7A6706274D9B
 /interface bridge add fast-forward=no name=LAN port-cost-mode=short
+/interface bridge add comment="Router loopback" name=loopback protocol-mode=none
 /interface ethernet set [ find default-name=ether6 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface ethernet set [ find default-name=ether7 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface ethernet set [ find default-name=ether8 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
@@ -11,8 +12,6 @@
 /interface ethernet set [ find default-name=ether10 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface ethernet set [ find default-name=sfp1 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface l2tp-client add connect-to=86.110.170.70 disabled=no keepalive-timeout=disabled name=l2tp-to-k16 user=3Ekipazhnyi64
-/interface l2tp-client add comment=l2tp-to-vds8 connect-to=194.113.106.136 name=l2tp-to-vds8 user=3Ekipazhnyi64
-/interface wireguard add comment=wg_client_vds5 disabled=yes listen-port=56685 mtu=1420 name=wg_client_vds5
 /interface wireguard add comment=wg_vds1 listen-port=37972 mtu=1420 name=wg_vds1
 /interface wireguard add comment=wg_vds8 listen-port=37973 mtu=1420 name=wg_vds8
 /interface lte apn set [ find default=yes ] ip-type=ipv4 use-network-apn=no
@@ -25,10 +24,15 @@
 /ip dhcp-server add address-pool=dhcp_pool0 interface=LAN lease-time=10m name=dhcp1
 /ip smb users set [ find default=yes ] disabled=yes
 /interface sstp-client add authentication=mschap2 comment=sstp-to-vds7 connect-to=62.60.216.73 disabled=no http-proxy=0.0.0.0 name=sstp-vds7 profile=default-encryption tls-version=only-1.2 user=3Ekipazhnyi64
+/routing ospf instance add disabled=no name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.64
+/routing ospf area add disabled=no instance=tunnel-ospf name=tunnel-backbone
 /routing table add disabled=no fib name=SSTP_to_vds7
 /routing table add disabled=no fib name=l2tp-to-vds8
 /routing table add disabled=no fib name=to_VPNs
+/routing table add fib name=bfd-vds1
+/routing table add fib name=bfd-vds8
 /system script add comment="Get all google IP addresses" dont-require-permissions=no name=get_google_ips owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
+/user group add name=bandwidth-test policy=test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
 /interface bridge port add bridge=LAN ingress-filtering=no interface=ether2 internal-path-cost=10 path-cost=10
 /interface bridge port add bridge=LAN ingress-filtering=no interface=ether3 internal-path-cost=10 path-cost=10
 /interface bridge port add bridge=LAN ingress-filtering=no interface=ether4 internal-path-cost=10 path-cost=10
@@ -44,13 +48,13 @@
 /ip settings set max-neighbor-entries=8192
 /ipv6 settings set disable-ipv6=yes max-neighbor-entries=8192
 /interface ovpn-server server add auth=sha1,md5 mac-address=FE:A3:CF:F3:D6:FE name=ovpn-server1
-/interface wireguard peers add allowed-address=0.0.0.0/0 comment=wg_client_vds5 disabled=yes endpoint-address=217.144.189.206 endpoint-port=56685 interface=wg_client_vds5 name=wg_client_vds5 public-key="vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks="
-/interface wireguard peers add allowed-address=0.0.0.0/0 comment=wg_to_vds1 endpoint-address=45.141.102.72 endpoint-port=56685 interface=wg_vds1 name=wg_to_vds1 persistent-keepalive=25s public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
-/interface wireguard peers add allowed-address=0.0.0.0/0 comment=wg_to_vds8 endpoint-address=194.113.106.136 endpoint-port=56699 interface=wg_vds8 name=wg_to_vds8 persistent-keepalive=25s public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
+/interface wireguard peers add allowed-address=10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16 comment=wg_client_vds5 disabled=yes endpoint-address=217.144.189.206 endpoint-port=56685 interface=*F name=wg_client_vds5 public-key="vzsWLyFBhyRwHPRbcFzROtL8YeQjihFvU+vdatYl6ks="
+/interface wireguard peers add allowed-address=10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16 comment=wg_to_vds1 endpoint-address=45.141.102.72 endpoint-port=56685 interface=wg_vds1 name=wg_to_vds1 persistent-keepalive=25s public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
+/interface wireguard peers add allowed-address=10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16 comment=wg_to_vds8 endpoint-address=194.113.106.136 endpoint-port=56699 interface=wg_vds8 name=wg_to_vds8 persistent-keepalive=25s public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
 /ip address add address=10.10.0.1/24 interface=LAN network=10.10.0.0
-/ip address add address=10.250.0.8/24 comment=wg_client_vds5 interface=wg_client_vds5 network=10.250.0.0
-/ip address add address=10.250.101.1 comment=wg_vds1 interface=wg_vds1 network=10.250.101.1
-/ip address add address=10.250.108.1 comment=wg_vds8 interface=wg_vds8 network=10.250.108.1
+/ip address add address=10.250.1.64/24 comment=wg_vds1 interface=wg_vds1 network=10.250.1.0
+/ip address add address=10.250.1.64/24 comment=wg_vds8 interface=wg_vds8 network=10.250.1.0
+/ip address add address=10.255.0.64 comment="Router loopback" interface=loopback network=10.255.0.64
 /ip dhcp-client add interface=ether1 name=ether1 use-peer-dns=no
 /ip dhcp-server lease add address=10.10.0.175 client-id=1:7c:1c:68:eb:41:59 comment="Samsung Phone" mac-address=7C:1C:68:EB:41:59 server=dhcp1
 /ip dhcp-server lease add address=10.10.0.201 client-id=1:2c:dd:5f:ef:f3:9a comment=TV1 mac-address=2C:DD:5F:EF:F3:9A server=dhcp1
@@ -70,6 +74,22 @@
 /ip firewall address-list add address=95.161.64.0/20 comment=telegram-auto list="Telegram prefixes"
 /ip firewall address-list add address=185.76.151.0/24 comment=telegram-auto list="Telegram prefixes"
 /ip firewall address-list add address=91.105.192.0/23 comment=telegram-auto list="Telegram prefixes"
+/ip firewall address-list add address=10.250.3.0/24 comment="L2TP main routers" list=Trusted
+/ip firewall address-list add address=10.255.0.0/16 comment="OSPF trusted routed networks" list=Trusted
+/ip firewall address-list add address=10.250.0.0/16 list=ospf-routed-networks
+/ip firewall address-list add address=10.251.0.0/24 list=ospf-routed-networks
+/ip firewall address-list add address=10.252.7.0/24 list=ospf-routed-networks
+/ip firewall address-list add address=10.255.0.0/16 list=ospf-routed-networks
+/ip firewall address-list add address=10.9.0.0/16 list=ospf-routed-networks
+/ip firewall address-list add address=10.10.0.0/16 list=ospf-routed-networks
+/ip firewall address-list add address=10.11.0.0/16 comment="OSPF routed LAN summary" list=ospf-routed-networks
+/ip firewall address-list add address=10.9.0.0/24 comment="Shared tunnel networks" list=tunnels_networks
+/ip firewall address-list add address=10.9.1.0/24 comment="Shared tunnel networks" list=tunnels_networks
+/ip firewall address-list add address=10.250.0.0/24 comment="Shared tunnel networks" list=tunnels_networks
+/ip firewall address-list add address=10.250.1.0/24 comment="Shared tunnel networks" list=tunnels_networks
+/ip firewall address-list add address=10.250.3.0/24 comment="Shared tunnel networks" list=tunnels_networks
+/ip firewall address-list add address=10.255.0.0/24 comment="Shared tunnel networks" list=tunnels_networks
+/ip firewall address-list add address=10.250.2.0/24 comment="Shared tunnel networks" list=tunnels_networks
 /ip firewall address-list add address=8.8.4.0/24 comment="Added by scheduled script google_ips" list=google_ips
 /ip firewall address-list add address=8.8.8.0/24 comment="Added by scheduled script google_ips" list=google_ips
 /ip firewall address-list add address=8.34.208.0/20 comment="Added by scheduled script google_ips" list=google_ips
@@ -205,26 +225,42 @@
 /ip firewall filter add action=accept chain=forward connection-state=established,related
 /ip firewall filter add action=accept chain=input comment="Trusted INPUT" src-address-list=Trusted
 /ip firewall filter add action=accept chain=forward comment="Trusted FORWARD" src-address-list=Trusted
+/ip firewall filter add action=accept chain=forward comment="OSPF existing PPP routed forward" dst-address-list=ospf-routed-networks in-interface=all-ppp src-address-list=ospf-routed-networks
+/ip firewall filter add action=accept chain=forward comment="OSPF trusted forward 10.250.0.0/16" src-address=10.250.0.0/16
+/ip firewall filter add action=accept chain=forward comment="OSPF trusted forward 10.255.0.0/16" src-address=10.255.0.0/16
+/ip firewall filter add action=accept chain=forward comment="Shared tunnel networks forward" src-address-list=tunnels_networks
 /ip firewall filter add action=drop chain=forward in-interface=ether1
+/ip firewall filter add action=accept chain=input comment="OSPF existing PPP hello" in-interface=all-ppp protocol=ospf
+/ip firewall filter add action=accept chain=input comment="OSPF existing PPP routed input" dst-address-list=ospf-routed-networks in-interface=all-ppp src-address-list=ospf-routed-networks
+/ip firewall filter add action=accept chain=input comment="OSPF trusted input 10.250.0.0/16" src-address=10.250.0.0/16
+/ip firewall filter add action=accept chain=input comment="OSPF trusted input 10.255.0.0/16" src-address=10.255.0.0/16
+/ip firewall filter add action=accept chain=input comment="Shared tunnel networks input" src-address-list=tunnels_networks
 /ip firewall filter add action=drop chain=input in-interface=ether1
 /ip firewall mangle add action=mark-routing chain=prerouting comment=TVs new-routing-mark=to_VPNs passthrough=no src-address=10.10.0.200/30
 /ip firewall mangle add action=mark-routing chain=prerouting comment="google ips" dst-address-list=google_ips new-routing-mark=to_VPNs passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Telegram prefixes" dst-address-list="Telegram prefixes" new-routing-mark=to_VPNs passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="google ips to vds7" dst-address-list=google_ips new-routing-mark=SSTP_to_vds7 passthrough=no
 /ip firewall mangle add action=mark-routing chain=output dst-address-list=google_ips new-routing-mark=SSTP_to_vds7 passthrough=no
-/ip firewall nat add action=masquerade chain=srcnat out-interface=ether1
-/ip firewall nat add action=masquerade chain=srcnat out-interface=sstp-vds7
-/ip firewall nat
-# l2tp-to-vds8 not ready
-add action=masquerade chain=srcnat out-interface=l2tp-to-vds8
+/ip firewall mangle add action=mark-routing chain=output comment="BFD force vds1 interface" dst-address=10.250.1.1 dst-port=3784 new-routing-mark=bfd-vds1 passthrough=no protocol=udp src-address=10.250.1.64
+/ip firewall mangle add action=mark-routing chain=output comment="BFD force vds8 interface" dst-address=10.250.1.8 dst-port=3784 new-routing-mark=bfd-vds8 passthrough=no protocol=udp src-address=10.250.1.64
+/ip firewall nat add action=accept chain=srcnat comment="Internal 10/8 no source NAT" dst-address=10.0.0.0/8 src-address=10.0.0.0/8
+/ip firewall nat add action=accept chain=srcnat comment="OSPF routed networks no NAT" dst-address-list=ospf-routed-networks src-address-list=ospf-routed-networks
+/ip firewall nat add action=accept chain=srcnat comment="OSPF protocol no NAT" protocol=ospf
+/ip firewall nat add action=accept chain=srcnat comment="Shared tunnel networks no NAT" dst-address-list=tunnels_networks src-address-list=tunnels_networks
+/ip firewall nat add action=masquerade chain=srcnat dst-address=!10.0.0.0/8 out-interface=ether1
+/ip firewall nat add action=masquerade chain=srcnat disabled=yes out-interface=sstp-vds7
+/ip firewall nat add action=masquerade chain=srcnat disabled=yes dst-address=!10.0.0.0/8 out-interface=*12
 /ip ipsec profile set [ find default=yes ] dpd-interval=2m dpd-maximum-failures=5
-/ip route add disabled=no dst-address=10.9.0.0/24 gateway=10.9.255.1
-/ip route add disabled=yes distance=1 dst-address=217.144.189.206/32 gateway=10.9.255.1 routing-table=main scope=30 target-scope=10
+/ip route add disabled=no dst-address=10.9.0.0/24 gateway=10.250.3.112
+/ip route add disabled=yes distance=1 dst-address=217.144.189.206/32 gateway=10.250.3.112 routing-table=main scope=30 target-scope=10
 /ip route add check-gateway=ping comment="vds7 wg network" disabled=no distance=1 dst-address=10.250.0.0/16 gateway=10.251.0.7 routing-table=main
 /ip route add check-gateway=ping comment=sstp-to-vds7 disabled=no distance=10 dst-address=0.0.0.0/0 gateway=10.251.0.7 routing-table=to_VPNs
 /ip route add check-gateway=ping comment=l2tp-to-vds8 disabled=no distance=11 dst-address=0.0.0.0/0 gateway=10.20.255.1 routing-table=to_VPNs
 /ip route add disabled=no dst-address=10.250.1.1/32 gateway=wg_vds1 routing-table=main
-/ip route add comment="vds8 wg network" dst-address=10.250.8.1/32 gateway=wg_vds8
+/ip route add comment="vds8 WireGuard server" dst-address=10.250.1.8/32 gateway=wg_vds8
+/ip route add blackhole comment="OSPF owned LAN summary" disabled=no distance=254 dst-address=10.10.0.0/16
+/ip route add comment="BFD peer interface" dst-address=10.250.1.1/32 gateway=wg_vds1 routing-table=bfd-vds1 scope=10
+/ip route add comment="BFD peer interface" dst-address=10.250.1.8/32 gateway=wg_vds8 routing-table=bfd-vds8 scope=10
 /ip service set ftp disabled=yes
 /ip service set www port=1955
 /ip service set api disabled=yes
@@ -234,9 +270,18 @@ add action=masquerade chain=srcnat out-interface=l2tp-to-vds8
 # automatic dns option advertising is not started, re-apply dns config
 set [ find default=yes ] advertise-dns=yes
 /routing bfd configuration add disabled=no interfaces=all min-rx=200ms min-tx=200ms multiplier=5
+/routing filter rule add chain=tunnel-ospf-export comment="OSPF owned summary export" disabled=no rule="if (dst == 10.10.0.0/16) { accept } else { reject }"
 /routing igmp-proxy set quick-leave=yes
 /routing igmp-proxy interface add alternative-subnets=0.0.0.0/0 interface=ether1 upstream=yes
 /routing igmp-proxy interface add interface=LAN
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF loopback" disabled=no interfaces=loopback passive use-bfd=no
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp" cost=60000 dead-interval=4m disabled=no hello-interval=1m interfaces=sstp-vds7 type=ptp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp" cost=100 dead-interval=4m disabled=no hello-interval=1m interfaces=l2tp-to-k16 type=ptp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing WireGuard addresses" disabled=yes interfaces=wg_vds1,wg_vds8 passive use-bfd=no
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds1" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds1 type=ptmp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds8" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds8 type=ptmp use-bfd=yes
+/routing ospf static-neighbor add address=10.250.1.1%wg_vds1 area=tunnel-backbone disabled=no poll-interval=1m
+/routing ospf static-neighbor add address=10.250.1.8%wg_vds8 area=tunnel-backbone disabled=no poll-interval=1m
 /snmp set contact=mikrotik_3Ekipazhnyi64 enabled=yes location=3Ekipazhnyi64
 /system clock set time-zone-name=Europe/Moscow
 /system identity set name=3Ekipazhnyi64

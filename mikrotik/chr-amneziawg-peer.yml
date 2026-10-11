@@ -8,6 +8,8 @@
     chr_awg_container_ip: '172.31.70.{{ (chr_awg_peer[3:] | int) * 4 + 2 }}'
     chr_awg_ssh:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - '{{ router_ssh_key | expanduser }}'
       - -p

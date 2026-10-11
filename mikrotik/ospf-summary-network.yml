@@ -7,6 +7,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     records:
       - path: /ip firewall address-list
         selector:

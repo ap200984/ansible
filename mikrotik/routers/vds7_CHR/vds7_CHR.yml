@@ -1,41 +1,46 @@
 routeros_records:
 - path: /interface bridge
   values:
+    comment: Router loopback
     name: loopback
     protocol-mode: none
-    comment: Router loopback
   selector:
     name: loopback
-  create: true
-- path: /ip address
-  values:
-    address: 10.255.0.7/32
-    interface: loopback
-    comment: Router loopback
-  selector:
-    interface: loopback
   create: true
 - path: /interface ethernet
   selector:
     default-name: ether1
   values:
     disable-running-check: 'no'
-- path: /interface wireguard
+- path: /interface veth
   values:
-    disabled: 'yes'
-    comment: Server WG
-    listen-port: '51820'
-    mtu: '1340'
-    name: WG-server
-    private-key: '{{ routeros_secrets.record_1_private_key }}'
+    address: 172.31.70.6/30
+    container-mac-address: 76:8F:C7:D7:7E:E7
+    dhcp: 'no'
+    gateway: 172.31.70.5
+    gateway6: ''
+    mac-address: 76:8F:C7:D7:7E:E6
+    name: veth-awg-vds1
   selector:
-    name: WG-server
+    name: veth-awg-vds1
+  create: true
+- path: /interface veth
+  values:
+    address: 172.31.70.34/30
+    container-mac-address: 5E:EE:F2:F2:26:07
+    dhcp: 'no'
+    gateway: 172.31.70.33
+    gateway6: ''
+    mac-address: 5E:EE:F2:F2:26:06
+    name: veth-awg-vds8
+  selector:
+    name: veth-awg-vds8
   create: true
 - path: /interface wireguard
   values:
     comment: vds1_interface
     listen-port: '56697'
-    mtu: '1420'
+    mtu: '1340'
     name: vds1_interface
     private-key: '{{ routeros_secrets.record_2_private_key }}'
   selector:
@@ -45,7 +50,7 @@ routeros_records:
   values:
     comment: vds2_interface
     listen-port: '56698'
-    mtu: '1420'
+    mtu: '1340'
     name: vds2_interface
     private-key: '{{ routeros_secrets.record_3_private_key }}'
   selector:
@@ -75,11 +80,369 @@ routeros_records:
   values:
     comment: vds8_interface
     listen-port: '56699'
-    mtu: '1420'
+    mtu: '1340'
     name: vds8_interface
     private-key: '{{ routeros_secrets.record_6_private_key }}'
   selector:
     name: vds8_interface
+  create: true
+- path: /routing ospf instance
+  values:
+    disabled: 'no'
+    name: tunnel-ospf
+    originate-default: never
+    out-filter-chain: ''
+    redistribute: ''
+    router-id: 10.255.0.7
+  selector:
+    name: tunnel-ospf
+  create: true
+- path: /routing ospf area
+  values:
+    disabled: 'no'
+    instance: tunnel-ospf
+    name: tunnel-backbone
+  selector:
+    name: tunnel-backbone
+  create: true
+- path: /user group
+  values:
+    name: bandwidth-test
+    policy: test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
+  selector:
+    name: bandwidth-test
+  create: true
+- path: /container
+  values:
+    comment: AWG vds1
+    envlists: awg-vds1
+    file: chr-awg-proxy-v1.4.2-amd64.tar.gz
+    hostname: awg-vds1
+    interface: veth-awg-vds1
+    layer-dir: ''
+    logging: 'yes'
+    name: awg-vds1
+    root-dir: /awg-vds1
+    shm-size: 4096.0KiB
+    start-on-boot: 'yes'
+  selector:
+    name: awg-vds1
+  create: true
+- path: /container
+  values:
+    comment: AWG vds8
+    envlists: awg-vds8
+    file: chr-awg-proxy-v1.4.2-amd64.tar.gz
+    hostname: awg-vds8
+    interface: veth-awg-vds8
+    layer-dir: ''
+    logging: 'yes'
+    name: awg-vds8
+    root-dir: /awg-vds8
+    shm-size: 4096.0KiB
+    start-on-boot: 'yes'
+  selector:
+    name: awg-vds8
+  create: true
+- path: /container envs
+  values:
+    key: AWG_CLIENT_PUB
+    list: awg-vds1
+    value: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
+  selector:
+    key: AWG_CLIENT_PUB
+    list: awg-vds1
+    value: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H1
+    list: awg-vds1
+    value: '1723456781'
+  selector:
+    key: AWG_H1
+    list: awg-vds1
+    value: '1723456781'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H2
+    list: awg-vds1
+    value: '1723456782'
+  selector:
+    key: AWG_H2
+    list: awg-vds1
+    value: '1723456782'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H3
+    list: awg-vds1
+    value: '1723456783'
+  selector:
+    key: AWG_H3
+    list: awg-vds1
+    value: '1723456783'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H4
+    list: awg-vds1
+    value: '1723456784'
+  selector:
+    key: AWG_H4
+    list: awg-vds1
+    value: '1723456784'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JC
+    list: awg-vds1
+    value: '4'
+  selector:
+    key: AWG_JC
+    list: awg-vds1
+    value: '4'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMAX
+    list: awg-vds1
+    value: '80'
+  selector:
+    key: AWG_JMAX
+    list: awg-vds1
+    value: '80'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMIN
+    list: awg-vds1
+    value: '40'
+  selector:
+    key: AWG_JMIN
+    list: awg-vds1
+    value: '40'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LISTEN
+    list: awg-vds1
+    value: :51820
+  selector:
+    key: AWG_LISTEN
+    list: awg-vds1
+    value: :51820
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LOG_LEVEL
+    list: awg-vds1
+    value: info
+  selector:
+    key: AWG_LOG_LEVEL
+    list: awg-vds1
+    value: info
+  create: true
+- path: /container envs
+  values:
+    key: AWG_MODE
+    list: awg-vds1
+    value: normal
+  selector:
+    key: AWG_MODE
+    list: awg-vds1
+    value: normal
+  create: true
+- path: /container envs
+  values:
+    key: AWG_REMOTE
+    list: awg-vds1
+    value: 45.141.102.72:56707
+  selector:
+    key: AWG_REMOTE
+    list: awg-vds1
+    value: 45.141.102.72:56707
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S1
+    list: awg-vds1
+    value: '65'
+  selector:
+    key: AWG_S1
+    list: awg-vds1
+    value: '65'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S2
+    list: awg-vds1
+    value: '107'
+  selector:
+    key: AWG_S2
+    list: awg-vds1
+    value: '107'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_SERVER_PUB
+    list: awg-vds1
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    key: AWG_SERVER_PUB
+    list: awg-vds1
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  create: true
+- path: /container envs
+  values:
+    key: AWG_CLIENT_PUB
+    list: awg-vds8
+    value: WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=
+  selector:
+    key: AWG_CLIENT_PUB
+    list: awg-vds8
+    value: WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H1
+    list: awg-vds8
+    value: '1723456781'
+  selector:
+    key: AWG_H1
+    list: awg-vds8
+    value: '1723456781'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H2
+    list: awg-vds8
+    value: '1723456782'
+  selector:
+    key: AWG_H2
+    list: awg-vds8
+    value: '1723456782'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H3
+    list: awg-vds8
+    value: '1723456783'
+  selector:
+    key: AWG_H3
+    list: awg-vds8
+    value: '1723456783'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_H4
+    list: awg-vds8
+    value: '1723456784'
+  selector:
+    key: AWG_H4
+    list: awg-vds8
+    value: '1723456784'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JC
+    list: awg-vds8
+    value: '4'
+  selector:
+    key: AWG_JC
+    list: awg-vds8
+    value: '4'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMAX
+    list: awg-vds8
+    value: '80'
+  selector:
+    key: AWG_JMAX
+    list: awg-vds8
+    value: '80'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_JMIN
+    list: awg-vds8
+    value: '40'
+  selector:
+    key: AWG_JMIN
+    list: awg-vds8
+    value: '40'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LISTEN
+    list: awg-vds8
+    value: :51820
+  selector:
+    key: AWG_LISTEN
+    list: awg-vds8
+    value: :51820
+  create: true
+- path: /container envs
+  values:
+    key: AWG_LOG_LEVEL
+    list: awg-vds8
+    value: info
+  selector:
+    key: AWG_LOG_LEVEL
+    list: awg-vds8
+    value: info
+  create: true
+- path: /container envs
+  values:
+    key: AWG_MODE
+    list: awg-vds8
+    value: normal
+  selector:
+    key: AWG_MODE
+    list: awg-vds8
+    value: normal
+  create: true
+- path: /container envs
+  values:
+    key: AWG_REMOTE
+    list: awg-vds8
+    value: 194.113.106.136:56707
+  selector:
+    key: AWG_REMOTE
+    list: awg-vds8
+    value: 194.113.106.136:56707
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S1
+    list: awg-vds8
+    value: '65'
+  selector:
+    key: AWG_S1
+    list: awg-vds8
+    value: '65'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_S2
+    list: awg-vds8
+    value: '107'
+  selector:
+    key: AWG_S2
+    list: awg-vds8
+    value: '107'
+  create: true
+- path: /container envs
+  values:
+    key: AWG_SERVER_PUB
+    list: awg-vds8
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
+  selector:
+    key: AWG_SERVER_PUB
+    list: awg-vds8
+    value: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
   create: true
 - path: /interface ovpn-server server
   values:
@@ -96,7 +459,7 @@ routeros_records:
     enabled: 'yes'
 - path: /interface wireguard peers
   values:
-    allowed-address: 0.0.0.0/0
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
     comment: wg_to_vds5
     endpoint-address: 217.144.189.206
     endpoint-port: '56695'
@@ -108,7 +471,7 @@ routeros_records:
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 0.0.0.0/0
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
     comment: wg_to_vds6
     endpoint-address: 195.245.239.82
     endpoint-port: '56696'
@@ -118,13 +481,12 @@ routeros_records:
   selector:
     name: wg_to_vds6
   create: true
-
 - path: /interface wireguard peers
   values:
-    allowed-address: 10.250.0.0/16,10.255.0.0/16
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
     comment: wg_to_vds1
-    endpoint-address: 45.141.102.72
-    endpoint-port: '56685'
+    endpoint-address: 172.31.70.6
+    endpoint-port: '51820'
     interface: vds1_interface
     name: wg_to_vds1
     public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
@@ -133,10 +495,10 @@ routeros_records:
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 10.250.0.0/16,10.255.0.0/16
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
     comment: wg_to_vds8
-    endpoint-address: 194.113.106.136
-    endpoint-port: '56699'
+    endpoint-address: 172.31.70.34
+    endpoint-port: '51820'
     interface: vds8_interface
     name: wg_to_vds8
     public-key: v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ=
@@ -145,7 +507,7 @@ routeros_records:
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 0.0.0.0/0
+    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
     comment: wg_to_vds2
     endpoint-address: 38.247.137.237
     endpoint-port: '56698'
@@ -164,47 +526,80 @@ routeros_records:
     address: 62.60.216.73
     interface: ether1
   create: true
-
 - path: /ip address
   values:
-    address: 10.250.1.7/32
+    address: 10.250.1.7
     interface: vds5_interface
     network: 10.250.1.5
   selector:
+    address: 10.250.1.7
     interface: vds5_interface
   create: true
 - path: /ip address
   values:
-    address: 10.250.1.7/32
+    address: 10.250.1.7
     interface: vds6_interface
     network: 10.250.1.6
   selector:
+    address: 10.250.1.7
     interface: vds6_interface
   create: true
-
 - path: /ip address
   values:
-    address: 10.250.1.7/24
+    address: 10.250.1.7
     interface: vds1_interface
-    network: 10.250.1.0
+    network: 10.250.1.1
   selector:
+    address: 10.250.1.7
     interface: vds1_interface
   create: true
 - path: /ip address
   values:
-    address: 10.250.1.7/32
+    address: 10.250.1.7
     interface: vds2_interface
     network: 10.250.1.2
   selector:
+    address: 10.250.1.7
     interface: vds2_interface
   create: true
 - path: /ip address
   values:
-    address: 10.250.1.7/24
+    address: 10.250.1.7
     interface: vds8_interface
-    network: 10.250.1.0
+    network: 10.250.1.8
   selector:
+    address: 10.250.1.7
     interface: vds8_interface
+  create: true
+- path: /ip address
+  values:
+    address: 10.255.0.7
+    comment: Router loopback
+    interface: loopback
+    network: 10.255.0.7
+  selector:
+    address: 10.255.0.7
+    interface: loopback
+  create: true
+- path: /ip address
+  values:
+    address: 172.31.70.5/30
+    comment: AWG proxy vds1
+    interface: veth-awg-vds1
+    network: 172.31.70.4
+  selector:
+    address: 172.31.70.5/30
+    interface: veth-awg-vds1
+  create: true
+- path: /ip address
+  values:
+    address: 172.31.70.33/30
+    comment: AWG proxy vds8
+    interface: veth-awg-vds8
+    network: 172.31.70.32
+  selector:
+    address: 172.31.70.33/30
+    interface: veth-awg-vds8
   create: true
 - path: /ip dhcp-client
   values:
@@ -288,180 +683,530 @@ routeros_records:
     list: Trusted
     address: 194.113.106.136
   create: true
-- path: /ip firewall filter
+- path: /ip firewall address-list
   values:
-    action: accept
-    chain: input
-    comment: HTTPs MGMT INPUT
-    dst-port: '1956'
-    protocol: tcp
+    address: 10.255.0.0/16
+    comment: OSPF trusted routed networks
+    list: Trusted
   selector:
-    action: accept
-    chain: input
-    comment: HTTPs MGMT INPUT
-    dst-port: '1956'
-    protocol: tcp
+    list: Trusted
+    address: 10.255.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.250.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.251.0.0/24
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.251.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.255.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.255.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.9.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.10.0.0/16
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.10.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.11.0.0/16
+    comment: OSPF routed LAN summary
+    list: ospf-routed-networks
+  selector:
+    list: ospf-routed-networks
+    address: 10.11.0.0/16
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.0.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.9.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.9.1.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.9.1.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.0.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.1.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.1.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.3.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.3.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.255.0.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.255.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 10.250.2.0/24
+    comment: Shared tunnel networks
+    list: tunnels_networks
+  selector:
+    list: tunnels_networks
+    address: 10.250.2.0/24
   create: true
 - path: /ip firewall filter
   values:
     action: accept
     chain: input
-    comment: PPP INPUT
-    in-interface: all-ppp
-  selector:
-    action: accept
-    chain: input
-    comment: PPP INPUT
-    in-interface: all-ppp
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: forward
-    comment: PPP FORWARD
-    in-interface: all-ppp
-  selector:
-    action: accept
-    chain: forward
-    comment: PPP FORWARD
-    in-interface: all-ppp
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    comment: Established_Related INPUT
-    connection-state: established,related
-  selector:
-    action: accept
-    chain: input
-    comment: Established_Related INPUT
-    connection-state: established,related
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: forward
-    comment: Established_Related FORWARD
-    connection-state: established,related
-  selector:
-    action: accept
-    chain: forward
-    comment: Established_Related FORWARD
-    connection-state: established,related
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    comment: SSTP INPUT
-    dst-port: '443'
-    protocol: tcp
-  selector:
-    action: accept
-    chain: input
-    comment: SSTP INPUT
-    dst-port: '443'
-    protocol: tcp
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    comment: Tusted INPUT
-    src-address-list: Trusted
-  selector:
-    action: accept
-    chain: input
-    comment: Tusted INPUT
-    src-address-list: Trusted
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: forward
-    comment: Trusted FORWARD
-    src-address-list: Trusted
-  selector:
-    action: accept
-    chain: forward
-    comment: Trusted FORWARD
-    src-address-list: Trusted
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    comment: Allow WG server INPUT
-    dst-port: '51820'
+    comment: Plain WireGuard vds6 uplink
+    dst-port: '56696'
     protocol: udp
+    src-address: 195.245.239.82
   selector:
     action: accept
     chain: input
-    comment: Allow WG server INPUT
-    dst-port: '51820'
+    comment: Plain WireGuard vds6 uplink
+    dst-port: '56696'
     protocol: udp
+    src-address: 195.245.239.82
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Plain WireGuard vds2 uplink
+    dst-port: '56698'
+    protocol: udp
+    src-address: 38.247.137.237
+  selector:
+    action: accept
+    chain: input
+    comment: Plain WireGuard vds2 uplink
+    dst-port: '56698'
+    protocol: udp
+    src-address: 38.247.137.237
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Plain WireGuard vds5 uplink
+    dst-port: '56695'
+    protocol: udp
+    src-address: 217.144.189.206
+  selector:
+    action: accept
+    chain: input
+    comment: Plain WireGuard vds5 uplink
+    dst-port: '56695'
+    protocol: udp
+    src-address: 217.144.189.206
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: AWG proxy vds8 local
+    dst-port: '56699'
+    in-interface: veth-awg-vds8
+    protocol: udp
+    src-address: 172.31.70.34
+  selector:
+    action: accept
+    chain: input
+    comment: AWG proxy vds8 local
+    dst-port: '56699'
+    in-interface: veth-awg-vds8
+    protocol: udp
+    src-address: 172.31.70.34
   create: true
 - path: /ip firewall filter
   values:
     action: accept
     chain: forward
-    comment: Allow WG Server FORWARD
-    in-interface: WG-server
+    comment: AWG proxy vds8 uplink
+    dst-address: 194.113.106.136
+    dst-port: '56707'
+    in-interface: veth-awg-vds8
+    protocol: udp
+    src-address: 172.31.70.34
   selector:
     action: accept
     chain: forward
-    comment: Allow WG Server FORWARD
-    in-interface: WG-server
+    comment: AWG proxy vds8 uplink
+    dst-address: 194.113.106.136
+    dst-port: '56707'
+    in-interface: veth-awg-vds8
+    protocol: udp
+    src-address: 172.31.70.34
   create: true
 - path: /ip firewall filter
   values:
-    action: drop
+    action: accept
     chain: input
+    comment: AWG proxy vds1 local
+    dst-port: '56697'
+    in-interface: veth-awg-vds1
+    protocol: udp
+    src-address: 172.31.70.6
   selector:
-    action: drop
+    action: accept
     chain: input
+    comment: AWG proxy vds1 local
+    dst-port: '56697'
+    in-interface: veth-awg-vds1
+    protocol: udp
+    src-address: 172.31.70.6
   create: true
 - path: /ip firewall filter
   values:
-    action: drop
+    action: accept
     chain: forward
+    comment: AWG proxy vds1 uplink
+    dst-address: 45.141.102.72
+    dst-port: '56707'
+    in-interface: veth-awg-vds1
+    protocol: udp
+    src-address: 172.31.70.6
   selector:
-    action: drop
+    action: accept
     chain: forward
+    comment: AWG proxy vds1 uplink
+    dst-address: 45.141.102.72
+    dst-port: '56707'
+    in-interface: veth-awg-vds1
+    protocol: udp
+    src-address: 172.31.70.6
   create: true
-- path: /ip firewall nat
+  occurrence: 0
+- path: /ip firewall filter
   values:
-    action: masquerade
-    chain: srcnat
-    out-interface: ether1
+    action: accept
+    chain: forward
+    comment: AWG proxy vds1 uplink
+    dst-address: 45.141.102.72
+    dst-port: '56707'
+    in-interface: veth-awg-vds1
+    protocol: udp
+    src-address: 172.31.70.6
   selector:
-    action: masquerade
-    chain: srcnat
-    out-interface: ether1
-  create: true
-- path: /ip firewall nat
-  values:
-    action: masquerade
-    chain: srcnat
-    disabled: 'yes'
-  selector:
-    action: masquerade
-    chain: srcnat
+    action: accept
+    chain: forward
+    comment: AWG proxy vds1 uplink
+    dst-address: 45.141.102.72
+    dst-port: '56707'
+    in-interface: veth-awg-vds1
+    protocol: udp
+    src-address: 172.31.70.6
   create: true
   occurrence: 1
-
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: HTTPs MGMT INPUT
+    dst-port: '1956'
+    protocol: tcp
+  selector:
+    action: accept
+    chain: input
+    comment: HTTPs MGMT INPUT
+    dst-port: '1956'
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: PPP INPUT
+    in-interface: all-ppp
+  selector:
+    action: accept
+    chain: input
+    comment: PPP INPUT
+    in-interface: all-ppp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: PPP FORWARD
+    in-interface: all-ppp
+  selector:
+    action: accept
+    chain: forward
+    comment: PPP FORWARD
+    in-interface: all-ppp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Established_Related INPUT
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: input
+    comment: Established_Related INPUT
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Established_Related FORWARD
+    connection-state: established,related
+  selector:
+    action: accept
+    chain: forward
+    comment: Established_Related FORWARD
+    connection-state: established,related
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: SSTP INPUT
+    dst-port: '443'
+    protocol: tcp
+  selector:
+    action: accept
+    chain: input
+    comment: SSTP INPUT
+    dst-port: '443'
+    protocol: tcp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Tusted INPUT
+    src-address-list: Trusted
+  selector:
+    action: accept
+    chain: input
+    comment: Tusted INPUT
+    src-address-list: Trusted
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Trusted FORWARD
+    src-address-list: Trusted
+  selector:
+    action: accept
+    chain: forward
+    comment: Trusted FORWARD
+    src-address-list: Trusted
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Allow WG server INPUT
+    dst-port: '51820'
+    protocol: udp
+  selector:
+    action: accept
+    chain: input
+    comment: Allow WG server INPUT
+    dst-port: '51820'
+    protocol: udp
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP hello
+    in-interface: all-ppp
+    protocol: ospf
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP hello
+    in-interface: all-ppp
+    protocol: ospf
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP routed input
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF existing PPP routed input
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  selector:
+    action: accept
+    chain: input
+    comment: OSPF trusted input 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: input
+    comment: Shared tunnel networks input
+    src-address-list: tunnels_networks
+  selector:
+    action: accept
+    chain: input
+    comment: Shared tunnel networks input
+    src-address-list: tunnels_networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: input
+  selector:
+    action: drop
+    chain: input
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: OSPF existing PPP routed forward
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  selector:
+    action: accept
+    chain: forward
+    comment: OSPF existing PPP routed forward
+    dst-address-list: ospf-routed-networks
+    in-interface: all-ppp
+    src-address-list: ospf-routed-networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  selector:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.250.0.0/16
+    src-address: 10.250.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  selector:
+    action: accept
+    chain: forward
+    comment: OSPF trusted forward 10.255.0.0/16
+    src-address: 10.255.0.0/16
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Shared tunnel networks forward
+    src-address-list: tunnels_networks
+  selector:
+    action: accept
+    chain: forward
+    comment: Shared tunnel networks forward
+    src-address-list: tunnels_networks
+  create: true
+- path: /ip firewall filter
+  values:
+    action: drop
+    chain: forward
+  selector:
+    action: drop
+    chain: forward
+  create: true
 - path: /ip firewall nat
   values:
     action: masquerade
     chain: srcnat
-    comment: out SSTP
-    dst-address: 10.251.0.0/24
+    out-interface: ether1
   selector:
     action: masquerade
     chain: srcnat
-    comment: out SSTP
-    dst-address: 10.251.0.0/24
+    out-interface: ether1
   create: true
 - path: /ip route
   values:
@@ -473,80 +1218,48 @@ routeros_records:
   create: true
 - path: /ip route
   values:
-    check-gateway: ping
-    disabled: 'yes'
-    distance: '10'
-    dst-address: 10.250.0.0/24
-    gateway: 10.250.0.5
-    routing-table: main
-    scope: '30'
-    target-scope: '10'
-  selector:
-    dst-address: 10.250.0.0/24
-    routing-table: main
-    gateway: 10.250.0.5
-    distance: '10'
-  create: true
-- path: /ip route
-  values:
-    disabled: 'no'
-    dst-address: 10.250.1.5/32
-    gateway: vds5_interface
-    routing-table: main
-  selector:
-    dst-address: 10.250.1.5/32
-    routing-table: main
-    gateway: vds5_interface
-  create: true
-- path: /ip route
-  values:
-    disabled: 'no'
-    dst-address: 10.250.1.6/32
-    gateway: vds6_interface
-    routing-table: main
-  selector:
-    dst-address: 10.250.1.6/32
-    routing-table: main
-    gateway: vds6_interface
-  create: true
-- path: /ip route
-  values:
-    disabled: 'no'
-    distance: '1'
-    dst-address: 10.250.1.1/32
-    gateway: vds1_interface
-    routing-table: main
-  selector:
-    dst-address: 10.250.1.1/32
-    routing-table: main
-    gateway: vds1_interface
-    distance: '1'
-  create: true
-- path: /ip route
-  values:
-    disabled: 'no'
-    distance: '1'
-    dst-address: 10.250.1.8/32
-    gateway: vds8_interface
-    routing-table: main
-  selector:
-    dst-address: 10.250.1.8/32
-    routing-table: main
-    gateway: vds8_interface
-    distance: '1'
-  create: true
-- path: /ip route
-  values:
-    disabled: 'no'
-    distance: '1'
+    comment: WireGuard vds2 transport
     dst-address: 10.250.1.2/32
-    gateway: vds2_interface
-    routing-table: main
+    gateway: 10.250.1.2%vds2_interface
   selector:
     dst-address: 10.250.1.2/32
-    routing-table: main
-    gateway: vds2_interface
-    distance: '1'
+    gateway: 10.250.1.2%vds2_interface
+  create: true
+- path: /ip route
+  values:
+    comment: WireGuard vds5 transport
+    dst-address: 10.250.1.5/32
+    gateway: 10.250.1.5%vds5_interface
+  selector:
+    dst-address: 10.250.1.5/32
+    gateway: 10.250.1.5%vds5_interface
+  create: true
+- path: /ip route
+  values:
+    comment: WireGuard vds6 transport
+    dst-address: 10.250.1.6/32
+    gateway: 10.250.1.6%vds6_interface
+  selector:
+    dst-address: 10.250.1.6/32
+    gateway: 10.250.1.6%vds6_interface
+  create: true
+- path: /ip route
+  values:
+    comment: Native AWG vds8 transport
+    dst-address: 10.250.1.8/32
+    gateway: 10.250.1.8%vds8_interface
+  selector:
+    dst-address: 10.250.1.8/32
+    gateway: 10.250.1.8%vds8_interface
+  create: true
+- path: /ip route
+  values:
+    comment: Native AWG vds1 transport
+    dst-address: 10.250.1.1/32
+    gateway: 10.250.1.1%vds1_interface
+  selector:
+    dst-address: 10.250.1.1/32
+    gateway: 10.250.1.1%vds1_interface
   create: true
 - path: /ip service
   selector:
@@ -602,12 +1315,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: k16_k112
-    service: sstp
-    disabled: 'no'
-    password: '{{ sstp_vds7_password }}'
+    password: '{{ routeros_secrets.record_e0a6cce21ac3b3f5b601813a }}'
     profile: default-encryption
     remote-address: 10.250.0.112
     routes: 10.9.0.0/24
+    service: sstp
   selector:
     name: k16_k112
   create: true
@@ -615,12 +1327,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: 3Ekipazhnyi64
-    service: sstp
-    disabled: 'no'
-    password: '{{ sstp_vds7_password }}'
+    password: '{{ routeros_secrets.record_10a77ee1bdf3e4b4d18defa1 }}'
     profile: default-encryption
     remote-address: 10.250.0.64
     routes: 10.10.0.0/24
+    service: sstp
   selector:
     name: 3Ekipazhnyi64
   create: true
@@ -628,12 +1339,11 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: k16_k21
-    service: sstp
-    disabled: 'no'
-    password: '{{ sstp_vds7_password }}'
+    password: '{{ routeros_secrets.record_eadb5f23ddcf11c532681043 }}'
     profile: default-encryption
     remote-address: 10.250.0.21
     routes: 10.11.0.0/24
+    service: sstp
   selector:
     name: k16_k21
   create: true
@@ -641,13 +1351,303 @@ routeros_records:
   values:
     local-address: 10.251.0.7
     name: Misha
-    service: sstp
-    disabled: 'no'
-    password: '{{ sstp_vds7_password }}'
+    password: '{{ routeros_secrets.record_d57679466186b9037c59750f }}'
     profile: default-encryption
     remote-address: 10.250.0.24
+    service: sstp
   selector:
     name: Misha
+  create: true
+- path: /routing bfd configuration
+  values:
+    interfaces: all
+  selector: {}
+  create: true
+- path: /routing filter rule
+  values:
+    chain: tunnel-ospf-connected-export
+    comment: OSPF connected WireGuard export
+    rule: if (dst == 10.250.1.2/32 || dst == 10.250.1.5/32 || dst == 10.250.1.6/32)
+      { accept } else { reject }
+  selector:
+    chain: tunnel-ospf-connected-export
+    comment: OSPF connected WireGuard export
+    rule: if (dst == 10.250.1.2/32 || dst == 10.250.1.5/32 || dst == 10.250.1.6/32)
+      { accept } else { reject }
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF loopback
+    disabled: 'no'
+    interfaces: loopback
+    passive: 'yes'
+    use-bfd: 'no'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF loopback
+    interfaces: loopback
+    passive: 'yes'
+    use-bfd: 'no'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-112
+    cost: '60000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    networks: 10.250.0.112/32
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-112
+    cost: '60000'
+    dead-interval: 4m
+    hello-interval: 1m
+    networks: 10.250.0.112/32
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-64
+    cost: '60000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    networks: 10.250.0.64/32
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-64
+    cost: '60000'
+    dead-interval: 4m
+    hello-interval: 1m
+    networks: 10.250.0.64/32
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-21
+    cost: '60000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    networks: 10.250.0.21/32
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-21
+    cost: '60000'
+    dead-interval: 4m
+    hello-interval: 1m
+    networks: 10.250.0.21/32
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-24
+    cost: '60000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    networks: 10.250.0.24/32
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing sstp-24
+    cost: '60000'
+    dead-interval: 4m
+    hello-interval: 1m
+    networks: 10.250.0.24/32
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing WireGuard addresses
+    disabled: 'yes'
+    interfaces: vds2_interface,vds6_interface,vds5_interface
+    passive: 'yes'
+    use-bfd: 'no'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing WireGuard addresses
+    interfaces: vds2_interface,vds6_interface,vds5_interface
+    passive: 'yes'
+    use-bfd: 'no'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing vds1_interface
+    cost: '1000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: vds1_interface
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing vds1_interface
+    cost: '1000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: vds1_interface
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing vds8_interface
+    cost: '30000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: vds8_interface
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing vds8_interface
+    cost: '30000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: vds8_interface
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing vds2_interface
+    cost: '1000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: vds2_interface
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing vds2_interface
+    cost: '1000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: vds2_interface
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing vds5_interface
+    cost: '1001'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: vds5_interface
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing vds5_interface
+    cost: '1001'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: vds5_interface
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf interface-template
+  values:
+    area: tunnel-backbone
+    comment: OSPF existing vds6_interface
+    cost: '1000'
+    dead-interval: 4m
+    disabled: 'no'
+    hello-interval: 1m
+    interfaces: vds6_interface
+    type: ptp
+    use-bfd: 'yes'
+  selector:
+    area: tunnel-backbone
+    comment: OSPF existing vds6_interface
+    cost: '1000'
+    dead-interval: 4m
+    hello-interval: 1m
+    interfaces: vds6_interface
+    type: ptp
+    use-bfd: 'yes'
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.1%vds1_interface
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.1%vds1_interface
+    area: tunnel-backbone
+    poll-interval: 1m
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.8%vds8_interface
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.8%vds8_interface
+    area: tunnel-backbone
+    poll-interval: 1m
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.2%vds2_interface
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.2%vds2_interface
+    area: tunnel-backbone
+    poll-interval: 1m
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.5%vds5_interface
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.5%vds5_interface
+    area: tunnel-backbone
+    poll-interval: 1m
+  create: true
+- path: /routing ospf static-neighbor
+  values:
+    address: 10.250.1.6%vds6_interface
+    area: tunnel-backbone
+    disabled: 'no'
+    poll-interval: 1m
+  selector:
+    address: 10.250.1.6%vds6_interface
+    area: tunnel-backbone
+    poll-interval: 1m
   create: true
 - path: /snmp
   values:

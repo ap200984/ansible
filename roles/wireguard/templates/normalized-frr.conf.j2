@@ -11,6 +11,9 @@ interface wg0
  ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }} 10.250.1.{{ inventory_hostname[3:] }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
+{% if ospf_bfd_enabled | default(false) | bool %}
+ ip ospf bfd
+{% endif %}
 {% if inventory_hostname in chr_plain_wg_hosts %}
  ip ospf area 0.0.0.0 10.250.2.{{ 128 + inventory_hostname[3:] | int }}
  ip ospf cost 200 10.250.2.{{ 128 + inventory_hostname[3:] | int }}
@@ -23,6 +26,9 @@ interface wg1
  ip ospf cost 200 10.250.2.{{ inventory_hostname[3:] }}
  ip ospf hello-interval 60
  ip ospf dead-interval 240
+{% if ospf_bfd_enabled | default(false) | bool %}
+ ip ospf bfd
+{% endif %}
 {% if inventory_hostname in chr_native_awg_hosts %}
  ip ospf area 0.0.0.0 10.250.1.{{ inventory_hostname[3:] }}
  ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }} 10.250.1.{{ inventory_hostname[3:] }}

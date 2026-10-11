@@ -10,14 +10,33 @@
       - -o
       - BatchMode=yes
       - -o
-      - StrictHostKeyChecking=no
+      - StrictHostKeyChecking=yes
       - -o
-      - UserKnownHostsFile=/tmp/ansible-known-hosts
+      - "UserKnownHostsFile={{ router_known_hosts_file }}"
       - -o
       - "ProxyCommand={{ https_proxy_nat_jump_command }}"
       - "{{ https_proxy_nat_user }}@{{ https_proxy_nat_router }}"
       - >-
-        :if ([:len [/ip firewall nat find where comment="ansible-https-proxy-{{ inventory_hostname }}"]] = 0) do={ /ip firewall nat add chain=dstnat action=dst-nat protocol=tcp dst-address={{ https_proxy_nat_address }} dst-port={{ https_proxy_port }} to-addresses={{ https_proxy_nat_target }} to-ports={{ https_proxy_port }} comment="ansible-https-proxy-{{ inventory_hostname }}"; :put "changed" }
+        :local rules [/ip firewall nat find where comment="ansible-https-proxy-{{ inventory_hostname }}"];
+        :if ([:len $rules] > 1) do={:error "Ambiguous HTTPS proxy forwarding rule"};
+        :if ([:len $rules] = 0) do={
+        /ip firewall nat add chain=dstnat action=dst-nat protocol=tcp
+        dst-address={{ https_proxy_nat_address }} dst-port={{ https_proxy_port }}
+        to-addresses={{ https_proxy_nat_target }} to-ports={{ https_proxy_port }}
+        disabled=no comment="ansible-https-proxy-{{ inventory_hostname }}";
+        :put "changed" } else={
+        :if (([/ip firewall nat get $rules chain] != "dstnat") or
+        ([/ip firewall nat get $rules action] != "dst-nat") or
+        ([/ip firewall nat get $rules protocol] != "tcp") or
+        ([:tostr [/ip firewall nat get $rules dst-address]] != "{{ https_proxy_nat_address }}") or
+        ([:tostr [/ip firewall nat get $rules dst-port]] != "{{ https_proxy_port }}") or
+        ([:tostr [/ip firewall nat get $rules to-addresses]] != "{{ https_proxy_nat_target }}") or
+        ([:tostr [/ip firewall nat get $rules to-ports]] != "{{ https_proxy_port }}") or
+        [/ip firewall nat get $rules disabled]) do={
+        /ip firewall nat set $rules chain=dstnat action=dst-nat protocol=tcp
+        dst-address={{ https_proxy_nat_address }} dst-port={{ https_proxy_port }}
+        to-addresses={{ https_proxy_nat_target }} to-ports={{ https_proxy_port }} disabled=no;
+        :put "changed" }}
   delegate_to: localhost
   become: false
   register: https_proxy_nat_result

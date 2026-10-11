@@ -2,12 +2,15 @@
 - name: Load router connection settings
   ansible.builtin.include_vars:
     file: host_vars/{{ ospf_router.identity }}.yml
+- name: Configure BFD defaults and interface routing
+  ansible.builtin.include_tasks: ospf-bfd.yml
 - name: Configure owned summary with a discard route and exact export filter
   routeros_ssh:
     host: '{{ router_host }}'
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /ip route
@@ -38,6 +41,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing filter rule
@@ -55,6 +59,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing ospf instance
@@ -98,6 +103,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing ospf interface-template
@@ -106,7 +112,7 @@
       create: true
       values: "{{ {'comment': 'OSPF existing ' + link.name, 'area': 'tunnel-backbone',\n\
         \    'type': 'ptp', 'cost': link.cost | string, 'hello-interval': '1m',\n\
-        \    'dead-interval': '4m', 'use-bfd': 'no', 'disabled': 'no'} |\n    combine({'interfaces':\
+        \    'dead-interval': '4m', 'use-bfd': 'yes' if ospf_bfd_enabled | default(false) | bool else 'no', 'disabled': 'no'} |\n    combine({'interfaces':\
         \ link.interfaces} if link.interfaces is defined\n            else {'networks':\
         \ link.networks}) }}"
   loop: '{{ ospf_router.links }}'
@@ -119,6 +125,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /ip firewall address-list
@@ -139,6 +146,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /ip firewall filter
@@ -205,6 +213,7 @@
     user: '{{ router_user }}'
     port: '{{ router_port }}'
     identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(lookup("env", "PWD") + "/mikrotik/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
     - path: /routing ospf interface-template

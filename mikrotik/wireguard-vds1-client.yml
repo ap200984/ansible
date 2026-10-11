@@ -15,6 +15,8 @@
   ansible.builtin.command:
     argv:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - "{{ router_ssh_key | expanduser }}"
       - -p
@@ -32,6 +34,8 @@
   ansible.builtin.command:
     argv:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - "{{ router_ssh_key | expanduser }}"
       - -p
@@ -63,6 +67,8 @@
   ansible.builtin.command:
     argv:
       - ssh
+      - -F
+      - /dev/null
       - -i
       - "{{ router_ssh_key | expanduser }}"
       - -p

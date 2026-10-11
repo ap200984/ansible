@@ -64,12 +64,13 @@ def script(record, check):
 def main():
     module = AnsibleModule(argument_spec=dict(host=dict(required=True), user=dict(default='ansible'),
         port=dict(type='int', default=22),
-        identity_file=dict(type='path', required=True), proxy_command=dict(default='none'),
+        identity_file=dict(type='path', required=True), known_hosts_file=dict(type='path', default='~/.ssh/known_hosts'), proxy_command=dict(default='none'),
         records=dict(type='list', elements='dict', required=True)), supports_check_mode=True)
     if not 1 <= module.params['port'] <= 65535:
         module.fail_json(msg='SSH port must be between 1 and 65535')
-    ssh = ['ssh', '-p', str(module.params['port']), '-i', os.path.expanduser(module.params['identity_file']), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
-           '-o', 'ConnectTimeout=10', '-o', 'ProxyCommand=' + module.params['proxy_command'],
+    ssh = ['ssh', '-F', '/dev/null', '-p', str(module.params['port']), '-i', os.path.expanduser(module.params['identity_file']), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
+           '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=yes',
+           '-o', 'UserKnownHostsFile=' + os.path.expanduser(module.params['known_hosts_file']), '-o', 'ProxyCommand=' + module.params['proxy_command'],
            module.params['user'] + '@' + module.params['host']]
     changed = []
     try:

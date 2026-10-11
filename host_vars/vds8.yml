@@ -67,3 +67,17 @@ https_proxy_users:
 https_proxy_dns_servers: [1.1.1.1, 8.8.8.8]
 
 https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"
+
+# Enable BFD on every active OSPF tunnel; keep daemon timer defaults.
+ospf_bfd_enabled: true
+ospf_router_id: 10.255.0.8
+ospf_restore_manifest: vars/ospf-restore/vds8.vault.yml
+ospf_firewall_services:
+- ospf-firewall
+- chr-native-awg-firewall
+ospf_tunnel_services:
+- wg-quick@wg0
+- awg-quick@wg1
+- awg-quick@wg2
+ospf_routing_services:
+- amneziawg-routing

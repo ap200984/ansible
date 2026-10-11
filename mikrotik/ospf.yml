@@ -12,16 +12,16 @@
       links:
       - name: sstp-112
         networks: 10.250.0.112/32
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: sstp-64
         networks: 10.250.0.64/32
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: sstp-21
         networks: 10.250.0.21/32
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: sstp-24
         networks: 10.250.0.24/32
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       wireguard_interfaces:
       - vds2_interface
       - vds5_interface
@@ -58,7 +58,7 @@
       links:
       - name: sstp
         interfaces: sstp-vds7
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: l2tp-64
         networks: 10.250.3.64/32
         cost: 100
@@ -89,7 +89,7 @@
       links:
       - name: sstp
         interfaces: sstp-vds7
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: l2tp
         interfaces: l2tp-to-k16
         cost: 100
@@ -113,7 +113,7 @@
       links:
       - name: sstp
         interfaces: sstp-vds7
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: l2tp
         interfaces: l2tp-to_k16_k112
         cost: 100
@@ -137,7 +137,7 @@
       links:
       - name: sstp
         interfaces: sstp-vds7
-        cost: 10
+        cost: '{{ ospf_sstp_cost }}'
       - name: l2tp
         interfaces: l2tp-to-d24
         cost: 100
