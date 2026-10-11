@@ -3015,6 +3015,19 @@ routeros_records:
   values:
     action: dst-nat
     chain: dstnat
+    comment: ansible-https-proxy-vds3
+    dst-address: 86.110.170.70
+    dst-port: '1981'
+    protocol: tcp
+    to-addresses: 10.9.0.120
+    to-ports: '1981'
+  selector:
+    comment: ansible-https-proxy-vds3
+  create: true
+- path: /ip firewall nat
+  values:
+    action: dst-nat
+    chain: dstnat
     dst-address: 86.110.170.70
     dst-port: '1980'
     protocol: tcp

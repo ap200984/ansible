@@ -396,6 +396,20 @@ service_catalog:
         owner: "1000"
         mode: "0755"
 
+  https_proxy:
+    name: https-proxy
+    image: ubuntu/squid:latest
+    no_log: true
+    ports:
+      - "{{ https_proxy_port }}:3128/tcp"
+    volumes:
+      - /opt/https-proxy/squid.conf:/etc/squid/squid.conf:ro
+      - /opt/https-proxy/passwords:/etc/squid/passwords:ro
+      - /opt/https-proxy/server.crt:/etc/squid/server.crt:ro
+      - /opt/https-proxy/server.key:/etc/squid/server.key:ro
+    prepare: https_proxy
+    post: https_proxy
+
   squid:
     name: squid
     image: ubuntu/squid:latest

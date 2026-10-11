@@ -2,6 +2,7 @@
 service_containers:
   - speedtest
   - socks5
+  - https_proxy
   - ejabberd
   - gitlab
   - gitlab_runner
@@ -26,3 +27,11 @@ wireguard_vds7:
   remote_address: 10.250.1.7
   public_key: UXPiRL2G6vovV1i838Z69J0bNBsUoXWTznsQ5+bNXHY=
   port: 56696
+
+# TLS-encrypted forward proxy with HTTPS CONNECT support.
+https_proxy_port: 1981
+https_proxy_users:
+  - username: proxy
+    password: "{{ socks5_proxy_password }}"
+
+https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"

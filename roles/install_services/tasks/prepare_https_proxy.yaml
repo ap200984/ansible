@@ -1,0 +1,90 @@
+---
+- name: Validate HTTPS proxy settings
+  ansible.builtin.assert:
+    that:
+      - https_proxy_port | int > 0
+      - https_proxy_port | int <= 65535
+      - https_proxy_users | length > 0
+
+- name: Validate HTTPS proxy credentials
+  ansible.builtin.assert:
+    that:
+      - item.username | string | length > 0
+      - "':' not in item.username"
+      - "'\n' not in item.username"
+      - item.password | string | length > 0
+  loop: "{{ https_proxy_users }}"
+  no_log: true
+
+- name: Create HTTPS proxy configuration directory
+  ansible.builtin.file:
+    path: /opt/https-proxy
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure HTTPS proxy credentials
+  ansible.builtin.copy:
+    dest: /opt/https-proxy/passwords
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      {% for user in https_proxy_users %}
+      {{ user.username }}:{{ user.password | password_hash('sha512', (user.username | hash('sha256'))[:16]) }}
+      {% endfor %}
+  register: https_proxy_credentials
+  no_log: true
+
+- name: Install HTTPS proxy public certificate
+  ansible.builtin.copy:
+    src: "{{ https_proxy_tls_certificate_file }}"
+    dest: /opt/https-proxy/server.crt
+    owner: root
+    group: root
+    mode: '0644'
+  register: https_proxy_tls_certificate
+
+- name: Install HTTPS proxy private key from Vault
+  ansible.builtin.copy:
+    content: "{{ https_proxy_tls_private_key | mandatory }}"
+    dest: /opt/https-proxy/server.key
+    owner: root
+    group: root
+    mode: '0600'
+  register: https_proxy_tls_key
+  no_log: true
+
+- name: Configure HTTPS forward proxy
+  ansible.builtin.copy:
+    dest: /opt/https-proxy/squid.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      https_port 3128 tls-cert=/etc/squid/server.crt tls-key=/etc/squid/server.key
+      {% if https_proxy_dns_servers is defined %}
+      dns_nameservers {{ https_proxy_dns_servers | join(' ') }}
+      {% endif %}
+      auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwords
+      auth_param basic realm HTTPS proxy
+      acl authenticated proxy_auth REQUIRED
+      acl Safe_ports port 80 443
+      acl SSL_ports port 443
+      acl CONNECT method CONNECT
+      http_access deny !Safe_ports
+      http_access deny CONNECT !SSL_ports
+      http_access allow authenticated
+      http_access deny all
+      cache deny all
+      access_log stdio:/var/log/squid/access.log
+      cache_log /var/log/squid/cache.log
+      cache_store_log none
+  register: https_proxy_configuration
+
+- name: Recreate HTTPS proxy after configuration changes
+  ansible.builtin.set_fact:
+    service_force_recreate: >-
+      {{ https_proxy_credentials.changed or https_proxy_configuration.changed
+         or https_proxy_tls_certificate.changed or https_proxy_tls_key.changed }}

@@ -2,6 +2,7 @@
 service_containers:
   - speedtest
   - socks5
+  - https_proxy
   # - certbot
   # - nginx
   - zabbix_proxy
@@ -57,3 +58,12 @@ domain: vds1.space
 # subdomains_ports:
 #   - speedtest:3005
 #   - grafana:3000
+
+# TLS-encrypted forward proxy with HTTPS CONNECT support.
+https_proxy_port: 1981
+https_proxy_users:
+  - username: proxy
+    password: "{{ socks5_proxy_password }}"
+https_proxy_dns_servers: [1.1.1.1, 8.8.8.8]
+
+https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"

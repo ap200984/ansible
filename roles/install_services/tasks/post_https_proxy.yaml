@@ -1,0 +1,26 @@
+---
+- name: Publish HTTPS proxy through the edge router
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - "{{ https_proxy_nat_ssh_key | expanduser }}"
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=no
+      - -o
+      - UserKnownHostsFile=/tmp/ansible-known-hosts
+      - -o
+      - "ProxyCommand={{ https_proxy_nat_jump_command }}"
+      - "{{ https_proxy_nat_user }}@{{ https_proxy_nat_router }}"
+      - >-
+        :if ([:len [/ip firewall nat find where comment="ansible-https-proxy-{{ inventory_hostname }}"]] = 0) do={ /ip firewall nat add chain=dstnat action=dst-nat protocol=tcp dst-address={{ https_proxy_nat_address }} dst-port={{ https_proxy_port }} to-addresses={{ https_proxy_nat_target }} to-ports={{ https_proxy_port }} comment="ansible-https-proxy-{{ inventory_hostname }}"; :put "changed" }
+  delegate_to: localhost
+  become: false
+  register: https_proxy_nat_result
+  failed_when: "'syntax error' in https_proxy_nat_result.stdout or 'failure:' in https_proxy_nat_result.stdout or 'not enough permissions' in https_proxy_nat_result.stdout"
+  changed_when: "'changed' in https_proxy_nat_result.stdout"
+  when: https_proxy_nat_router is defined

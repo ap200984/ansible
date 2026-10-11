@@ -322,6 +322,7 @@ set authentication=mschap2 enabled=yes
 /ip firewall mangle add action=mark-routing chain=prerouting disabled=yes new-routing-mark=SSTP_to_VDS7 passthrough=no src-address=10.9.0.198
 /ip firewall nat add action=dst-nat chain=dstnat comment="vds3 Debian12 ssh" dst-address=86.110.170.70 dst-port=19022 protocol=tcp to-addresses=10.9.0.120 to-ports=22
 /ip firewall nat add action=masquerade chain=srcnat out-interface-list=EXTERNAL
+/ip firewall nat add action=dst-nat chain=dstnat comment="ansible-https-proxy-vds3" dst-address=86.110.170.70 dst-port=1981 protocol=tcp to-addresses=10.9.0.120 to-ports=1981
 /ip firewall nat add action=dst-nat chain=dstnat dst-address=86.110.170.70 dst-port=1980 protocol=tcp to-addresses=10.9.0.70 to-ports=1980
 /ip firewall nat add action=dst-nat chain=dstnat dst-port=19085 in-interface-list=EXTERNAL protocol=tcp to-addresses=10.9.0.80 to-ports=3389
 /ip firewall nat add action=masquerade chain=srcnat comment="Nat loopback. For access from LAN to LAN through external ip (using port forwadring)" out-interface=LAN src-address=10.9.0.0/24 src-address-type=""

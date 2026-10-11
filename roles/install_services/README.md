@@ -76,3 +76,42 @@ ejabberd_users:
 
 Every account is registered on both `localhost` and `ejabberd.<domain>`.
 Existing accounts are left unchanged; only missing accounts are registered.
+
+VDS hosts select `https_proxy` to run a TLS-encrypted authenticated forward
+proxy with HTTPS CONNECT support on TCP 1981. Configure `https_proxy_port`,
+`https_proxy_users`, and `https_proxy_tls_certificate_file` in host vars;
+passwords reference the SOCKS5 Vault secret. Clients use `https://<host>:1981`
+and FoxyProxy type **HTTPS**. Plain HTTP proxy connections are rejected.
+
+The shared server certificate in `certificates/vds-proxy-server.crt` includes
+all six public IP addresses in its SAN and expires on 2036-10-11. Its private
+key (`https_proxy_tls_private_key`) and the private CA key
+(`https_proxy_ca_private_key`) are encrypted in
+`group_vars/all/https_proxy_tls.yml`. Only the server key is deployed to hosts,
+as `/opt/https-proxy/server.key` with mode 0600.
+
+Import the public `certificates/vds-proxy-ca.crt` in Firefox under
+Settings → Privacy & Security → Certificates → View Certificates → Authorities,
+and enable trust for identifying websites. The CA expires on 2036-10-11.
+CA SHA-256 fingerprint:
+`D0:33:EC:4B:FD:13:53:7A:C6:63:55:AA:96:C3:24:B1:0F:32:E7:04:DA:3B:E7:45:FC:49:8E:5C:B0:E5:C2:7B`.
+
+Both certificates have a 10-year validity and retain their existing private
+keys in Vault. Import the renewed CA certificate in clients to update its
+expiry date. The server certificate identifies the proxy and secures the
+client-to-proxy connection; browsers need the CA certificate instead.
+HTTPS CONNECT preserves the destination website's own TLS certificate;
+this configuration does not intercept website TLS.
+
+Certificate changes or Vault key changes recreate the container automatically.
+
+```shell
+ansible-playbook -i inventory/vds1 -i inventory/vds2 -i inventory/vds3 \
+  -i inventory/vds5 -i inventory/vds6 -i inventory/vds8 \
+  02_deploy_services.yaml --tags https_proxy
+```
+
+Vds1 and vds8 use explicit `https_proxy_dns_servers` for upstream DNS. Vds3 is private at `10.9.0.120`; public access additionally
+requires an edge-router forwarding rule from `86.110.170.70:1981` to
+`10.9.0.120:1981`. The approved rule is managed by the proxy post task using
+the `https_proxy_nat_*` host variables.
