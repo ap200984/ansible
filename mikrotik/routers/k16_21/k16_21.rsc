@@ -29,6 +29,7 @@
 /system script add comment=Wake_on_lan_HP dont-require-permissions=no name=Wake_on_lan_HP owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
 /system script add comment="Google official IPv4 prefix feed; preserve last good list on download failure" dont-require-permissions=no name=get_google_ips owner=ansible policy=read,write,test source="<stored in secrets>"
 /system script add comment="Telegram official IPv4 prefixes; preserve last good list on failure" dont-require-permissions=no name=get_telegram_ips owner=ansible policy=read,write,test source="<stored in secrets>"
+/system script add comment="Meta AS32934 originated IPv4 prefixes; preserve last good list on failure" dont-require-permissions=no name=get_meta_ips owner=ansible policy=read,write,test source="<stored in secrets>"
 /user group add name=bandwidth-test policy=test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
 /interface bridge port add bridge=LAN interface=ether2 internal-path-cost=10 path-cost=10
 /interface bridge port add bridge=LAN interface=ether3 internal-path-cost=10 path-cost=10
@@ -245,26 +246,271 @@
 /ip firewall address-list add address=216.252.220.0/22 comment="Google feed 1791749175744" list=google_ips
 /ip firewall address-list add address=api.ipify.org comment="Google GRE IP check hostname" list=google_gre_ip_check
 /ip firewall address-list add address=core.telegram.org comment="Service GRE Telegram feed hostname" list=telegram_feed_ips
-/ip firewall address-list add address=91.108.56.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=91.108.4.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=91.108.8.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=91.108.16.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=91.108.12.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=149.154.160.0/20 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=91.105.192.0/23 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=91.108.20.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
-/ip firewall address-list add address=185.76.151.0/24 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.108.56.0/22 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=91.108.4.0/22 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=91.108.8.0/22 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=91.108.16.0/22 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=91.108.12.0/22 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=149.154.160.0/20 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=91.105.192.0/23 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=91.108.20.0/22 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=185.76.151.0/24 comment="Telegram feed 2026-10-12 13:22:50" list=telegram_ips
+/ip firewall address-list add address=195.245.239.82 comment="Service GRE VDS6 public IP" list=vds6_public_ip
+/ip firewall address-list add address=stat.ripe.net comment="Service GRE Meta feed hostname" list=meta_feed_ips
+/ip firewall address-list add address=57.141.8.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.178.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=102.132.104.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.91.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.144.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.10.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.27.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.24.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.70.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.184.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.206.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.171.240.0/20 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.28.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.216.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.228.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.231.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.66.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.116.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.215.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.64.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=103.4.96.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.54.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.87.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.140.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.171.250.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.17.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.220.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.128.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.17.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.203.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.4.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.72.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.89.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.6.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.14.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.0.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.60.216.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.138.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.222.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.118.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.80.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=45.64.40.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.0.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.27.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.44.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=102.132.99.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.13.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.227.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.136.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.89.218.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.73.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.71.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.254.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.30.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.224.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=179.60.195.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.50.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.154.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.74.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.241.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.88.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.82.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.12.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.126.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.136.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.205.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.212.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.238.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.136.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=179.60.192.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.10.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.63.176.0/20 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.226.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.72.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.236.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.31.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.164.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.209.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.133.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.196.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.76.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.218.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.2.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.212.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.60.217.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.29.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.69.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.16.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.18.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.134.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.192.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.242.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.14.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.36.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=102.132.103.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.31.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.132.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.108.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.160.0/20 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.56.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=173.252.64.0/19 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.204.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.198.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=173.252.88.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.142.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.12.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.246.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.208.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.102.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.63.176.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.211.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.12.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.89.216.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.234.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=173.252.96.0/19 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.244.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.124.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.64.0/18 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.233.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.192.0/18 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.98.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.84.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.182.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.20.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.210.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.150.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.114.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=66.220.144.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.32.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.254.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.104.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.200.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.8.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.25.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.112.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.24.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.60.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.22.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.132.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.200.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.22.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.16.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.188.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.238.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.171.224.0/20 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.5.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.14.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.19.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.171.224.0/19 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.3.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.18.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.96.0/19 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.24.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.214.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.70.128.0/17 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.234.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.78.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=102.132.96.0/20 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.160.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.186.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.100.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.152.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.68.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.89.218.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.25.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.225.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.4.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.70.130.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.223.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.0.0/14 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.0.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.80.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.120.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.6.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.26.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.20.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.9.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.20.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.22.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.252.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.197.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=69.63.184.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.8.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.160.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.89.219.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.38.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=74.119.76.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=66.220.144.0/20 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.4.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.8.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.210.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.232.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.26.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.76.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.110.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.86.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.18.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.148.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.24.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=204.15.20.0/22 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.11.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.243.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.244.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.92.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.0.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.194.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.0.0/17 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.29.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.26.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.172.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.96.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.62.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.28.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=129.134.30.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.0.0/17 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.24.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.180.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.30.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.42.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.70.131.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=102.132.97.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=185.60.218.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.66.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.64.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.16.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.176.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.202.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.248.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.145.2.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.77.137.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.13.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.196.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=157.240.15.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.86.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.250.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.141.5.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=57.144.162.0/23 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=31.13.84.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=66.220.152.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall address-list add address=163.70.151.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.21 protocol=gre src-address=10.255.0.6
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=input comment="Google GRE return input" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE IP check outbound" dst-address-list=google_gre_ip_check in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE vds6_public_ip outbound" dst-address-list=vds6_public_ip in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE telegram_feed_ips outbound" dst-address-list=telegram_feed_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE telegram_ips outbound" dst-address-list=telegram_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE chatgpt_ips outbound" dst-address-list=chatgpt_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE whatsapp_ips outbound" dst-address-list=whatsapp_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE instagram_ips outbound" dst-address-list=instagram_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE meta_shared_ips outbound" dst-address-list=meta_shared_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE meta_ips outbound" dst-address-list=meta_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE meta_feed_ips outbound" dst-address-list=meta_feed_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Service GRE marked outbound" connection-mark=google_gre in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="OSPF trusted forward 10.255.0.0/16" src-address=10.255.0.0/16
 /ip firewall filter add action=fasttrack-connection chain=input comment="Established_Related INPUT" connection-state=established,related in-interface=ether1
@@ -289,6 +535,10 @@
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Google GRE IP check routing LAN" dst-address-list=google_gre_ip_check dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-connection chain=output comment="Google GRE IP check connection router" dst-address-list=google_gre_ip_check dst-address-type=!local new-connection-mark=google_gre
 /ip firewall mangle add action=mark-routing chain=output comment="Google GRE IP check routing router" dst-address-list=google_gre_ip_check dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE vds6_public_ip connection LAN" dst-address-list=vds6_public_ip dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE vds6_public_ip routing LAN" dst-address-list=vds6_public_ip dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE vds6_public_ip connection router" dst-address-list=vds6_public_ip dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE vds6_public_ip routing router" dst-address-list=vds6_public_ip dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE telegram_feed_ips connection LAN" dst-address-list=telegram_feed_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE telegram_feed_ips routing LAN" dst-address-list=telegram_feed_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-connection chain=output comment="Service GRE telegram_feed_ips connection router" dst-address-list=telegram_feed_ips dst-address-type=!local new-connection-mark=google_gre
@@ -313,6 +563,14 @@
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE meta_shared_ips routing LAN" dst-address-list=meta_shared_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-connection chain=output comment="Service GRE meta_shared_ips connection router" dst-address-list=meta_shared_ips dst-address-type=!local new-connection-mark=google_gre
 /ip firewall mangle add action=mark-routing chain=output comment="Service GRE meta_shared_ips routing router" dst-address-list=meta_shared_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE meta_ips connection LAN" dst-address-list=meta_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE meta_ips routing LAN" dst-address-list=meta_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE meta_ips connection router" dst-address-list=meta_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE meta_ips routing router" dst-address-list=meta_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE meta_feed_ips connection LAN" dst-address-list=meta_feed_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE meta_feed_ips routing LAN" dst-address-list=meta_feed_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE meta_feed_ips connection router" dst-address-list=meta_feed_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE meta_feed_ips routing router" dst-address-list=meta_feed_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE established routing LAN" connection-mark=google_gre dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=output comment="Service GRE established routing router" connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="google ips" dst-address-list=google_ips new-routing-mark=to_VPNs passthrough=no
@@ -333,6 +591,9 @@
 /ip firewall nat add action=src-nat chain=srcnat comment="Service GRE whatsapp_ips source NAT" dst-address-list=whatsapp_ips out-interface=gre-vds6 to-addresses=10.250.4.13
 /ip firewall nat add action=src-nat chain=srcnat comment="Service GRE instagram_ips source NAT" dst-address-list=instagram_ips out-interface=gre-vds6 to-addresses=10.250.4.13
 /ip firewall nat add action=src-nat chain=srcnat comment="Service GRE meta_shared_ips source NAT" dst-address-list=meta_shared_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE vds6_public_ip source NAT" dst-address-list=vds6_public_ip out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE meta_ips source NAT" dst-address-list=meta_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE meta_feed_ips source NAT" dst-address-list=meta_feed_ips out-interface=gre-vds6 to-addresses=10.250.4.13
 /ip ipsec profile set [ find default=yes ] dpd-interval=2m dpd-maximum-failures=5
 /ip route add disabled=no dst-address=10.9.0.0/24 gateway=10.250.3.112 routing-table=main
 /ip route add disabled=no dst-address=10.250.0.0/16 gateway=10.251.0.7 routing-table=main
@@ -371,3 +632,4 @@ set [ find default=yes ] advertise-dns=yes
 /system routerboard settings set auto-upgrade=yes silent-boot=yes
 /system scheduler add !days interval=1d name=get_google_ips on-event="<stored in secrets>" policy=read,write,test start-date=2025-02-08 start-time=01:00:00
 /system scheduler add !days interval=1d name=get_telegram_ips on-event="<stored in secrets>" policy=read,write,test start-date=2026-10-12 start-time=01:05:00
+/system scheduler add !days interval=1d name=get_meta_ips on-event="<stored in secrets>" policy=read,write,test start-date=2026-10-12 start-time=01:10:00

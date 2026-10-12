@@ -350,6 +350,10 @@
     - iptables
     - "iptables:input"
 
+- name: Apply container source NAT overrides before Docker masquerade
+  ansible.builtin.include_tasks: container-snat.yml
+  tags: [iptables, 'iptables:container_snat']
+
 - name: Save persistent IPv4 iptables rules
   ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
   args:

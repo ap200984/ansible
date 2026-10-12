@@ -20,6 +20,8 @@
     - ansible.builtin.command: /usr/local/sbin/restrict-source-nat
       register: source_nat
       changed_when: source_nat.stdout | length > 0
+    - name: Apply container source NAT overrides before saving
+      ansible.builtin.include_tasks: roles/iptables/tasks/container-snat.yml
     - ansible.builtin.file:
         path: /etc/iptables
         state: directory

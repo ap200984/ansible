@@ -86,6 +86,17 @@ returned `195.245.239.82` on 2026-10-11.
 
 ## Telegram, ChatGPT, WhatsApp and Instagram
 
+VDS6's public IPv4 address (`195.245.239.82`) also uses GRE from LAN clients
+and the routers themselves. The `vds6_public_ip` list uses the same policy
+table, connection marks, forwarding and source NAT rules. Replies return to
+each router's GRE address. The GRE outer endpoint remains `10.255.0.6`, so
+routing the public address through GRE does not create tunnel recursion.
+Both GRE deployment playbooks apply this policy.
+
+Validated on 2026-10-12: all four routers reached `195.245.239.82` with
+three of three ping replies, and their public-IP routing/source-NAT counters
+confirmed GRE use. K16 LAN traffic also matched the new routing and NAT rules.
+
 `service-gre.yml` deploys additional services on the same four GRE routers;
 `google-gre.yml` includes this configuration during full restoration. The
 LAN-only Logia devices and CHR are outside this scope.
@@ -97,6 +108,25 @@ IPv6 feed entries are skipped. Telegram web/link domains also learn addresses
 through DNS into the same list; feed refresh preserves these dynamic entries. The scheduler runs daily at 01:05 in each
 router's time zone. The feed hostname itself has a separate DNS-maintained
 `telegram_feed_ips` list routed through GRE, since direct ISP access timed out.
+
+`get_meta_ips` refreshes `meta_ips` from Meta's AS32934 every day at 01:10
+in each router's time zone. It uses [RIPEstat RIS Prefixes](https://stat.ripe.net/docs/data-api/api-endpoints/ris-prefixes)
+with originating IPv4 prefixes only (`types=o`, `af=v4`, `noise=filter`),
+excluding transit networks. The compact JSON response fits RouterOS fetch's
+in-memory output limit. HTTPS certificates, API status, returned ASN, prefix
+syntax and count are checked before updating the list; at least 50 prefixes
+are required. Download/validation failures retain the last good list. New
+prefixes are added before obsolete static entries are removed. Overlapping
+updater jobs are rejected.
+
+All four GRE routers route `meta_ips` from LAN and router output using the
+existing GRE table, forwarding, source NAT and FastTrack exclusion. The updater
+hostname has its own `meta_feed_ips` policy so refreshes also use GRE. Both
+GRE playbooks install the updater, refresh immediately and selectively reset
+old Meta sessions. Existing DNS lists remain supplementary; destinations in
+`meta_ips` no longer depend on clients querying the router's DNS. This routes
+other AS32934 services, including Facebook, as well as WhatsApp and Instagram.
+IPv6 and destinations outside this ASN are outside this prefix policy.
 
 `service_gre_dns_domains` in `vars/google-gre.yml` defines DNS FWD entries with
 subdomain matching. DNS list retention uses TTL plus one day (matching the existing K16/Misha
@@ -154,3 +184,17 @@ LAN HTTPS checks returned 200 for WhatsApp and Instagram; ChatGPT returned
 include the updater, schedule, domain forwarding, mangle/NAT/filter rules and
 DNS retention. The reset helper now requests detailed RouterOS connection
 output and refuses to act if NAT return-address metadata is missing.
+
+Meta ASN deployment validated on 2026-10-12: K16_112, 3Ekipazhnyi64,
+k16_21 and Misha each contain the same 240 unique IPv4 prefixes as the
+RIPEstat AS32934 originating-prefix feed. All four daily schedulers are enabled
+at 01:10 in their configured time zones. Each GRE peer replied to all three
+pings; direct Meta-IP probes incremented `meta_ips` router-output routing and
+source-NAT counters. The probe destination did not answer ICMP. Certificate-validated
+HTTPS fetches to both www.whatsapp.com and www.instagram.com completed on all
+four routers. These checks verify router-originated traffic; client app/login
+behavior was not exercised in this deployment. Full public captures and
+encrypted restore manifests were refreshed for all four routers.
+
+K16's live SSH service uses port 20022. Its host variables and pinned host-key
+alias now match that port; its previously configured port 22 refused connections.

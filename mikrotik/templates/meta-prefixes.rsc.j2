@@ -1,0 +1,26 @@
+:if ([/system script job print count-only where script="get_meta_ips"] > 1) do={:error "Meta updater already running"};
+:local response [/tool fetch url="{{ meta_gre_feed }}" check-certificate=yes duration=60s idle-timeout=15s output=user as-value];
+:if (($response->"status") != "finished") do={:error "Meta prefix download failed"};
+:local document [:deserialize from=json value=($response->"data") options=json.no-string-conversion];
+:local data ($document->"data");
+:if ((($document->"status") != "ok") || (($data->"resource") != "{{ meta_gre_asn }}")) do={:error "Invalid Meta ASN response"};
+:local prefixes ((($data->"prefixes")->"v4")->"originating");
+:local count ((($data->"counts")->"v4")->"originating");
+:if (([:typeof $prefixes] != "array") || ([:len $prefixes] < {{ meta_gre_min_prefixes }}) || ([:len $prefixes] != $count)) do={:error "Incomplete Meta prefix feed; retaining previous list"};
+:foreach prefix in=$prefixes do={
+    :if (([:typeof $prefix] != "str") || !($prefix ~ "^[0-9.]+/[0-9]+\$")) do={:error "Invalid Meta IPv4 prefix"};
+    :local slash [:find $prefix "/"];
+    :local addr [:toip [:pick $prefix 0 $slash]];
+    :local mask [:tonum [:pick $prefix ($slash + 1)]];
+    :if (([:typeof $addr] != "ip") || ([:typeof $mask] != "num") || ($mask < 1) || ($mask > 32)) do={:error "Invalid Meta IPv4 network"};
+};
+:local generation ("Meta AS{{ meta_gre_asn }} " . ($data->"query_time"));
+:foreach prefix in=$prefixes do={
+    :local existing [/ip firewall address-list find where list="meta_ips" and address=$prefix and dynamic=no];
+    :if ([:len $existing] = 0) do={
+        /ip firewall address-list add list=meta_ips address=$prefix comment=$generation;
+    } else={/ip firewall address-list set $existing comment=$generation};
+};
+/ip firewall address-list remove [find where list="meta_ips" and dynamic=no and comment!=$generation];
+:log info ("Meta IPv4 prefixes updated: " . [:len $prefixes]);
+:put ("META_PREFIXES " . [:len $prefixes]);

@@ -501,6 +501,17 @@ routeros_records:
   selector:
     name: get_telegram_ips
   create: true
+- path: /system script
+  values:
+    comment: Meta AS32934 originated IPv4 prefixes; preserve last good list on failure
+    dont-require-permissions: 'no'
+    name: get_meta_ips
+    owner: ansible
+    policy: read,write,test
+    source: '{{ routeros_secrets.record_ecf08ad51e8459be448de800 }}'
+  selector:
+    name: get_meta_ips
+  create: true
 - path: /user group
   values:
     name: bandwidth-test
@@ -922,6 +933,22 @@ routeros_records:
   selector:
     list: INTERNAL
     interface: LAN
+  create: true
+- path: /interface list member
+  values:
+    interface: '*F'
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: '*F'
+  create: true
+- path: /interface list member
+  values:
+    interface: '*13'
+    list: EXTERNAL
+  selector:
+    list: EXTERNAL
+    interface: '*13'
   create: true
 - path: /interface ovpn-server server
   values:
@@ -3299,7 +3326,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.56.0/22
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3308,7 +3335,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.4.0/22
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3317,7 +3344,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.8.0/22
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3326,7 +3353,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.16.0/22
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3335,7 +3362,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.12.0/22
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3344,7 +3371,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 149.154.160.0/20
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3353,7 +3380,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.105.192.0/23
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3362,7 +3389,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.20.0/22
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3371,12 +3398,2190 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 185.76.151.0/24
-    comment: Telegram feed 2026-10-12 01:05:01
+    comment: Telegram feed 2026-10-12 10:17:57
     list: telegram_ips
   selector:
     list: telegram_ips
     address: 185.76.151.0/24
   create: true
+- path: /ip firewall address-list
+  values:
+    address: 195.245.239.82
+    comment: Service GRE VDS6 public IP
+    list: vds6_public_ip
+  selector:
+    list: vds6_public_ip
+    address: 195.245.239.82
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: stat.ripe.net
+    comment: Service GRE Meta feed hostname
+    list: meta_feed_ips
+  selector:
+    list: meta_feed_ips
+    address: stat.ripe.net
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.8.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.8.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.178.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.178.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 102.132.104.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 102.132.104.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.91.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.91.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.144.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.144.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.10.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.10.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.27.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.27.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.24.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.24.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.70.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.70.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.184.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.184.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.206.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.206.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.171.240.0/20
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.171.240.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.28.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.28.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.216.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.216.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.228.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.228.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.231.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.231.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.66.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.66.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.116.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.116.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.215.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.215.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.64.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.64.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 103.4.96.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 103.4.96.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.54.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.54.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.87.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.87.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.140.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.140.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.171.250.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.171.250.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.17.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.17.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.220.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.220.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.128.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.128.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.17.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.17.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.203.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.203.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.4.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.4.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.72.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.72.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.89.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.89.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.6.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.6.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.14.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.14.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.0.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.60.216.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.60.216.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.138.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.138.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.222.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.222.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.118.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.118.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.80.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.80.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 45.64.40.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 45.64.40.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.0.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.0.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.27.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.27.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.44.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.44.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 102.132.99.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 102.132.99.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.13.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.13.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.227.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.227.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.136.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.136.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.89.218.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.89.218.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.73.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.73.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.71.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.71.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.254.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.254.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.30.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.30.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.224.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.224.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 179.60.195.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 179.60.195.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.50.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.50.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.154.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.154.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.74.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.74.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.241.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.241.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.88.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.88.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.82.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.82.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.12.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.12.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.126.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.126.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.136.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.136.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.205.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.205.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.212.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.212.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.238.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.238.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.136.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.136.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 179.60.192.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 179.60.192.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.10.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.10.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.63.176.0/20
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.63.176.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.226.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.226.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.72.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.72.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.236.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.236.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.31.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.31.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.164.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.164.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.209.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.209.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.133.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.133.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.196.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.196.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.76.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.76.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.218.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.218.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.2.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.2.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.212.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.212.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.60.217.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.60.217.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.29.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.29.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.69.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.69.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.16.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.16.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.18.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.18.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.134.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.134.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.192.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.192.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.242.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.242.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.14.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.14.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.36.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.36.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 102.132.103.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 102.132.103.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.31.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.31.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.132.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.132.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.108.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.108.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.160.0/20
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.160.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.56.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.56.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 173.252.64.0/19
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 173.252.64.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.204.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.204.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.198.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.198.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 173.252.88.0/21
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 173.252.88.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.142.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.142.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.12.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.12.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.246.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.246.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.208.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.208.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.102.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.102.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.63.176.0/21
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.63.176.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.211.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.211.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.12.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.12.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.89.216.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.89.216.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.234.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.234.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 173.252.96.0/19
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 173.252.96.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.244.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.244.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.124.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.124.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.64.0/18
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.64.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.233.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.233.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.192.0/18
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.192.0/18
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.98.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.98.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.84.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.84.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.182.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.182.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.20.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.20.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.210.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.210.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.150.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.150.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.114.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.114.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 66.220.144.0/21
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 66.220.144.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.32.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.32.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.254.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.254.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.104.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.104.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.200.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.200.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.8.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.8.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.25.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.25.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.112.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.112.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.24.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.24.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.60.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.60.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.22.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.22.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.132.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.132.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.200.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.200.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.22.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.22.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.16.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.16.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.188.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.188.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.238.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.238.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.171.224.0/20
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.171.224.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.5.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.5.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.14.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.14.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.19.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.19.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.171.224.0/19
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.171.224.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.3.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.3.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.18.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.18.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.96.0/19
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.96.0/19
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.24.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.24.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.214.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.214.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.70.128.0/17
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.70.128.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.234.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.234.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.78.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.78.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 102.132.96.0/20
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 102.132.96.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.160.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.160.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.186.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.186.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.100.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.100.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.152.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.152.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.68.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.68.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.89.218.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.89.218.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.25.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.25.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.225.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.225.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.4.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.4.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.70.130.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.70.130.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.223.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.223.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.0.0/14
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.0.0/14
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.0.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.0.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.80.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.80.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.120.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.120.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.6.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.6.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.26.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.26.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.20.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.20.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.9.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.9.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.20.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.20.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.22.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.22.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.252.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.252.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.197.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.197.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 69.63.184.0/21
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 69.63.184.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.8.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.8.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.160.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.160.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.89.219.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.89.219.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.38.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.38.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 74.119.76.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 74.119.76.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 66.220.144.0/20
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 66.220.144.0/20
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.4.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.4.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.8.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.8.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.210.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.210.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.232.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.232.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.26.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.26.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.76.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.76.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.110.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.110.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.86.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.86.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.18.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.18.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.148.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.148.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.24.0/21
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.24.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 204.15.20.0/22
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 204.15.20.0/22
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.11.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.11.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.243.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.243.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.244.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.244.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.92.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.92.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.0.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.0.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.194.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.194.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.0.0/17
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.29.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.29.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.26.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.26.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.172.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.172.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.96.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.96.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.62.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.62.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.28.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.28.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 129.134.30.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 129.134.30.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.0.0/17
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.0.0/17
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.24.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.24.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.180.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.180.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.30.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.30.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.42.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.42.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.70.131.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.70.131.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 102.132.97.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 102.132.97.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 185.60.218.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 185.60.218.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.66.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.66.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.64.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.64.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.16.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.16.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.176.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.176.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.202.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.202.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.248.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.248.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.145.2.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.145.2.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.77.137.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.77.137.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.13.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.13.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.196.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.196.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 157.240.15.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 157.240.15.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.86.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.86.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.250.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.250.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.141.5.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.141.5.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 57.144.162.0/23
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 57.144.162.0/23
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 31.13.84.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 31.13.84.0/24
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 66.220.152.0/21
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 66.220.152.0/21
+  create: true
+- path: /ip firewall address-list
+  values:
+    address: 163.70.151.0/24
+    comment: Meta AS32934 2026-10-12T08:00:00
+    list: meta_ips
+  selector:
+    list: meta_ips
+    address: 163.70.151.0/24
+  create: true
 - path: /ip firewall filter
   values:
     action: accept
@@ -3450,6 +5655,22 @@ routeros_records:
     chain: forward
     comment: Google GRE IP check outbound
     dst-address-list: google_gre_ip_check
+    in-interface: LAN
+    out-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Service GRE vds6_public_ip outbound
+    dst-address-list: vds6_public_ip
+    in-interface: LAN
+    out-interface: gre-vds6
+  selector:
+    action: accept
+    chain: forward
+    comment: Service GRE vds6_public_ip outbound
+    dst-address-list: vds6_public_ip
     in-interface: LAN
     out-interface: gre-vds6
   create: true
@@ -3546,6 +5767,38 @@ routeros_records:
     chain: forward
     comment: Service GRE meta_shared_ips outbound
     dst-address-list: meta_shared_ips
+    in-interface: LAN
+    out-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Service GRE meta_ips outbound
+    dst-address-list: meta_ips
+    in-interface: LAN
+    out-interface: gre-vds6
+  selector:
+    action: accept
+    chain: forward
+    comment: Service GRE meta_ips outbound
+    dst-address-list: meta_ips
+    in-interface: LAN
+    out-interface: gre-vds6
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Service GRE meta_feed_ips outbound
+    dst-address-list: meta_feed_ips
+    in-interface: LAN
+    out-interface: gre-vds6
+  selector:
+    action: accept
+    chain: forward
+    comment: Service GRE meta_feed_ips outbound
+    dst-address-list: meta_feed_ips
     in-interface: LAN
     out-interface: gre-vds6
   create: true
@@ -4360,6 +6613,78 @@ routeros_records:
   values:
     action: mark-connection
     chain: prerouting
+    comment: Service GRE vds6_public_ip connection LAN
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Service GRE vds6_public_ip connection LAN
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Service GRE vds6_public_ip routing LAN
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Service GRE vds6_public_ip routing LAN
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: output
+    comment: Service GRE vds6_public_ip connection router
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: output
+    comment: Service GRE vds6_public_ip connection router
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: Service GRE vds6_public_ip routing router
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: output
+    comment: Service GRE vds6_public_ip routing router
+    dst-address-list: vds6_public_ip
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: prerouting
     comment: Service GRE telegram_feed_ips connection LAN
     dst-address-list: telegram_feed_ips
     dst-address-type: '!local'
@@ -4790,6 +7115,150 @@ routeros_records:
   create: true
 - path: /ip firewall mangle
   values:
+    action: mark-connection
+    chain: prerouting
+    comment: Service GRE meta_ips connection LAN
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Service GRE meta_ips connection LAN
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Service GRE meta_ips routing LAN
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Service GRE meta_ips routing LAN
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: output
+    comment: Service GRE meta_ips connection router
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: output
+    comment: Service GRE meta_ips connection router
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: Service GRE meta_ips routing router
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: output
+    comment: Service GRE meta_ips routing router
+    dst-address-list: meta_ips
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: prerouting
+    comment: Service GRE meta_feed_ips connection LAN
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Service GRE meta_feed_ips connection LAN
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Service GRE meta_feed_ips routing LAN
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Service GRE meta_feed_ips routing LAN
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    in-interface: LAN
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: output
+    comment: Service GRE meta_feed_ips connection router
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  selector:
+    action: mark-connection
+    chain: output
+    comment: Service GRE meta_feed_ips connection router
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    new-connection-mark: google_gre
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: output
+    comment: Service GRE meta_feed_ips routing router
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: output
+    comment: Service GRE meta_feed_ips routing router
+    dst-address-list: meta_feed_ips
+    dst-address-type: '!local'
+    new-routing-mark: google_ips_table
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
     action: mark-routing
     chain: prerouting
     comment: Service GRE established routing LAN
@@ -4964,6 +7433,23 @@ routeros_records:
     comment: to SSTP VDS7 Telegram
     dst-address-list: Telegram prefixes
     new-routing-mark: SSTP_to_VDS7
+    passthrough: 'no'
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Incoming connections to WG server
+    disabled: 'yes'
+    in-interface: '*A'
+    new-routing-mark: wg-routing
+    passthrough: 'no'
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Incoming connections to WG server
+    in-interface: '*A'
+    new-routing-mark: wg-routing
     passthrough: 'no'
   create: true
 - path: /ip firewall mangle
@@ -5248,7 +7734,8 @@ routeros_records:
     action: dst-nat
     chain: dstnat
     comment: Remote SSH access to main mikrotik
-    dst-address: 86.110.170.70
+    disabled: 'yes'
+    dst-address: 10.255.0.112
     dst-port: '20022'
     protocol: tcp
     to-addresses: 10.9.0.1
@@ -5257,7 +7744,7 @@ routeros_records:
     action: dst-nat
     chain: dstnat
     comment: Remote SSH access to main mikrotik
-    dst-address: 86.110.170.70
+    dst-address: 10.255.0.112
     dst-port: '20022'
     protocol: tcp
     to-addresses: 10.9.0.1
@@ -5505,6 +7992,54 @@ routeros_records:
     chain: srcnat
     comment: Service GRE meta_shared_ips source NAT
     dst-address-list: meta_shared_ips
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.1
+  create: true
+- path: /ip firewall nat
+  values:
+    action: src-nat
+    chain: srcnat
+    comment: Service GRE vds6_public_ip source NAT
+    dst-address-list: vds6_public_ip
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.1
+  selector:
+    action: src-nat
+    chain: srcnat
+    comment: Service GRE vds6_public_ip source NAT
+    dst-address-list: vds6_public_ip
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.1
+  create: true
+- path: /ip firewall nat
+  values:
+    action: src-nat
+    chain: srcnat
+    comment: Service GRE meta_ips source NAT
+    dst-address-list: meta_ips
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.1
+  selector:
+    action: src-nat
+    chain: srcnat
+    comment: Service GRE meta_ips source NAT
+    dst-address-list: meta_ips
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.1
+  create: true
+- path: /ip firewall nat
+  values:
+    action: src-nat
+    chain: srcnat
+    comment: Service GRE meta_feed_ips source NAT
+    dst-address-list: meta_feed_ips
+    out-interface: gre-vds6
+    to-addresses: 10.250.4.1
+  selector:
+    action: src-nat
+    chain: srcnat
+    comment: Service GRE meta_feed_ips source NAT
+    dst-address-list: meta_feed_ips
     out-interface: gre-vds6
     to-addresses: 10.250.4.1
   create: true
@@ -5809,6 +8344,11 @@ routeros_records:
     name: api-ssl
   values:
     disabled: 'yes'
+- path: /ip service
+  selector:
+    name: ssh
+  values:
+    port: '20022'
 - path: /ipv6 firewall address-list
   values:
     address: ::/128
@@ -6528,6 +9068,7 @@ routeros_records:
     area: tunnel-backbone
     comment: OSPF existing WireGuard addresses
     disabled: 'yes'
+    interfaces: '*A,*B'
     passive: 'yes'
     use-bfd: 'no'
   selector:
@@ -6804,6 +9345,20 @@ routeros_records:
   - days
   selector:
     name: get_telegram_ips
+  create: true
+- path: /system scheduler
+  values:
+    days: ''
+    interval: 1d
+    name: get_meta_ips
+    on-event: '{{ routeros_secrets.record_4d2781f5bea3a11fbb0c8d64 }}'
+    policy: read,write,test
+    start-date: '2026-10-12'
+    start-time: 01:10:00
+  unset:
+  - days
+  selector:
+    name: get_meta_ips
   create: true
 - path: /system watchdog
   values:

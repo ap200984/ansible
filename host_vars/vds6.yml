@@ -56,3 +56,10 @@ ospf_routing_services: []
 # Google GRE egress is restored by google-gre.yml and the routing manifest.
 google_gre_enabled: true
 google_gre_wan_interface: eth0
+
+# Jenkins uses the routed loopback instead of wg1's interface address.
+iptables_container_snat_rules:
+  - source: 172.20.240.7/32
+    destination: 10.0.0.0/8
+    to_source: 10.255.0.6
+    comment: jenkins-private-snat

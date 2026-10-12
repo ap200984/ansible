@@ -1,0 +1,30 @@
+---
+- name: Install container source NAT override
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    action: insert
+    rule_num: 1
+    source: '{{ item.source }}'
+    destination: '{{ item.destination }}'
+    jump: SNAT
+    to_source: '{{ item.to_source }}'
+    comment: '{{ item.comment }}'
+  loop: '{{ iptables_container_snat_rules | default([]) }}'
+  loop_control:
+    label: '{{ item.comment }}'
+
+- name: Remove superseded Jenkins SSH-only test rule
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    source: '{{ item.source }}'
+    destination: 10.255.0.112/32
+    protocol: tcp
+    destination_port: '22'
+    jump: SNAT
+    to_source: '{{ item.to_source }}'
+    comment: jenkins-k16-ssh
+    state: absent
+  loop: '{{ iptables_container_snat_rules | default([]) }}'
+  when: item.comment == 'jenkins-private-snat'

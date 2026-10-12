@@ -19,3 +19,9 @@ https_proxy_nat_jump_command: >-
   -W %h:%p user@86.110.170.70
 
 https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"
+
+# Additional management ports through this proxy for all IPv4 destinations.
+https_proxy_destination_exceptions:
+  - address: 0.0.0.0/0
+    http_ports: [1955]
+    https_ports: [1956]

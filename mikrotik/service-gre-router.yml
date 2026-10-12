@@ -34,6 +34,42 @@
     argv: '{{ google_gre_ssh + ["/system script run get_telegram_ips"] }}'
   register: telegram_refresh
   failed_when: telegram_refresh.rc != 0 or 'TELEGRAM_PREFIXES ' not in telegram_refresh.stdout
+- name: Install Meta prefix updater and daily schedule
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+    - path: /system script
+      selector:
+        name: get_meta_ips
+      create: true
+      values:
+        name: get_meta_ips
+        comment: Meta AS{{ meta_gre_asn }} originated IPv4 prefixes; preserve last good list on failure
+        policy: read,write,test
+        dont-require-permissions: 'no'
+        source: '{{ lookup("template", "mikrotik/templates/meta-prefixes.rsc.j2")
+          }}'
+    - path: /system scheduler
+      selector:
+        name: get_meta_ips
+      create: true
+      values:
+        name: get_meta_ips
+        interval: 1d
+        start-time: 01:10:00
+        policy: read,write,test
+        disabled: 'no'
+        on-event: /system script run get_meta_ips
+- name: Refresh Meta prefixes before policy cutover
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + ["/system script run get_meta_ips"] }}'
+  register: meta_refresh
+  failed_when: meta_refresh.rc != 0 or 'META_PREFIXES ' not in meta_refresh.stdout
 - name: Learn service IPv4 addresses from client DNS queries
   ansible.builtin.command:
     argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/service-dns.rsc.j2").splitlines()

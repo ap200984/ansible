@@ -115,3 +115,18 @@ Vds1 and vds8 use explicit `https_proxy_dns_servers` for upstream DNS. Vds3 is p
 requires an edge-router forwarding rule from `86.110.170.70:1981` to
 `10.9.0.120:1981`. The approved rule is managed by the proxy post task using
 the `https_proxy_nat_*` host variables.
+
+VDS3 permits authenticated HTTP access on port 1955 and HTTPS CONNECT on
+port 1956 for all IPv4 destinations. Exceptions are declared in
+`host_vars/vds3.yml` as `https_proxy_destination_exceptions`:
+
+```yaml
+https_proxy_destination_exceptions:
+  - address: 0.0.0.0/0
+    http_ports: [1955]
+    https_ports: [1956]
+```
+
+These authenticated exceptions precede Squid's normal port restrictions.
+Ports 80/443 retain their standard handling; other nonstandard ports remain
+blocked. The IPv4 exception does not include IPv6 destinations.

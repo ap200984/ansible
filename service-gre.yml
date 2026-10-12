@@ -1,4 +1,4 @@
-- name: Route Telegram and DNS-learned services through existing GRE tunnels
+- name: Route Telegram, Meta ASN prefixes and DNS-learned services through existing GRE tunnels
   hosts: localhost
   connection: local
   gather_facts: false

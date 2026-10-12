@@ -20,7 +20,7 @@
     - -o
     - ProxyCommand={{ router_proxy_command | default("none") }}
     - '{{ router_user }}@{{ router_host }}'
-- name: Apply GRE policy and route the Telegram update feed
+- name: Apply GRE policy and route the prefix update feeds
   ansible.builtin.command:
     argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines()
       | join(" ")] }}'
@@ -40,10 +40,12 @@
     - --address-lists
     - google_ips
     - google_gre_ip_check
+    - vds6_public_ip
     - telegram_ips
     - chatgpt_ips
     - whatsapp_ips
     - instagram_ips
     - meta_shared_ips
+    - meta_ips
   register: google_gre_reset
   changed_when: google_gre_reset.stdout != 'RESET_OLD_GOOGLE_SESSIONS 0'

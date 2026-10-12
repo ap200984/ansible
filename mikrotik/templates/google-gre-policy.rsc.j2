@@ -24,7 +24,10 @@
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% set records = records + checks.records + [{'path':'/ip firewall address-list','comment':'Service GRE Telegram feed hostname','values':'list=telegram_feed_ips address=core.telegram.org disabled=no'}] %}
+{% set records = records + checks.records + [
+ {'path':'/ip firewall address-list','comment':'Service GRE VDS6 public IP','values':'list=vds6_public_ip address=' ~ google_gre_server_public_ip ~ ' disabled=no'},
+ {'path':'/ip firewall address-list','comment':'Service GRE Meta feed hostname','values':'list=meta_feed_ips address=stat.ripe.net disabled=no'},
+ {'path':'/ip firewall address-list','comment':'Service GRE Telegram feed hostname','values':'list=telegram_feed_ips address=core.telegram.org disabled=no'}] %}
 {% set records = records + [
  {'path':'/ip firewall mangle','comment':'Service GRE established routing LAN','values':'chain=prerouting action=mark-routing in-interface=LAN connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no'},
  {'path':'/ip firewall mangle','comment':'Service GRE established routing router','values':'chain=output action=mark-routing connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no'},
