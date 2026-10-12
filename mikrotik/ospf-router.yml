@@ -235,3 +235,5 @@
   when: ospf_wireguard_enabled | default(false) | bool
 - name: Clear unused PPP template constraints
   ansible.builtin.include_tasks: ospf-matchers.yml
+- name: Preserve loopback source selection for locally generated traffic
+  ansible.builtin.include_tasks: ospf-loopback-source.yml

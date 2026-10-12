@@ -10,7 +10,7 @@
 /interface wireguard add comment=vds5_interface listen-port=56695 mtu=1340 name=vds5_interface
 /interface wireguard add comment=vds6_interface listen-port=56696 mtu=1340 name=vds6_interface
 /interface wireguard add comment=vds8_interface listen-port=56699 mtu=1340 name=vds8_interface
-/routing ospf instance add disabled=no name=tunnel-ospf originate-default=never out-filter-chain="" redistribute="" router-id=10.255.0.7
+/routing ospf instance add disabled=no in-filter-chain=tunnel-ospf-source name=tunnel-ospf originate-default=never out-filter-chain="" redistribute="" router-id=10.255.0.7
 /routing ospf area add disabled=no instance=tunnel-ospf name=tunnel-backbone
 /user group add name=bandwidth-test policy=test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
 /container add comment="AWG vds1" envlists=awg-vds1 file=chr-awg-proxy-v1.4.2-amd64.tar.gz hostname=awg-vds1 interface=veth-awg-vds1 layer-dir="" logging=yes name=awg-vds1 root-dir=/awg-vds1 shm-size=4096.0KiB start-on-boot=yes
@@ -138,6 +138,7 @@ set [ find default=yes ] advertise-dns=yes
 /ppp secret add local-address=10.251.0.7 name=Misha profile=default-encryption remote-address=10.250.0.24 service=sstp
 /routing bfd configuration add interfaces=all
 /routing filter rule add chain=tunnel-ospf-connected-export comment="OSPF connected WireGuard export" rule="if (dst == 10.250.1.2/32 || dst == 10.250.1.5/32 || dst == 10.250.1.6/32) { accept } else { reject }"
+/routing filter rule add chain=tunnel-ospf-source comment="OSPF loopback preferred source" disabled=no rule="if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.7; accept; } accept;"
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF loopback" disabled=no interfaces=loopback passive use-bfd=no
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp-112" cost=60000 dead-interval=4m disabled=no hello-interval=1m networks=10.250.0.112/32 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp-64" cost=60000 dead-interval=4m disabled=no hello-interval=1m networks=10.250.0.64/32 type=ptp use-bfd=yes

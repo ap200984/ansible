@@ -24,7 +24,7 @@
 /ip pool add name=dhcp_pool0 ranges=192.168.0.100-192.168.0.199
 /ip dhcp-server add address-pool=dhcp_pool0 interface=LAN lease-time=10m name=dhcp1
 /interface sstp-client add connect-to=62.60.216.73 disabled=no http-proxy=0.0.0.0 name=sstp-vds7 profile=default-encryption tls-version=only-1.2 user=Misha
-/routing ospf instance add disabled=no name=tunnel-ospf originate-default=never out-filter-chain="" redistribute="" router-id=10.255.0.24
+/routing ospf instance add disabled=no in-filter-chain=tunnel-ospf-source name=tunnel-ospf originate-default=never out-filter-chain="" redistribute="" router-id=10.255.0.24
 /routing ospf area add disabled=no instance=tunnel-ospf name=tunnel-backbone
 /routing table add fib name=out_ISP1_only
 /routing table add fib name=out_ISP2_only
@@ -452,6 +452,7 @@ add comment=ISP2_dhcp_client default-route-tables=main interface=ether5 name=eth
 # automatic dns option advertising is not started, re-apply dns config
 set [ find default=yes ] advertise-dns=yes
 /routing bfd configuration add disabled=no interfaces=all min-rx=200ms min-tx=200ms multiplier=5
+/routing filter rule add chain=tunnel-ospf-source comment="OSPF loopback preferred source" disabled=no rule="if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.24; accept; } accept;"
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF loopback" disabled=no interfaces=loopback passive use-bfd=no
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp" cost=60000 dead-interval=4m disabled=no hello-interval=1m interfaces=sstp-vds7 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp" cost=100 dead-interval=4m disabled=no hello-interval=1m interfaces=l2tp-to-d24 type=ptp use-bfd=yes

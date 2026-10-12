@@ -25,7 +25,7 @@
 /ip dhcp-server add address-pool=dhcp_pool0 interface=LAN lease-time=10m name=dhcp1
 /ip smb users set [ find default=yes ] disabled=yes
 /interface sstp-client add authentication=mschap2 comment=sstp-to-vds7 connect-to=62.60.216.73 disabled=no http-proxy=0.0.0.0 name=sstp-vds7 profile=default-encryption tls-version=only-1.2 user=3Ekipazhnyi64
-/routing ospf instance add disabled=no name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.64
+/routing ospf instance add disabled=no in-filter-chain=tunnel-ospf-source name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.64
 /routing ospf area add disabled=no instance=tunnel-ospf name=tunnel-backbone
 /routing table add disabled=no fib name=SSTP_to_vds7
 /routing table add disabled=no fib name=l2tp-to-vds8
@@ -378,6 +378,7 @@
 set [ find default=yes ] advertise-dns=yes
 /routing bfd configuration add disabled=no interfaces=all min-rx=200ms min-tx=200ms multiplier=5
 /routing filter rule add chain=tunnel-ospf-export comment="OSPF owned summary export" disabled=no rule="if (dst == 10.10.0.0/16) { accept } else { reject }"
+/routing filter rule add chain=tunnel-ospf-source comment="OSPF loopback preferred source" disabled=no rule="if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.64; accept; } accept;"
 /routing igmp-proxy set quick-leave=yes
 /routing igmp-proxy interface add alternative-subnets=0.0.0.0/0 interface=ether1 upstream=yes
 /routing igmp-proxy interface add interface=LAN

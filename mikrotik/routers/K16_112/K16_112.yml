@@ -223,6 +223,7 @@ routeros_records:
 - path: /routing ospf instance
   values:
     disabled: 'no'
+    in-filter-chain: tunnel-ospf-source
     name: tunnel-ospf
     originate-default: never
     out-filter-chain: tunnel-ospf-export
@@ -3298,7 +3299,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.56.0/22
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3307,7 +3308,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.4.0/22
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3316,7 +3317,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.8.0/22
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3325,7 +3326,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.16.0/22
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3334,7 +3335,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.12.0/22
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3343,7 +3344,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 149.154.160.0/20
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3352,7 +3353,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.105.192.0/23
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3361,7 +3362,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 91.108.20.0/22
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -3370,7 +3371,7 @@ routeros_records:
 - path: /ip firewall address-list
   values:
     address: 185.76.151.0/24
-    comment: Telegram feed 2026-10-11 23:29:55
+    comment: Telegram feed 2026-10-12 01:05:01
     list: telegram_ips
   selector:
     list: telegram_ips
@@ -6409,6 +6410,19 @@ routeros_records:
     chain: tunnel-ospf-export
     comment: OSPF owned summary export
     rule: if (dst == 10.9.0.0/16) { accept } else { reject }
+  create: true
+- path: /routing filter rule
+  values:
+    chain: tunnel-ospf-source
+    comment: OSPF loopback preferred source
+    disabled: 'no'
+    rule: if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.112;
+      accept; } accept;
+  selector:
+    chain: tunnel-ospf-source
+    comment: OSPF loopback preferred source
+    rule: if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.112;
+      accept; } accept;
   create: true
 - path: /routing ospf interface-template
   values:

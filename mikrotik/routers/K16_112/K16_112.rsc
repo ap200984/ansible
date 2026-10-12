@@ -27,7 +27,7 @@
 /ppp profile add change-tcp-mss=yes name=common_vpn use-encryption=yes
 /ppp profile set *FFFFFFFE only-one=no
 /interface sstp-client add authentication=mschap2 connect-to=62.60.216.73 disabled=no http-proxy=0.0.0.0 name=sstp-vds7 profile=default-encryption tls-version=only-1.2 user=k16_k112
-/routing ospf instance add disabled=no name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.112
+/routing ospf instance add disabled=no in-filter-chain=tunnel-ospf-source name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.112
 /routing ospf area add disabled=no instance=tunnel-ospf name=tunnel-backbone
 /routing table add fib name=to_ISP2
 /routing table add fib name=to_ISP1
@@ -377,15 +377,15 @@ set authentication=mschap2 enabled=yes
 /ip firewall address-list add address=216.252.220.0/22 comment="Google feed 1791749175744" list=google_ips
 /ip firewall address-list add address=api.ipify.org comment="Google GRE IP check hostname" list=google_gre_ip_check
 /ip firewall address-list add address=core.telegram.org comment="Service GRE Telegram feed hostname" list=telegram_feed_ips
-/ip firewall address-list add address=91.108.56.0/22 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=91.108.4.0/22 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=91.108.8.0/22 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=91.108.16.0/22 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=91.108.12.0/22 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=149.154.160.0/20 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=91.105.192.0/23 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=91.108.20.0/22 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
-/ip firewall address-list add address=185.76.151.0/24 comment="Telegram feed 2026-10-11 23:29:55" list=telegram_ips
+/ip firewall address-list add address=91.108.56.0/22 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=91.108.4.0/22 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=91.108.8.0/22 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=91.108.16.0/22 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=91.108.12.0/22 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=149.154.160.0/20 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=91.105.192.0/23 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=91.108.20.0/22 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
+/ip firewall address-list add address=185.76.151.0/24 comment="Telegram feed 2026-10-12 01:05:01" list=telegram_ips
 /ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.112 protocol=gre src-address=10.255.0.6
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
@@ -600,6 +600,7 @@ set authentication=mschap2 enabled=yes
 /ppp secret add local-address=10.250.3.112 name=k16_21 profile=common_vpn remote-address=10.250.3.21 service=l2tp
 /routing bfd configuration add interfaces=all
 /routing filter rule add chain=tunnel-ospf-export comment="OSPF owned summary export" disabled=no rule="if (dst == 10.9.0.0/16) { accept } else { reject }"
+/routing filter rule add chain=tunnel-ospf-source comment="OSPF loopback preferred source" disabled=no rule="if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.112; accept; } accept;"
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF loopback" disabled=no interfaces=loopback passive use-bfd=no
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp" cost=60000 dead-interval=4m disabled=no hello-interval=1m interfaces=sstp-vds7 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp-64" cost=100 dead-interval=4m disabled=no hello-interval=1m networks=10.250.3.64/32 type=ptp use-bfd=yes

@@ -185,6 +185,7 @@ routeros_records:
 - path: /routing ospf instance
   values:
     disabled: 'no'
+    in-filter-chain: tunnel-ospf-source
     name: tunnel-ospf
     originate-default: never
     out-filter-chain: tunnel-ospf-export
@@ -3949,6 +3950,19 @@ routeros_records:
     chain: tunnel-ospf-export
     comment: OSPF owned summary export
     rule: if (dst == 10.10.0.0/16) { accept } else { reject }
+  create: true
+- path: /routing filter rule
+  values:
+    chain: tunnel-ospf-source
+    comment: OSPF loopback preferred source
+    disabled: 'no'
+    rule: if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.64; accept;
+      } accept;
+  selector:
+    chain: tunnel-ospf-source
+    comment: OSPF loopback preferred source
+    rule: if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.64; accept;
+      } accept;
   create: true
 - path: /routing igmp-proxy
   values:

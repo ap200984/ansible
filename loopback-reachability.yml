@@ -1,0 +1,72 @@
+- name: Prefer Linux loopback sources for OSPF loopback routes
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  tasks:
+  - name: Persist the focused FRR source policy
+    ansible.builtin.blockinfile:
+      path: /etc/frr/frr.conf
+      marker: '! {mark} Ansible loopback source policy'
+      insertbefore: ^end$
+      block: '{{ lookup("template", "roles/ospf/templates/loopback-source.conf.j2")
+        }}'
+      validate: /usr/bin/vtysh -C -f %s
+    register: loopback_source_config
+  - name: Apply source selection without restarting OSPF
+    ansible.builtin.command:
+      argv:
+      - vtysh
+      - -c
+      - configure terminal
+      - -c
+      - ip prefix-list LOOPBACK-SOURCE seq 10 permit 10.255.0.0/24 le 32
+      - -c
+      - route-map LOOPBACK-SOURCE permit 10
+      - -c
+      - match ip address prefix-list LOOPBACK-SOURCE
+      - -c
+      - set src {{ ospf_router_id }}
+      - -c
+      - exit
+      - -c
+      - route-map LOOPBACK-SOURCE permit 20
+      - -c
+      - exit
+      - -c
+      - ip protocol ospf route-map LOOPBACK-SOURCE
+    changed_when: loopback_source_config.changed
+  - name: Install the existing-route source metadata helper
+    ansible.builtin.copy:
+      src: roles/ospf/files/set-loopback-source.py
+      dest: /usr/local/sbin/ospf-loopback-source
+      mode: '0755'
+  - name: Seed the source on already installed OSPF loopback routes
+    ansible.builtin.command:
+      argv:
+      - /usr/local/sbin/ospf-loopback-source
+      - --source
+      - '{{ ospf_router_id }}'
+    register: seed_loopback_sources
+    changed_when: seed_loopback_sources.stdout != 'LOOPBACK_SOURCES_UPDATED 0'
+  - name: Verify the kernel preferred source
+    ansible.builtin.command: ip route get 10.255.0.{{ "112" if inventory_hostname
+      == "vds6" else "6" }}
+    register: loopback_source_route
+    until: '"src " ~ ospf_router_id in loopback_source_route.stdout'
+    retries: 12
+    delay: 1
+    changed_when: false
+- name: Prefer MikroTik loopback sources for OSPF loopback routes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+  - group_vars/all/main.yml
+  - mikrotik/vars/ospf-topology.yml
+  tasks:
+  - ansible.builtin.include_tasks: mikrotik/ospf-loopback-source.yml
+    loop: '{{ ospf_routers | rejectattr("identity", "in", skip_ospf_routers | default([]))
+      | list }}'
+    loop_control:
+      loop_var: ospf_router
+      label: '{{ ospf_router.identity }}'

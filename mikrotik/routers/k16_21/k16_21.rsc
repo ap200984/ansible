@@ -20,7 +20,7 @@
 /ip dhcp-server add address-pool=dhcp_pool0 interface=LAN lease-time=10m name=dhcp1
 /ip smb users set [ find default=yes ] disabled=yes
 /interface sstp-client add authentication=mschap2 comment=sstp-to-vds7 connect-to=62.60.216.73 disabled=no http-proxy=0.0.0.0 name=sstp-vds7 profile=default-encryption tls-version=only-1.2 user=k16_k21
-/routing ospf instance add disabled=no name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.21
+/routing ospf instance add disabled=no in-filter-chain=tunnel-ospf-source name=tunnel-ospf originate-default=never out-filter-chain=tunnel-ospf-export redistribute=static router-id=10.255.0.21
 /routing ospf area add disabled=no instance=tunnel-ospf name=tunnel-backbone
 /routing table add disabled=no fib name=to_VPNs
 /routing table add fib name=bfd-vds8
@@ -356,6 +356,7 @@
 set [ find default=yes ] advertise-dns=yes
 /routing bfd configuration add interfaces=all
 /routing filter rule add chain=tunnel-ospf-export comment="OSPF owned summary export" disabled=no rule="if (dst == 10.11.0.0/16) { accept } else { reject }"
+/routing filter rule add chain=tunnel-ospf-source comment="OSPF loopback preferred source" disabled=no rule="if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.21; accept; } accept;"
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF loopback" disabled=no interfaces=loopback passive use-bfd=no
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp" cost=60000 dead-interval=4m disabled=no hello-interval=1m interfaces=sstp-vds7 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp" cost=100 dead-interval=4m disabled=no hello-interval=1m interfaces=l2tp-to_k16_k112 type=ptp use-bfd=yes

@@ -90,3 +90,6 @@ router ospf
 {% endif %}
 !
 {% endif %}
+! BEGIN Ansible loopback source policy
+{% include 'roles/ospf/templates/loopback-source.conf.j2' %}
+! END Ansible loopback source policy

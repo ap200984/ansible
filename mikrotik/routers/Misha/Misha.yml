@@ -186,6 +186,7 @@ routeros_records:
 - path: /routing ospf instance
   values:
     disabled: 'no'
+    in-filter-chain: tunnel-ospf-source
     name: tunnel-ospf
     originate-default: never
     out-filter-chain: ''
@@ -4690,6 +4691,19 @@ routeros_records:
     min-tx: 200ms
     multiplier: '5'
   selector: {}
+  create: true
+- path: /routing filter rule
+  values:
+    chain: tunnel-ospf-source
+    comment: OSPF loopback preferred source
+    disabled: 'no'
+    rule: if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.24; accept;
+      } accept;
+  selector:
+    chain: tunnel-ospf-source
+    comment: OSPF loopback preferred source
+    rule: if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src 10.255.0.24; accept;
+      } accept;
   create: true
 - path: /routing ospf interface-template
   values:

@@ -1,0 +1,25 @@
+---
+- name: Load loopback router connection settings
+  ansible.builtin.include_vars:
+    file: 'host_vars/{{ ospf_router.identity }}.yml'
+- name: Prefer the router loopback source for imported OSPF loopbacks
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+      - path: /routing filter rule
+        selector: {comment: OSPF loopback preferred source}
+        create: true
+        values:
+          comment: OSPF loopback preferred source
+          chain: tunnel-ospf-source
+          rule: 'if (dst in 10.255.0.0/24 && dst-len == 32) { set pref-src {{ ospf_router.loopback }}; accept; } accept;'
+          disabled: 'no'
+      - path: /routing ospf instance
+        selector: {name: tunnel-ospf}
+        values:
+          in-filter-chain: tunnel-ospf-source

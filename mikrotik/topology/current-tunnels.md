@@ -203,3 +203,8 @@ Additional GRE policies deployed on 2026-10-12: Telegram official IPv4 feed
 and DNS-learned Telegram web, ChatGPT, WhatsApp, Instagram and shared Meta
 addresses use the same four tunnels, routing table and VDS6 egress. See
 [service deployment](../../service-gre.yml) and [policy details](../../docs/google-gre.md).
+
+Loopback source policy updated on 2026-10-12: all ten routing nodes now select
+their own loopback for OSPF loopback destinations. All 180 default/explicit
+source ping checks passed and all 50 BFD endpoints were Up after convergence.
+See [deployment and verification](../../docs/loopback-reachability.md).

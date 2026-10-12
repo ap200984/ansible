@@ -1,0 +1,10 @@
+! Prefer the stable loopback source for traffic to OSPF loopback destinations.
+ip prefix-list LOOPBACK-SOURCE seq 10 permit 10.255.0.0/24 le 32
+route-map LOOPBACK-SOURCE permit 10
+ match ip address prefix-list LOOPBACK-SOURCE
+ set src {{ ospf_router_id }}
+!
+route-map LOOPBACK-SOURCE permit 20
+!
+ip protocol ospf route-map LOOPBACK-SOURCE
+!

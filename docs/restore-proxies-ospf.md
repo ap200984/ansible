@@ -126,3 +126,8 @@ Restore its mounted `usb1` storage before router configuration. See
 Google IPv4 egress through VDS6 uses four persistent GRE services over OSPF
 loopbacks, plus forwarding/NAT. The VDS6 restore manifest and MikroTik captures
 include these settings. See [Google GRE deployment](google-gre.md).
+
+OSPF loopback routes now prefer each node's own loopback as the source for
+locally generated traffic. The shared FRR template and MikroTik OSPF play
+restore this policy. See [loopback reachability](loopback-reachability.md) for
+the focused existing-node rollout and verification.
