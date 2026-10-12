@@ -1,0 +1,58 @@
+- name: Install Telegram prefix updater and daily schedule
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+    - path: /system script
+      selector:
+        name: get_telegram_ips
+      create: true
+      values:
+        name: get_telegram_ips
+        comment: Telegram official IPv4 prefixes; preserve last good list on failure
+        policy: read,write,test
+        dont-require-permissions: 'no'
+        source: '{{ lookup("template", "mikrotik/templates/telegram-prefixes.rsc.j2")
+          }}'
+    - path: /system scheduler
+      selector:
+        name: get_telegram_ips
+      create: true
+      values:
+        name: get_telegram_ips
+        interval: 1d
+        start-time: 01:05:00
+        policy: read,write,test
+        disabled: 'no'
+        on-event: /system script run get_telegram_ips
+- name: Refresh Telegram prefixes before policy cutover
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + ["/system script run get_telegram_ips"] }}'
+  register: telegram_refresh
+  failed_when: telegram_refresh.rc != 0 or 'TELEGRAM_PREFIXES ' not in telegram_refresh.stdout
+- name: Learn service IPv4 addresses from client DNS queries
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/service-dns.rsc.j2").splitlines()
+      | join(" ")] }}'
+  register: service_dns_policy
+  failed_when: service_dns_policy.rc != 0 or 'SERVICE_GRE_DNS_READY' not in service_dns_policy.stdout
+    or 'syntax error' in service_dns_policy.stdout or 'failure:' in service_dns_policy.stdout
+- name: Advertise only the router DNS on 3Ekipazhnyi64
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+    - path: /ip dhcp-server network
+      selector:
+        address: 10.10.0.0/24
+      values:
+        dns-server: 10.10.0.1
+  when: google_gre_link.identity == '3Ekipazhnyi64'

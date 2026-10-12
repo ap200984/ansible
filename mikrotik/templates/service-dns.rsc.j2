@@ -1,0 +1,12 @@
+/ip dns set address-list-extra-time={{ service_gre_dns_extra_time }};
+{% set dns = namespace(index=0) %}
+{% for list_name, domains in service_gre_dns_domains.items() %}
+{% for domain in domains %}
+{% set dns.index = dns.index + 1 %}
+:local entry{{ dns.index }} [/ip dns static find where name="{{ domain }}" and type=FWD];
+:if ([:len $entry{{ dns.index }}] > 1) do={:error "Duplicate service DNS entry"};
+:if ([:len $entry{{ dns.index }}] = 0) do={/ip dns static add name="{{ domain }}" type=FWD forward-to="" match-subdomain=yes address-list={{ list_name }} disabled=no comment="Service GRE DNS {{ list_name }}"}
+else={/ip dns static set $entry{{ dns.index }} forward-to="" match-subdomain=yes address-list={{ list_name }} disabled=no comment="Service GRE DNS {{ list_name }}"};
+{% endfor %}
+{% endfor %}
+:put "SERVICE_GRE_DNS_READY";

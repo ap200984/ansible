@@ -83,3 +83,74 @@ confirms this policy's egress; it does not check every individual Google prefix.
 
 Validation: HTTPS checks from all four routers and a real K16 LAN client
 returned `195.245.239.82` on 2026-10-11.
+
+## Telegram, ChatGPT, WhatsApp and Instagram
+
+`service-gre.yml` deploys additional services on the same four GRE routers;
+`google-gre.yml` includes this configuration during full restoration. The
+LAN-only Logia devices and CHR are outside this scope.
+
+`get_telegram_ips` downloads https://core.telegram.org/resources/cidr.txt over
+certificate-validated HTTPS. It validates IPv4 networks and a minimum prefix
+count before replacing `telegram_ips`; failures preserve the previous list.
+IPv6 feed entries are skipped. Telegram web/link domains also learn addresses
+through DNS into the same list; feed refresh preserves these dynamic entries. The scheduler runs daily at 01:05 in each
+router's time zone. The feed hostname itself has a separate DNS-maintained
+`telegram_feed_ips` list routed through GRE, since direct ISP access timed out.
+
+`service_gre_dns_domains` in `vars/google-gre.yml` defines DNS FWD entries with
+subdomain matching. DNS list retention uses TTL plus one day (matching the existing K16/Misha
+setting) so short-lived DNS answers remain useful across client caches.
+Client answers automatically populate `chatgpt_ips`,
+`whatsapp_ips`, `instagram_ips` and `meta_shared_ips`. These entries use the
+router's normal upstream DNS configuration, including existing DoH. On Misha,
+matching legacy localhost forwarding entries are replaced. 3Ekipazhnyi64 DHCP
+now advertises only 10.10.0.1 as DNS; renewed leases remove external fallbacks.
+Other routers already advertise their own resolver.
+
+The shared Meta list includes fbcdn.net, fbsbx.com, facebook.com and
+facebook.net for common media/authentication dependencies. Some Facebook or
+unrelated shared-CDN traffic can therefore use GRE as well. ChatGPT domains
+include dependencies from OpenAI's published network recommendations:
+https://help.openai.com/en/articles/9247338-network-recommendations-for-chatgpt-errors-on-web-and-apps
+
+Each service list has LAN and router-output connection/routing marks,
+forwarding and source-NAT rules. They share `google_gre`, `google_ips_table`,
+the existing per-router GRE peer and blackhole fallback. Old mangle rules for
+these same lists are disabled. Common connection-mark routing rules keep
+established GRE sessions on this path after a learned DNS address expires. Only stale matching pre-GRE IPv4 sessions are
+reset, preserving unrelated and already healthy GRE connections.
+
+Clients must query the router's DNS. Browser Secure DNS, Android Private DNS,
+third-party resolvers, cached answers and direct-IP app connections can bypass
+learning. Renew leases/restart apps as needed. This remains an IPv4 policy;
+IPv6 and peer-to-peer voice/video paths are not guaranteed to traverse VDS6.
+
+To reapply just these router policies (with existing GRE tunnels), run from
+this repository and supply your trusted jump-host connection variables:
+
+```sh
+ANSIBLE_LIBRARY="$PWD/mikrotik/library" \
+ANSIBLE_MODULE_UTILS="$PWD/mikrotik/module_utils" \
+ansible-playbook -i localhost, service-gre.yml -e @/path/to/router-connection.yml
+```
+
+The connection file defines `router_proxy_command` as documented in the
+MikroTik README. SSH host keys remain pinned in `mikrotik/known_hosts`.
+
+Health observation on 2026-10-12: all 46 BFD sessions reported by the nine
+reachable nodes were Up, including both Misha native OSPF links. VDS2's public
+SSH endpoint 38.247.137.237:19022 timed out; a complete 50-endpoint check could
+not pass. No VDS2 configuration was changed. The primary GRE underlay via
+VDS1/VDS5/VDS6 remains available.
+
+Service validation on 2026-10-12: all four routers learned IPv4 addresses
+for every configured service group from real client DNS queries. Telegram
+lists contain the nine official IPv4 prefixes plus learned web addresses.
+TCP destination probes for Telegram, ChatGPT, WhatsApp, Instagram and shared
+Meta addresses on every router matched GRE routing and source NAT. Real K16
+LAN HTTPS checks returned 200 for WhatsApp and Instagram; ChatGPT returned
+403 to curl, so browser/login behavior needs a separate user check. Captures
+include the updater, schedule, domain forwarding, mangle/NAT/filter rules and
+DNS retention. The reset helper now requests detailed RouterOS connection
+output and refuses to act if NAT return-address metadata is missing.

@@ -27,3 +27,54 @@ google_gre_mtu: 1300
 google_gre_server_loopback: 10.255.0.6
 google_gre_feed: https://www.gstatic.com/ipranges/goog.json
 google_gre_check_hostname: api.ipify.org
+telegram_gre_feed: https://core.telegram.org/resources/cidr.txt
+service_gre_dns_domains:
+  telegram_ips:
+    - telegram.org
+    - t.me
+    - telegram.me
+    - telesco.pe
+  chatgpt_ips:
+    - chatgpt.com
+    - openai.com
+    - oaistatic.com
+    - oaiusercontent.com
+    - oaistatsig.com
+    - ct.sendgrid.net
+    - intercom.io
+    - intercomcdn.com
+    - cdn.openaimerge.com
+    - cdn.workos.com
+    - challenges.cloudflare.com
+    - forwarder.workos.com
+    - frontend-apps-multi-region.workos.com
+    - humb.apple.com
+    - images.workoscdn.com
+    - js.intercomcdn.com
+    - js.stripe.com
+    - o207216.ingest.sentry.io
+    - o33249.ingest.sentry.io
+    - rum.browser-intake-datadoghq.com
+    - setup.workos.com
+    - workos.imgix.net
+  whatsapp_ips:
+    - whatsapp.com
+    - whatsapp.net
+    - wa.me
+  instagram_ips:
+    - instagram.com
+    - cdninstagram.com
+    - ig.me
+  meta_shared_ips:
+    - fbcdn.net
+    - fbsbx.com
+    - facebook.com
+    - facebook.net
+service_gre_address_lists:
+  - telegram_feed_ips
+  - telegram_ips
+  - chatgpt_ips
+  - whatsapp_ips
+  - instagram_ips
+  - meta_shared_ips
+service_gre_dns_extra_time: 1d

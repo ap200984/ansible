@@ -321,3 +321,8 @@ transport `10.255.2.24`, native VDS `wg4`/UDP 56709. See
 Four site routers use GRE to VDS6 for Google IPv4 traffic via `google_ips_table`.
 Address allocation, scheduled prefix refresh and rebuild details are in
 [Google GRE routing](../docs/google-gre.md).
+
+Telegram and DNS-learned ChatGPT/WhatsApp/Instagram GRE routing can be
+reapplied with root `service-gre.yml` using the same pinned SSH jump transport
+as `google-gre.yml`. Domain definitions live in `vars/google-gre.yml`;
+[deployment details](../docs/google-gre.md) cover client DNS requirements.

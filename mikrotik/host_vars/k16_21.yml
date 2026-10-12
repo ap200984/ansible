@@ -11,3 +11,5 @@ google_gre_enabled: true
 google_gre_interface: gre-vds6
 google_gre_address: 10.250.4.13/30
 google_gre_gateway: 10.250.4.14
+
+service_gre_enabled: true

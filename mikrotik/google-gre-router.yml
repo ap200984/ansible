@@ -1,25 +1,25 @@
 - name: Load GRE router settings
   ansible.builtin.include_vars:
-    file: 'host_vars/{{ google_gre_link.identity }}.yml'
+    file: host_vars/{{ google_gre_link.identity }}.yml
 - name: Build pinned router transport
   ansible.builtin.set_fact:
     google_gre_ssh:
-      - ssh
-      - -F
-      - /dev/null
-      - -i
-      - '{{ router_ssh_key | expanduser }}'
-      - -p
-      - '{{ router_port | string }}'
-      - -o
-      - BatchMode=yes
-      - -o
-      - StrictHostKeyChecking=yes
-      - -o
-      - 'UserKnownHostsFile={{ router_known_hosts_file }}'
-      - -o
-      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
-      - '{{ router_user }}@{{ router_host }}'
+    - ssh
+    - -F
+    - /dev/null
+    - -i
+    - '{{ router_ssh_key | expanduser }}'
+    - -p
+    - '{{ router_port | string }}'
+    - -o
+    - BatchMode=yes
+    - -o
+    - StrictHostKeyChecking=yes
+    - -o
+    - UserKnownHostsFile={{ router_known_hosts_file }}
+    - -o
+    - ProxyCommand={{ router_proxy_command | default("none") }}
+    - '{{ router_user }}@{{ router_host }}'
 - name: Install validated Google prefix updater and daily schedule
   routeros_ssh:
     host: '{{ router_host }}'
@@ -29,25 +29,29 @@
     known_hosts_file: '{{ router_known_hosts_file }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
-      - path: /system script
-        selector: {name: get_google_ips}
-        create: true
-        values:
-          name: get_google_ips
-          comment: Google official IPv4 prefix feed; preserve last good list on download failure
-          policy: read,write,test
-          dont-require-permissions: 'no'
-          source: '{{ lookup("template", "mikrotik/templates/google-prefixes.rsc.j2") }}'
-      - path: /system scheduler
-        selector: {name: get_google_ips}
-        create: true
-        values:
-          name: get_google_ips
-          interval: 1d
-          start-time: '01:00:00'
-          policy: read,write,test
-          disabled: 'no'
-          on-event: /system script run get_google_ips
+    - path: /system script
+      selector:
+        name: get_google_ips
+      create: true
+      values:
+        name: get_google_ips
+        comment: Google official IPv4 prefix feed; preserve last good list on download
+          failure
+        policy: read,write,test
+        dont-require-permissions: 'no'
+        source: '{{ lookup("template", "mikrotik/templates/google-prefixes.rsc.j2")
+          }}'
+    - path: /system scheduler
+      selector:
+        name: get_google_ips
+      create: true
+      values:
+        name: get_google_ips
+        interval: 1d
+        start-time: 01:00:00
+        policy: read,write,test
+        disabled: 'no'
+        on-event: /system script run get_google_ips
 - name: Refresh Google prefixes before policy cutover
   ansible.builtin.command:
     argv: '{{ google_gre_ssh + ["/system script run get_google_ips"] }}'
@@ -62,53 +66,74 @@
     known_hosts_file: '{{ router_known_hosts_file }}'
     proxy_command: '{{ router_proxy_command | default("none") }}'
     records:
-      - path: /interface gre
-        selector: {name: gre-vds6}
-        create: true
-        unset: [keepalive]
-        values:
-          name: gre-vds6
-          disabled: 'no'
-          local-address: '10.255.0.{{ google_gre_link.suffix }}'
-          remote-address: '{{ google_gre_server_loopback }}'
-          mtu: '{{ google_gre_mtu | string }}'
-          keepalive: ''
-          clamp-tcp-mss: 'yes'
-          allow-fast-path: 'no'
-          comment: GRE to VDS6 over OSPF loopbacks
-      - path: /ip address
-        selector: {interface: gre-vds6}
-        create: true
-        values:
-          address: '{{ google_gre_address }}'
-          interface: gre-vds6
-          disabled: 'no'
-          network: '{{ google_gre_link.subnet.split("/")[0] }}'
-          comment: GRE to VDS6
-      - path: /routing table
-        selector: {name: google_ips_table}
-        create: true
-        flags: [fib]
-        values: {name: google_ips_table, fib: 'yes', disabled: 'no'}
+    - path: /interface gre
+      selector:
+        name: gre-vds6
+      create: true
+      unset:
+      - keepalive
+      values:
+        name: gre-vds6
+        disabled: 'no'
+        local-address: 10.255.0.{{ google_gre_link.suffix }}
+        remote-address: '{{ google_gre_server_loopback }}'
+        mtu: '{{ google_gre_mtu | string }}'
+        keepalive: ''
+        clamp-tcp-mss: 'yes'
+        allow-fast-path: 'no'
+        comment: GRE to VDS6 over OSPF loopbacks
+    - path: /ip address
+      selector:
+        interface: gre-vds6
+      create: true
+      values:
+        address: '{{ google_gre_address }}'
+        interface: gre-vds6
+        disabled: 'no'
+        network: '{{ google_gre_link.subnet.split("/")[0] }}'
+        comment: GRE to VDS6
+    - path: /routing table
+      selector:
+        name: google_ips_table
+      create: true
+      flags:
+      - fib
+      values:
+        name: google_ips_table
+        fib: 'yes'
+        disabled: 'no'
 - name: Verify GRE peer before changing Google traffic
   ansible.builtin.command:
-    argv: '{{ google_gre_ssh + ["/ping " ~ google_gre_gateway ~ " src-address=" ~ google_gre_link.router_address ~ " interface=gre-vds6 count=3"] }}'
+    argv: '{{ google_gre_ssh + ["/ping " ~ google_gre_gateway ~ " src-address=" ~
+      google_gre_link.router_address ~ " interface=gre-vds6 count=3"] }}'
   register: google_gre_probe
   changed_when: false
   failed_when: google_gre_probe.rc != 0 or 'packet-loss=0%' not in google_gre_probe.stdout
-- name: Apply Google policy routing and return-path NAT
+- name: Apply GRE policy and route the Telegram update feed
   ansible.builtin.command:
-    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines() | join(" ")] }}'
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines()
+      | join(" ")] }}'
   register: google_gre_policy
-  failed_when: google_gre_policy.rc != 0 or 'GOOGLE_GRE_POLICY_READY' not in google_gre_policy.stdout or 'syntax error' in google_gre_policy.stdout or 'failure:' in google_gre_policy.stdout
-- name: Reset only Google sessions that retain the former NAT path
+  failed_when: google_gre_policy.rc != 0 or 'GOOGLE_GRE_POLICY_READY' not in google_gre_policy.stdout
+    or 'syntax error' in google_gre_policy.stdout or 'failure:' in google_gre_policy.stdout
+- name: Configure additional service lists
+  ansible.builtin.include_tasks: service-gre-router.yml
+- name: Reset only service sessions that retain their former NAT path
   ansible.builtin.command:
     argv:
-      - python3
-      - '{{ playbook_dir }}/roles/google-gre/files/reset-old-google.py'
-      - --ssh
-      - '{{ google_gre_ssh | to_json }}'
-      - --gre-address
-      - '{{ google_gre_link.router_address }}'
+    - python3
+    - '{{ playbook_dir }}/roles/google-gre/files/reset-old-google.py'
+    - --ssh
+    - '{{ google_gre_ssh | to_json }}'
+    - --gre-address
+    - '{{ google_gre_link.router_address }}'
+    - --address-lists
+    - google_ips
+    - google_gre_ip_check
+    - telegram_ips
+    - chatgpt_ips
+    - whatsapp_ips
+    - instagram_ips
+    - meta_shared_ips
   register: google_gre_reset
   changed_when: google_gre_reset.stdout != 'RESET_OLD_GOOGLE_SESSIONS 0'

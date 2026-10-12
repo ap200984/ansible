@@ -17,7 +17,19 @@
 {% set checks.records = checks.records + [{'path':record.path,'comment':record.comment | replace('Google GRE', 'Google GRE IP check'),'values':record['values'] | replace('dst-address-list=google_ips', 'dst-address-list=google_gre_ip_check')}] %}
 {% endif %}
 {% endfor %}
-{% set records = records + checks.records %}
+{% for list_name in service_gre_address_lists %}
+{% for record in records %}
+{% if 'dst-address-list=google_ips' in record['values'] %}
+{% set checks.records = checks.records + [{'path':record.path,'comment':record.comment | replace('Google GRE', 'Service GRE ' ~ list_name),'values':record['values'] | replace('dst-address-list=google_ips', 'dst-address-list=' ~ list_name)}] %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% set records = records + checks.records + [{'path':'/ip firewall address-list','comment':'Service GRE Telegram feed hostname','values':'list=telegram_feed_ips address=core.telegram.org disabled=no'}] %}
+{% set records = records + [
+ {'path':'/ip firewall mangle','comment':'Service GRE established routing LAN','values':'chain=prerouting action=mark-routing in-interface=LAN connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no'},
+ {'path':'/ip firewall mangle','comment':'Service GRE established routing router','values':'chain=output action=mark-routing connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no'},
+ {'path':'/ip firewall filter','comment':'Service GRE marked outbound','values':'chain=forward action=accept in-interface=LAN out-interface=gre-vds6 connection-mark=google_gre'}
+] %}
 {% for record in records %}
 :local r{{ loop.index }} [{{ record.path }} find where comment="{{ record.comment }}"];
 :if ([:len $r{{ loop.index }}] > 1) do={:error "Duplicate Google GRE rule"};
@@ -26,6 +38,9 @@ else={ {{ record.path }} set $r{{ loop.index }} {{ record['values'] }}};
 {% endfor %}
 /ip route disable [find where routing-table=google_ips_table and comment!="Google GRE default" and comment!="Google GRE unavailable"];
 /ip firewall mangle disable [find where dst-address-list=google_ips and comment!="Google GRE connection LAN" and comment!="Google GRE routing LAN" and comment!="Google GRE connection router" and comment!="Google GRE routing router"];
+{% for list_name in service_gre_address_lists %}
+/ip firewall mangle disable [find where dst-address-list={{ list_name }} and comment!="Service GRE {{ list_name }} connection LAN" and comment!="Service GRE {{ list_name }} routing LAN" and comment!="Service GRE {{ list_name }} connection router" and comment!="Service GRE {{ list_name }} routing router"];
+{% endfor %}
 /ip firewall filter set [find where action=fasttrack-connection and chain=forward] connection-mark=!google_gre;
 {% for record in records | reverse %}
 {% if record.path in ['/ip firewall filter', '/ip firewall mangle'] %}

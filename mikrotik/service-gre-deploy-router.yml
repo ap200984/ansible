@@ -1,0 +1,49 @@
+- name: Load GRE router settings
+  ansible.builtin.include_vars:
+    file: host_vars/{{ google_gre_link.identity }}.yml
+- name: Build pinned router transport
+  ansible.builtin.set_fact:
+    google_gre_ssh:
+    - ssh
+    - -F
+    - /dev/null
+    - -i
+    - '{{ router_ssh_key | expanduser }}'
+    - -p
+    - '{{ router_port | string }}'
+    - -o
+    - BatchMode=yes
+    - -o
+    - StrictHostKeyChecking=yes
+    - -o
+    - UserKnownHostsFile={{ router_known_hosts_file }}
+    - -o
+    - ProxyCommand={{ router_proxy_command | default("none") }}
+    - '{{ router_user }}@{{ router_host }}'
+- name: Apply GRE policy and route the Telegram update feed
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines()
+      | join(" ")] }}'
+  register: google_gre_policy
+  failed_when: google_gre_policy.rc != 0 or 'GOOGLE_GRE_POLICY_READY' not in google_gre_policy.stdout
+    or 'syntax error' in google_gre_policy.stdout or 'failure:' in google_gre_policy.stdout
+- ansible.builtin.include_tasks: service-gre-router.yml
+- name: Reset only service sessions that retain their former NAT path
+  ansible.builtin.command:
+    argv:
+    - python3
+    - '{{ playbook_dir }}/roles/google-gre/files/reset-old-google.py'
+    - --ssh
+    - '{{ google_gre_ssh | to_json }}'
+    - --gre-address
+    - '{{ google_gre_link.router_address }}'
+    - --address-lists
+    - google_ips
+    - google_gre_ip_check
+    - telegram_ips
+    - chatgpt_ips
+    - whatsapp_ips
+    - instagram_ips
+    - meta_shared_ips
+  register: google_gre_reset
+  changed_when: google_gre_reset.stdout != 'RESET_OLD_GOOGLE_SESSIONS 0'

@@ -1,0 +1,12 @@
+- name: Route Telegram and DNS-learned services through existing GRE tunnels
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+  - group_vars/all/main.yml
+  - vars/google-gre.yml
+  tasks:
+  - ansible.builtin.include_tasks: mikrotik/service-gre-deploy-router.yml
+    loop: '{{ google_gre_links }}'
+    loop_control:
+      loop_var: google_gre_link

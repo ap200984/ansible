@@ -28,6 +28,7 @@
 /routing table add disabled=no fib name=google_ips_table
 /system script add comment=Wake_on_lan_HP dont-require-permissions=no name=Wake_on_lan_HP owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
 /system script add comment="Google official IPv4 prefix feed; preserve last good list on download failure" dont-require-permissions=no name=get_google_ips owner=ansible policy=read,write,test source="<stored in secrets>"
+/system script add comment="Telegram official IPv4 prefixes; preserve last good list on failure" dont-require-permissions=no name=get_telegram_ips owner=ansible policy=read,write,test source="<stored in secrets>"
 /user group add name=bandwidth-test policy=test,winbox,!local,!telnet,!ssh,!ftp,!reboot,!read,!write,!policy,!password,!web,!sniff,!sensitive,!api,!romon,!rest-api
 /interface bridge port add bridge=LAN interface=ether2 internal-path-cost=10 path-cost=10
 /interface bridge port add bridge=LAN interface=ether3 internal-path-cost=10 path-cost=10
@@ -47,7 +48,43 @@
 /ip dhcp-server lease add address=10.11.0.200 client-id=1:18:60:24:ee:2b:5d comment="HP Prodesk" mac-address=18:60:24:EE:2B:5D server=dhcp1
 /ip dhcp-server lease add address=10.11.0.194 client-id=1:50:46:5d:90:1c:2 comment=MAMA mac-address=50:46:5D:90:1C:02 server=dhcp1
 /ip dhcp-server network add address=10.11.0.0/24 dns-server=10.11.0.1 gateway=10.11.0.1
-/ip dns set allow-remote-requests=yes servers=1.1.1.1,8.8.8.8 use-doh-server=https://1.1.1.1/dns-query
+/ip dns set address-list-extra-time=1d allow-remote-requests=yes servers=1.1.1.1,8.8.8.8 use-doh-server=https://1.1.1.1/dns-query
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=chatgpt.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=openai.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=oaistatic.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=oaiusercontent.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=oaistatsig.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=ct.sendgrid.net type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=intercom.io type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=intercomcdn.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=cdn.openaimerge.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=cdn.workos.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=challenges.cloudflare.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=forwarder.workos.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=frontend-apps-multi-region.workos.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=humb.apple.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=images.workoscdn.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=js.intercomcdn.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=js.stripe.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=o207216.ingest.sentry.io type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=o33249.ingest.sentry.io type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=rum.browser-intake-datadoghq.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=setup.workos.com type=FWD
+/ip dns static add address-list=chatgpt_ips comment="Service GRE DNS chatgpt_ips" match-subdomain=yes name=workos.imgix.net type=FWD
+/ip dns static add address-list=whatsapp_ips comment="Service GRE DNS whatsapp_ips" match-subdomain=yes name=whatsapp.com type=FWD
+/ip dns static add address-list=whatsapp_ips comment="Service GRE DNS whatsapp_ips" match-subdomain=yes name=whatsapp.net type=FWD
+/ip dns static add address-list=whatsapp_ips comment="Service GRE DNS whatsapp_ips" match-subdomain=yes name=wa.me type=FWD
+/ip dns static add address-list=instagram_ips comment="Service GRE DNS instagram_ips" match-subdomain=yes name=instagram.com type=FWD
+/ip dns static add address-list=instagram_ips comment="Service GRE DNS instagram_ips" match-subdomain=yes name=cdninstagram.com type=FWD
+/ip dns static add address-list=instagram_ips comment="Service GRE DNS instagram_ips" match-subdomain=yes name=ig.me type=FWD
+/ip dns static add address-list=meta_shared_ips comment="Service GRE DNS meta_shared_ips" match-subdomain=yes name=fbcdn.net type=FWD
+/ip dns static add address-list=meta_shared_ips comment="Service GRE DNS meta_shared_ips" match-subdomain=yes name=fbsbx.com type=FWD
+/ip dns static add address-list=meta_shared_ips comment="Service GRE DNS meta_shared_ips" match-subdomain=yes name=facebook.com type=FWD
+/ip dns static add address-list=meta_shared_ips comment="Service GRE DNS meta_shared_ips" match-subdomain=yes name=facebook.net type=FWD
+/ip dns static add address-list=telegram_ips comment="Service GRE DNS telegram_ips" match-subdomain=yes name=telegram.org type=FWD
+/ip dns static add address-list=telegram_ips comment="Service GRE DNS telegram_ips" match-subdomain=yes name=t.me type=FWD
+/ip dns static add address-list=telegram_ips comment="Service GRE DNS telegram_ips" match-subdomain=yes name=telegram.me type=FWD
+/ip dns static add address-list=telegram_ips comment="Service GRE DNS telegram_ips" match-subdomain=yes name=telesco.pe type=FWD
 /ip firewall address-list add address=10.250.0.0/16 comment="wg network" list=Trusted
 /ip firewall address-list add address=10.251.0.0/24 comment="sstp network" list=Trusted
 /ip firewall address-list add address=149.154.160.0/20 comment=telegram-auto list="Telegram prefixes"
@@ -207,11 +244,28 @@
 /ip firewall address-list add address=216.239.32.0/19 comment="Google feed 1791749175744" list=google_ips
 /ip firewall address-list add address=216.252.220.0/22 comment="Google feed 1791749175744" list=google_ips
 /ip firewall address-list add address=api.ipify.org comment="Google GRE IP check hostname" list=google_gre_ip_check
+/ip firewall address-list add address=core.telegram.org comment="Service GRE Telegram feed hostname" list=telegram_feed_ips
+/ip firewall address-list add address=91.108.56.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.108.4.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.108.8.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.108.16.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.108.12.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=149.154.160.0/20 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.105.192.0/23 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=91.108.20.0/22 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
+/ip firewall address-list add address=185.76.151.0/24 comment="Telegram feed 2026-10-12 02:31:43" list=telegram_ips
 /ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.21 protocol=gre src-address=10.255.0.6
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=input comment="Google GRE return input" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE IP check outbound" dst-address-list=google_gre_ip_check in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE telegram_feed_ips outbound" dst-address-list=telegram_feed_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE telegram_ips outbound" dst-address-list=telegram_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE chatgpt_ips outbound" dst-address-list=chatgpt_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE whatsapp_ips outbound" dst-address-list=whatsapp_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE instagram_ips outbound" dst-address-list=instagram_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE meta_shared_ips outbound" dst-address-list=meta_shared_ips in-interface=LAN out-interface=gre-vds6
+/ip firewall filter add action=accept chain=forward comment="Service GRE marked outbound" connection-mark=google_gre in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="OSPF trusted forward 10.255.0.0/16" src-address=10.255.0.0/16
 /ip firewall filter add action=fasttrack-connection chain=input comment="Established_Related INPUT" connection-state=established,related in-interface=ether1
 /ip firewall filter add action=fasttrack-connection chain=forward comment="Established_Related FORWARD" connection-mark=!google_gre connection-state=established,related in-interface=ether1
@@ -235,6 +289,32 @@
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Google GRE IP check routing LAN" dst-address-list=google_gre_ip_check dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-connection chain=output comment="Google GRE IP check connection router" dst-address-list=google_gre_ip_check dst-address-type=!local new-connection-mark=google_gre
 /ip firewall mangle add action=mark-routing chain=output comment="Google GRE IP check routing router" dst-address-list=google_gre_ip_check dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE telegram_feed_ips connection LAN" dst-address-list=telegram_feed_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE telegram_feed_ips routing LAN" dst-address-list=telegram_feed_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE telegram_feed_ips connection router" dst-address-list=telegram_feed_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE telegram_feed_ips routing router" dst-address-list=telegram_feed_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE telegram_ips connection LAN" dst-address-list=telegram_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE telegram_ips routing LAN" dst-address-list=telegram_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE telegram_ips connection router" dst-address-list=telegram_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE telegram_ips routing router" dst-address-list=telegram_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE chatgpt_ips connection LAN" dst-address-list=chatgpt_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE chatgpt_ips routing LAN" dst-address-list=chatgpt_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE chatgpt_ips connection router" dst-address-list=chatgpt_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE chatgpt_ips routing router" dst-address-list=chatgpt_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE whatsapp_ips connection LAN" dst-address-list=whatsapp_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE whatsapp_ips routing LAN" dst-address-list=whatsapp_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE whatsapp_ips connection router" dst-address-list=whatsapp_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE whatsapp_ips routing router" dst-address-list=whatsapp_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE instagram_ips connection LAN" dst-address-list=instagram_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE instagram_ips routing LAN" dst-address-list=instagram_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE instagram_ips connection router" dst-address-list=instagram_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE instagram_ips routing router" dst-address-list=instagram_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Service GRE meta_shared_ips connection LAN" dst-address-list=meta_shared_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE meta_shared_ips routing LAN" dst-address-list=meta_shared_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-connection chain=output comment="Service GRE meta_shared_ips connection router" dst-address-list=meta_shared_ips dst-address-type=!local new-connection-mark=google_gre
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE meta_shared_ips routing router" dst-address-list=meta_shared_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE established routing LAN" connection-mark=google_gre dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
+/ip firewall mangle add action=mark-routing chain=output comment="Service GRE established routing router" connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="google ips" dst-address-list=google_ips new-routing-mark=to_VPNs passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Telegram prefixes" dst-address-list="Telegram prefixes" new-routing-mark=to_VPNs passthrough=no
 /ip firewall mangle add action=mark-routing chain=output comment="BFD force vds8 interface" dst-address=10.250.1.8 dst-port=3784 new-routing-mark=bfd-vds8 passthrough=no protocol=udp src-address=10.250.1.21
@@ -247,6 +327,12 @@
 /ip firewall nat add action=dst-nat chain=dstnat comment=PVM/qwe9512321 disabled=yes dst-port=19080 in-interface=l2tp-to_k16_k112 protocol=tcp to-addresses=10.11.0.200 to-ports=3389
 /ip firewall nat add action=src-nat chain=srcnat comment="Google GRE source NAT" dst-address-list=google_ips out-interface=gre-vds6 to-addresses=10.250.4.13
 /ip firewall nat add action=src-nat chain=srcnat comment="Google GRE IP check source NAT" dst-address-list=google_gre_ip_check out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE telegram_feed_ips source NAT" dst-address-list=telegram_feed_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE telegram_ips source NAT" dst-address-list=telegram_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE chatgpt_ips source NAT" dst-address-list=chatgpt_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE whatsapp_ips source NAT" dst-address-list=whatsapp_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE instagram_ips source NAT" dst-address-list=instagram_ips out-interface=gre-vds6 to-addresses=10.250.4.13
+/ip firewall nat add action=src-nat chain=srcnat comment="Service GRE meta_shared_ips source NAT" dst-address-list=meta_shared_ips out-interface=gre-vds6 to-addresses=10.250.4.13
 /ip ipsec profile set [ find default=yes ] dpd-interval=2m dpd-maximum-failures=5
 /ip route add disabled=no dst-address=10.9.0.0/24 gateway=10.250.3.112 routing-table=main
 /ip route add disabled=no dst-address=10.250.0.0/16 gateway=10.251.0.7 routing-table=main
@@ -283,3 +369,4 @@ set [ find default=yes ] advertise-dns=yes
 /system identity set name=k16_21
 /system routerboard settings set auto-upgrade=yes silent-boot=yes
 /system scheduler add !days interval=1d name=get_google_ips on-event="<stored in secrets>" policy=read,write,test start-date=2025-02-08 start-time=01:00:00
+/system scheduler add !days interval=1d name=get_telegram_ips on-event="<stored in secrets>" policy=read,write,test start-date=2026-10-12 start-time=01:05:00

@@ -18,3 +18,12 @@ class TargetedResetTests(unittest.TestCase):
     def test_untrusted_identifier_cannot_be_executed(self):
         with self.assertRaises(ValueError):
             helper.stale_connections([{'address':'8.8.8.0/24'}],[{'.id':'*A; /system reboot','dst-address':'8.8.8.8:443','reply-dst-address':'1.2.3.4'}],'10.250.4.1')
+
+    def test_dns_names_are_skipped_but_dynamic_addresses_are_selected(self):
+        entries = [{'address':'chatgpt.com'}, {'address':'192.0.2.10'}, {'address':'2001:db8::1'}]
+        connections = [{'.id':'*E','dst-address':'192.0.2.10:443','reply-dst-address':'1.2.3.4'}]
+        self.assertEqual(helper.stale_connections(entries,connections,'10.250.4.1'), ['*E'])
+
+    def test_missing_nat_details_prevents_reset(self):
+        with self.assertRaises(ValueError):
+            helper.stale_connections([{'address':'8.8.8.0/24'}],[{'.id':'*A','dst-address':'8.8.8.8:443','srcnat':True}],'10.250.4.1')

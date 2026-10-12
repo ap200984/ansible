@@ -198,3 +198,8 @@ IPv4 traffic marked into `google_ips_table`; they do not participate in OSPF.
 Scripts refresh `google_ips` daily from Google's official prefix feed. Router
 GRE source NAT and VDS6 WAN NAT provide symmetric Internet return paths.
 See [GRE deployment and recovery](../../docs/google-gre.md).
+
+Additional GRE policies deployed on 2026-10-12: Telegram official IPv4 feed
+and DNS-learned Telegram web, ChatGPT, WhatsApp, Instagram and shared Meta
+addresses use the same four tunnels, routing table and VDS6 egress. See
+[service deployment](../../service-gre.yml) and [policy details](../../docs/google-gre.md).

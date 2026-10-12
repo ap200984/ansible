@@ -1,0 +1,33 @@
+:local response [/tool fetch url="{{ telegram_gre_feed }}" check-certificate=yes duration=60s idle-timeout=15s output=user as-value];
+:if (($response->"status") != "finished") do={:error "Telegram prefix download failed"};
+:local data ($response->"data");
+:local prefixes [:toarray ""];
+:local start 0;
+:while ($start < [:len $data]) do={
+    :local end [:find $data "\n" $start];
+    :if ([:typeof $end] = "nil") do={:set end [:len $data]};
+    :local prefix [:pick $data $start $end];
+    :set start ($end + 1);
+    :if ([:pick $prefix ([:len $prefix] - 1)] = "\r") do={:set prefix [:pick $prefix 0 ([:len $prefix] - 1)]};
+    :if ([:len $prefix] > 0) do={
+        :if ([:typeof [:find $prefix ":"]] = "nil") do={
+            :if (!($prefix ~ "^[0-9.]+/[0-9]+\$")) do={:error "Invalid Telegram IPv4 prefix"};
+            :local slash [:find $prefix "/"];
+            :local addr [:toip [:pick $prefix 0 $slash]];
+            :local mask [:tonum [:pick $prefix ($slash + 1)]];
+            :if (([:typeof $addr] != "ip") || ($mask < 0) || ($mask > 32)) do={:error "Invalid Telegram IPv4 network"};
+            :set prefixes ($prefixes,$prefix);
+        };
+    };
+};
+:if ([:len $prefixes] < 5) do={:error "Incomplete Telegram prefix feed; retaining previous list"};
+:local generation ("Telegram feed " . [/system clock get date] . " " . [/system clock get time]);
+:foreach prefix in=$prefixes do={
+    :local existing [/ip firewall address-list find where list="telegram_ips" and address=$prefix];
+    :if ([:len $existing] = 0) do={
+        /ip firewall address-list add list=telegram_ips address=$prefix comment=$generation;
+    } else={/ip firewall address-list set $existing comment=$generation};
+};
+/ip firewall address-list remove [find where list="telegram_ips" and dynamic=no and comment!=$generation];
+:log info ("Telegram IPv4 prefixes updated: " . [:len $prefixes]);
+:put ("TELEGRAM_PREFIXES " . [:len $prefixes]);
