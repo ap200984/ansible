@@ -53,3 +53,6 @@ else={ {{ record.path }} set $r{{ loop.index }} {{ record['values'] }}};
 {% endif %}
 {% endfor %}
 :put "GOOGLE_GRE_POLICY_READY";
+{% if google_gre_link.identity == 'Misha' and misha_vds8_host_enabled | default(false) | bool %}
+{{ lookup('template', 'mikrotik/templates/misha-vds8-host.rsc.j2') }}
+{% endif %}

@@ -17,3 +17,6 @@ google_gre_address: 10.250.4.17/30
 google_gre_gateway: 10.250.4.18
 
 service_gre_enabled: true
+
+# Source-only policy for 192.168.0.190 through VDS8.
+misha_vds8_host_enabled: true

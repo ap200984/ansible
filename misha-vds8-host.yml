@@ -1,0 +1,51 @@
+- name: Prepare VDS8 internet egress for Misha's host
+  hosts: vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: roles/misha-vds8/tasks/main.yml
+- name: Route all IPv4 traffic from Misha's 192.168.0.190 through VDS8
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/all/main.yml
+    - mikrotik/host_vars/Misha.yml
+  tasks:
+    - name: Apply the source-only host policy before service policies
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -F
+          - /dev/null
+          - -i
+          - '{{ router_ssh_key | expanduser }}'
+          - -p
+          - '{{ router_port | string }}'
+          - -o
+          - BatchMode=yes
+          - -o
+          - StrictHostKeyChecking=yes
+          - -o
+          - UserKnownHostsFile={{ router_known_hosts_file }}
+          - -o
+          - ProxyCommand={{ router_proxy_command | default("none") }}
+          - '{{ router_user }}@{{ router_host }}'
+          - '{{ lookup("template", "mikrotik/templates/misha-vds8-host.rsc.j2").splitlines() | join(" ") }}'
+      register: misha_vds8_policy
+      failed_when: misha_vds8_policy.rc != 0 or 'MISHA_VDS8_HOST_READY' not in misha_vds8_policy.stdout or 'failure:' in misha_vds8_policy.stdout or 'syntax error' in misha_vds8_policy.stdout
+    - name: Reset only host sessions retaining a different NAT path
+      ansible.builtin.command:
+        argv: '{{ misha_vds8_policy.cmd[:-1] + [misha_vds8_reset_command.splitlines() | join(" ")] }}'
+      vars:
+        misha_vds8_reset_command: >-
+          :local removed 0;
+          :foreach c in=[/ip firewall connection print detail as-value where src-address~"^192[.]168[.]0[.]190(:|\$)"] do={
+            :if (!(([:tostr ($c->"reply-dst-address")]) ~ "^10[.]255[.]2[.]24(:|\$)")) do={
+              /ip firewall connection remove ($c->".id"); :set removed ($removed + 1);
+            };
+          };
+          :put ("MISHA_HOST_RESET " . $removed);
+      register: misha_vds8_reset
+      changed_when: "'MISHA_HOST_RESET 0' not in misha_vds8_reset.stdout"
+      failed_when: misha_vds8_reset.rc != 0 or 'MISHA_HOST_RESET ' not in misha_vds8_reset.stdout

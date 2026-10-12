@@ -1,0 +1,12 @@
+[Unit]
+Description=Misha host internet egress through VDS8
+Wants=network-online.target
+After=network-online.target netfilter-persistent.service ospf-firewall.service awg-quick@wg4.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/misha-vds8-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

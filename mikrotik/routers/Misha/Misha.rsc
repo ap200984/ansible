@@ -33,6 +33,7 @@
 /routing table add fib name=bfd-vds1
 /routing table add fib name=bfd-vds8
 /routing table add disabled=no fib name=google_ips_table
+/routing table add fib name=misha_vds8
 /system script add dont-require-permissions=no name=ISP1_add_gw owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
 /system script add dont-require-permissions=no name=ISP2_add_gw owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
 /system script add dont-require-permissions=no name=ISPs_check owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="<stored in secrets>"
@@ -92,7 +93,7 @@
 /interface list member add interface=*D list=LAN_ALL
 /interface list member add interface=LAN list=LAN_ALL
 /interface ovpn-server server add auth=sha1,md5 mac-address=FE:D1:0E:18:CE:DD name=ovpn-server1
-/interface wireguard peers add allowed-address=10.0.0.0/8,224.0.0.5/32 endpoint-address=172.31.72.6 endpoint-port=51820 interface=wg_vds8 name=wg_to_vds8 public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
+/interface wireguard peers add allowed-address=0.0.0.0/0,224.0.0.5/32 endpoint-address=172.31.72.6 endpoint-port=51820 interface=wg_vds8 name=wg_to_vds8 public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
 /interface wireguard peers add allowed-address=10.0.0.0/8,224.0.0.5/32 endpoint-address=172.31.72.2 endpoint-port=51820 interface=wg_vds1 name=wg_to_vds1 public-key="v2z1skxkx4HI6BCbrbxscOZpvHEGak1AkSpWrHe3+jQ="
 /interface wireless access-list add comment="\D0\A0\D0\B5\D0\BF\D0\B8\D1\82\D0\B5\D1\80 TP-Link" interface=wlan2 mac-address=3A:68:95:25:A7:3D
 /ip address add address=192.168.0.1/24 interface=LAN network=192.168.0.0
@@ -575,6 +576,8 @@ add comment=ISP2_dhcp_client default-route-tables=main interface=ether5 name=eth
 /ip firewall address-list add address=31.13.84.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall address-list add address=66.220.152.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall address-list add address=163.70.151.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
+/ip firewall filter add action=accept chain=forward comment="Misha host VDS8 outbound" out-interface=wg_vds8 src-address=192.168.0.190
+/ip firewall filter add action=accept chain=forward comment="Misha host VDS8 return" connection-state=established,related dst-address=192.168.0.190 in-interface=wg_vds8
 /ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.24 protocol=gre src-address=10.255.0.6
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
@@ -615,6 +618,9 @@ add comment=ISP2_dhcp_client default-route-tables=main interface=ether5 name=eth
 /ip firewall filter add action=accept chain=forward comment="Shared tunnel networks forward" src-address-list=tunnels_networks
 /ip firewall filter add action=drop chain=forward
 /ip firewall filter add action=accept chain=input src-address=10.250.3.112
+/ip firewall mangle add action=mark-connection chain=prerouting comment="Misha host VDS8 connection" new-connection-mark=misha_vds8 src-address=192.168.0.190
+/ip firewall mangle add action=mark-routing chain=prerouting comment="Misha host VDS8 routing" new-routing-mark=misha_vds8 passthrough=no src-address=192.168.0.190
+/ip firewall mangle add action=change-mss chain=forward comment="Misha host VDS8 MSS" connection-mark=misha_vds8 new-mss=clamp-to-pmtu out-interface=wg_vds8 protocol=tcp tcp-flags=syn
 /ip firewall mangle add action=mark-connection chain=prerouting comment="Google GRE connection LAN" dst-address-list=google_ips dst-address-type=!local in-interface=LAN new-connection-mark=google_gre
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Google GRE routing LAN" dst-address-list=google_ips dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-connection chain=output comment="Google GRE connection router" dst-address-list=google_ips dst-address-type=!local new-connection-mark=google_gre
@@ -661,10 +667,11 @@ add comment=ISP2_dhcp_client default-route-tables=main interface=ether5 name=eth
 /ip firewall mangle add action=mark-routing chain=output comment="Service GRE meta_feed_ips routing router" dst-address-list=meta_feed_ips dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=prerouting comment="Service GRE established routing LAN" connection-mark=google_gre dst-address-type=!local in-interface=LAN new-routing-mark=google_ips_table passthrough=no
 /ip firewall mangle add action=mark-routing chain=output comment="Service GRE established routing router" connection-mark=google_gre dst-address-type=!local new-routing-mark=google_ips_table passthrough=no
-/ip firewall mangle add action=mark-routing chain=prerouting comment="to_SSTP_to_VDS7 (TV only)" dst-address-list=google_ips new-routing-mark=SSTP_to_VDS7 passthrough=no src-address=192.168.0.190
+/ip firewall mangle add action=mark-routing chain=prerouting comment="to_SSTP_to_VDS7 (TV only)" disabled=yes dst-address-list=google_ips new-routing-mark=SSTP_to_VDS7 passthrough=no src-address=192.168.0.190
 /ip firewall mangle add action=mark-routing chain=prerouting comment="VPN through ISP2 prefered route" dst-port=22,5228 new-routing-mark=OUT_ISP2 passthrough=no protocol=tcp
 /ip firewall mangle add action=mark-routing chain=output comment="BFD force vds1 interface" dst-address=10.255.2.1 dst-port=3784 new-routing-mark=bfd-vds1 passthrough=no protocol=udp src-address=10.255.2.24
 /ip firewall mangle add action=mark-routing chain=output comment="BFD force vds8 interface" dst-address=10.255.2.8 dst-port=3784 new-routing-mark=bfd-vds8 passthrough=no protocol=udp src-address=10.255.2.24
+/ip firewall nat add action=src-nat chain=srcnat comment="Misha host VDS8 source NAT" out-interface=wg_vds8 src-address=192.168.0.190 to-addresses=10.255.2.24
 /ip firewall nat add action=accept chain=srcnat comment="Internal 10/8 no source NAT" dst-address=10.0.0.0/8 src-address=10.0.0.0/8
 /ip firewall nat add action=accept chain=srcnat comment="OSPF routed networks no NAT" dst-address-list=ospf-routed-networks src-address-list=ospf-routed-networks
 /ip firewall nat add action=accept chain=srcnat comment="OSPF protocol no NAT" protocol=ospf
@@ -704,6 +711,9 @@ add comment=ISP2_dhcp_client default-route-tables=main interface=ether5 name=eth
 /ip route add comment="BFD peer interface" dst-address=10.255.2.8/32 gateway=wg_vds8 routing-table=bfd-vds8 scope=10
 /ip route add check-gateway=ping comment="Google GRE default" disabled=no distance=1 dst-address=0.0.0.0/0 gateway=10.250.4.18%gre-vds6 routing-table=google_ips_table
 /ip route add blackhole comment="Google GRE unavailable" disabled=no distance=254 dst-address=0.0.0.0/0 routing-table=google_ips_table
+/ip route add comment="Misha host VDS8 loopback" disabled=no distance=1 dst-address=10.255.0.8/32 gateway=wg_vds8 routing-table=main scope=10
+/ip route add check-gateway=ping comment="Misha host VDS8 default" disabled=no distance=1 dst-address=0.0.0.0/0 gateway=10.255.0.8@main routing-table=misha_vds8 target-scope=11
+/ip route add blackhole comment="Misha host VDS8 unavailable" disabled=no distance=254 dst-address=0.0.0.0/0 routing-table=misha_vds8
 /ip service set ftp disabled=yes
 /ip service set www port=1955
 /ip service set api disabled=yes

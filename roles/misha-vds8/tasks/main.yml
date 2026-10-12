@@ -1,0 +1,21 @@
+- name: Install Misha VDS8 forwarding and WAN NAT helper
+  ansible.builtin.copy:
+    src: '{{ playbook_dir }}/roles/misha-vds8/files/firewall.sh'
+    dest: /usr/local/sbin/misha-vds8-firewall
+    mode: '0755'
+- name: Install persistent Misha VDS8 firewall service
+  ansible.builtin.template:
+    src: '{{ playbook_dir }}/roles/misha-vds8/templates/firewall.service.j2'
+    dest: /etc/systemd/system/misha-vds8-firewall.service
+    mode: '0644'
+- name: Enable Misha VDS8 internet forwarding
+  ansible.builtin.systemd_service:
+    name: misha-vds8-firewall
+    daemon_reload: true
+    enabled: true
+    state: restarted
+- name: Verify Linux IPv4 forwarding is enabled
+  ansible.builtin.command: cat /proc/sys/net/ipv4/ip_forward
+  register: misha_vds8_forwarding
+  changed_when: false
+  failed_when: misha_vds8_forwarding.stdout != '1'

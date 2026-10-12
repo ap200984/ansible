@@ -254,6 +254,13 @@ routeros_records:
   selector:
     name: google_ips_table
   create: true
+- path: /routing table
+  values:
+    fib: 'yes'
+    name: misha_vds8
+  selector:
+    name: misha_vds8
+  create: true
 - path: /system script
   values:
     dont-require-permissions: 'no'
@@ -798,7 +805,7 @@ routeros_records:
   create: true
 - path: /interface wireguard peers
   values:
-    allowed-address: 10.0.0.0/8,224.0.0.5/32
+    allowed-address: 0.0.0.0/0,224.0.0.5/32
     endpoint-address: 172.31.72.6
     endpoint-port: '51820'
     interface: wg_vds8
@@ -5221,6 +5228,36 @@ routeros_records:
 - path: /ip firewall filter
   values:
     action: accept
+    chain: forward
+    comment: Misha host VDS8 outbound
+    out-interface: wg_vds8
+    src-address: 192.168.0.190
+  selector:
+    action: accept
+    chain: forward
+    comment: Misha host VDS8 outbound
+    out-interface: wg_vds8
+    src-address: 192.168.0.190
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
+    chain: forward
+    comment: Misha host VDS8 return
+    connection-state: established,related
+    dst-address: 192.168.0.190
+    in-interface: wg_vds8
+  selector:
+    action: accept
+    chain: forward
+    comment: Misha host VDS8 return
+    connection-state: established,related
+    dst-address: 192.168.0.190
+    in-interface: wg_vds8
+  create: true
+- path: /ip firewall filter
+  values:
+    action: accept
     chain: input
     comment: Google GRE outer input
     dst-address: 10.255.0.24
@@ -5634,7 +5671,7 @@ routeros_records:
     chain: forward
     connection-state: established,related
   create: true
-  occurrence: 1
+  occurrence: 2
 - path: /ip firewall filter
   values:
     action: accept
@@ -5771,6 +5808,56 @@ routeros_records:
   values:
     action: mark-connection
     chain: prerouting
+    comment: Misha host VDS8 connection
+    new-connection-mark: misha_vds8
+    src-address: 192.168.0.190
+  selector:
+    action: mark-connection
+    chain: prerouting
+    comment: Misha host VDS8 connection
+    new-connection-mark: misha_vds8
+    src-address: 192.168.0.190
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-routing
+    chain: prerouting
+    comment: Misha host VDS8 routing
+    new-routing-mark: misha_vds8
+    passthrough: 'no'
+    src-address: 192.168.0.190
+  selector:
+    action: mark-routing
+    chain: prerouting
+    comment: Misha host VDS8 routing
+    new-routing-mark: misha_vds8
+    passthrough: 'no'
+    src-address: 192.168.0.190
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: change-mss
+    chain: forward
+    comment: Misha host VDS8 MSS
+    connection-mark: misha_vds8
+    new-mss: clamp-to-pmtu
+    out-interface: wg_vds8
+    protocol: tcp
+    tcp-flags: syn
+  selector:
+    action: change-mss
+    chain: forward
+    comment: Misha host VDS8 MSS
+    connection-mark: misha_vds8
+    new-mss: clamp-to-pmtu
+    out-interface: wg_vds8
+    protocol: tcp
+    tcp-flags: syn
+  create: true
+- path: /ip firewall mangle
+  values:
+    action: mark-connection
+    chain: prerouting
     comment: Google GRE connection LAN
     dst-address-list: google_ips
     dst-address-type: '!local'
@@ -6602,6 +6689,7 @@ routeros_records:
     action: mark-routing
     chain: prerouting
     comment: to_SSTP_to_VDS7 (TV only)
+    disabled: 'yes'
     dst-address-list: google_ips
     new-routing-mark: SSTP_to_VDS7
     passthrough: 'no'
@@ -6676,6 +6764,22 @@ routeros_records:
     passthrough: 'no'
     protocol: udp
     src-address: 10.255.2.24
+  create: true
+- path: /ip firewall nat
+  values:
+    action: src-nat
+    chain: srcnat
+    comment: Misha host VDS8 source NAT
+    out-interface: wg_vds8
+    src-address: 192.168.0.190
+    to-addresses: 10.255.2.24
+  selector:
+    action: src-nat
+    chain: srcnat
+    comment: Misha host VDS8 source NAT
+    out-interface: wg_vds8
+    src-address: 192.168.0.190
+    to-addresses: 10.255.2.24
   create: true
 - path: /ip firewall nat
   values:
@@ -7207,6 +7311,50 @@ routeros_records:
   selector:
     dst-address: 0.0.0.0/0
     routing-table: google_ips_table
+    distance: '254'
+  create: true
+- path: /ip route
+  values:
+    comment: Misha host VDS8 loopback
+    disabled: 'no'
+    distance: '1'
+    dst-address: 10.255.0.8/32
+    gateway: wg_vds8
+    routing-table: main
+    scope: '10'
+  selector:
+    dst-address: 10.255.0.8/32
+    routing-table: main
+    gateway: wg_vds8
+    distance: '1'
+  create: true
+- path: /ip route
+  values:
+    check-gateway: ping
+    comment: Misha host VDS8 default
+    disabled: 'no'
+    distance: '1'
+    dst-address: 0.0.0.0/0
+    gateway: 10.255.0.8@main
+    routing-table: misha_vds8
+    target-scope: '11'
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: misha_vds8
+    gateway: 10.255.0.8@main
+    distance: '1'
+  create: true
+- path: /ip route
+  values:
+    blackhole: 'yes'
+    comment: Misha host VDS8 unavailable
+    disabled: 'no'
+    distance: '254'
+    dst-address: 0.0.0.0/0
+    routing-table: misha_vds8
+  selector:
+    dst-address: 0.0.0.0/0
+    routing-table: misha_vds8
     distance: '254'
   create: true
 - path: /ip service

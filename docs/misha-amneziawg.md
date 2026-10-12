@@ -69,3 +69,7 @@ hello to initiate the new handshake.
 Six pre-existing orphaned bridge/interface/table records are omitted from the
 desired YAML because their deleted object IDs cannot be restored on a new
 router. The public raw export and encrypted sensitive export retain them.
+
+Misha's `192.168.0.190/32` now has a source-only internet policy through the
+VDS8 link, overriding service address-list routing. See
+[host VDS8 egress](misha-vds8-host.md) for deployment, restoration and validation.

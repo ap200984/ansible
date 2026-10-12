@@ -63,6 +63,7 @@ ospf_restore_manifest: vars/ospf-restore/vds8.vault.yml
 ospf_firewall_services:
 - ospf-firewall
 - chr-native-awg-firewall
+- misha-vds8-firewall
 ospf_tunnel_services:
 - wg-quick@wg0
 - awg-quick@wg1
@@ -78,3 +79,6 @@ ospf_direct_neighbors: [10.250.1.64, 10.250.1.21, 10.250.1.7]
 
 # Misha is behind CGNAT; its dedicated authenticated AWG port accepts roaming endpoints.
 misha_amneziawg_enabled: true
+
+# Source-only policy for 192.168.0.190 through VDS8.
+misha_vds8_host_enabled: true

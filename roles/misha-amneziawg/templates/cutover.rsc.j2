@@ -1,5 +1,5 @@
 /interface wireguard set [find where name="wg_vds{{ misha_awg_number }}"] mtu=1340;
-/interface wireguard peers set [find where name="wg_to_vds{{ misha_awg_number }}"] endpoint-address={{ misha_awg_container }} endpoint-port=51820 allowed-address=10.0.0.0/8,224.0.0.5/32 persistent-keepalive=5;
+/interface wireguard peers set [find where name="wg_to_vds{{ misha_awg_number }}"] endpoint-address={{ misha_awg_container }} endpoint-port=51820 allowed-address={{ "0.0.0.0/0" if misha_awg_number | int == 8 and misha_vds8_host_enabled | default(false) | bool else "10.0.0.0/8" }},224.0.0.5/32 persistent-keepalive=5;
 /ip address set [find where interface="wg_vds{{ misha_awg_number }}"] address=10.255.2.24/32 network=10.255.2.{{ misha_awg_number }};
 /routing ospf interface-template set [find where comment="OSPF existing wg_vds{{ misha_awg_number }}"] type=ptp use-bfd=yes cost={{ ospf_wireguard_costs[inventory_hostname] }} !networks !passive;
 /routing ospf static-neighbor set [find where address="10.250.1.{{ misha_awg_number }}%wg_vds{{ misha_awg_number }}" or address="10.255.2.{{ misha_awg_number }}%wg_vds{{ misha_awg_number }}"] address=10.255.2.{{ misha_awg_number }}%wg_vds{{ misha_awg_number }};

@@ -20,6 +20,9 @@
     - ansible.builtin.command: /usr/local/sbin/restrict-source-nat
       register: source_nat
       changed_when: source_nat.stdout | length > 0
+    - name: Restore Misha host VDS8 internet forwarding
+      ansible.builtin.include_tasks: roles/misha-vds8/tasks/main.yml
+      when: misha_vds8_host_enabled | default(false) | bool
     - name: Apply container source NAT overrides before saving
       ansible.builtin.include_tasks: roles/iptables/tasks/container-snat.yml
     - ansible.builtin.file:

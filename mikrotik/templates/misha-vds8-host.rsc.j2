@@ -1,0 +1,29 @@
+:local table [/routing table find where name="misha_vds8"];
+:if ([:len $table] = 0) do={/routing table add name=misha_vds8 fib};
+/interface wireguard peers set [find where name="wg_to_vds8"] allowed-address=0.0.0.0/0,224.0.0.5/32;
+{% set records = [
+ {'path':'/ip route','comment':'Misha host VDS8 loopback','values':'dst-address=10.255.0.8/32 gateway=wg_vds8 routing-table=main distance=1 scope=10 disabled=no'},
+ {'path':'/ip route','comment':'Misha host VDS8 default','values':'dst-address=0.0.0.0/0 gateway=10.255.0.8@main routing-table=misha_vds8 target-scope=11 check-gateway=ping distance=1 disabled=no'},
+ {'path':'/ip route','comment':'Misha host VDS8 unavailable','values':'blackhole dst-address=0.0.0.0/0 routing-table=misha_vds8 distance=254 disabled=no'},
+ {'path':'/ip firewall mangle','comment':'Misha host VDS8 connection','values':'chain=prerouting src-address=192.168.0.190/32 action=mark-connection new-connection-mark=misha_vds8 passthrough=yes disabled=no'},
+ {'path':'/ip firewall mangle','comment':'Misha host VDS8 routing','values':'chain=prerouting src-address=192.168.0.190/32 action=mark-routing new-routing-mark=misha_vds8 passthrough=no disabled=no'},
+ {'path':'/ip firewall mangle','comment':'Misha host VDS8 MSS','values':'chain=forward out-interface=wg_vds8 connection-mark=misha_vds8 protocol=tcp tcp-flags=syn action=change-mss new-mss=clamp-to-pmtu passthrough=yes disabled=no'},
+ {'path':'/ip firewall filter','comment':'Misha host VDS8 outbound','values':'chain=forward src-address=192.168.0.190/32 out-interface=wg_vds8 action=accept disabled=no'},
+ {'path':'/ip firewall filter','comment':'Misha host VDS8 return','values':'chain=forward dst-address=192.168.0.190/32 in-interface=wg_vds8 connection-state=established,related action=accept disabled=no'},
+ {'path':'/ip firewall nat','comment':'Misha host VDS8 source NAT','values':'chain=srcnat src-address=192.168.0.190/32 out-interface=wg_vds8 action=src-nat to-addresses=10.255.2.24 disabled=no'}
+] %}
+{% for record in records %}
+:local h{{ loop.index }} [{{ record.path }} find where comment="{{ record.comment }}"];
+:if ([:len $h{{ loop.index }}] > 1) do={:error "Duplicate Misha host rule"};
+:if ([:len $h{{ loop.index }}] = 0) do={ {{ record.path }} add comment="{{ record.comment }}" {{ record['values'] }}}
+else={ {{ record.path }} set $h{{ loop.index }} {{ record['values'] }}};
+{% endfor %}
+{% for record in records | reverse %}
+{% if record.path in ['/ip firewall mangle', '/ip firewall filter', '/ip firewall nat'] %}
+:local firstHost{{ loop.index }} [:pick [{{ record.path }} find where dynamic=no] 0];
+:local hostRule{{ loop.index }} [{{ record.path }} find where comment="{{ record.comment }}"];
+:if ($firstHost{{ loop.index }} != [:pick $hostRule{{ loop.index }} 0]) do={ {{ record.path }} move $hostRule{{ loop.index }} destination=$firstHost{{ loop.index }} };
+{% endif %}
+{% endfor %}
+/ip firewall mangle disable [find where comment="to_SSTP_to_VDS7 (TV only)"];
+:put "MISHA_VDS8_HOST_READY";
