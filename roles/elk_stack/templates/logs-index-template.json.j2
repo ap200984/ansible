@@ -1,0 +1,25 @@
+{
+  "index_patterns": ["linux-logs-*", "mikrotik-logs-*"],
+  "priority": 200,
+  "composed_of": [],
+  "template": {
+    "settings": {"index": {"number_of_shards": "1", "number_of_replicas": "0"}},
+    "mappings": {
+      "dynamic_templates": [
+        {"strings": {"match_mapping_type": "string", "mapping": {"type": "keyword", "ignore_above": 1024}}}
+      ],
+      "properties": {
+        "@timestamp": {"type": "date"},
+        "message": {"type": "text"},
+        "event": {"properties": {
+          "original": {"type": "keyword", "index": false, "doc_values": false},
+          "severity": {"type": "long"}
+        }},
+        "host": {"properties": {"ip": {"type": "ip"}}},
+        "source": {"properties": {"ip": {"type": "ip"}, "port": {"type": "long"}, "bytes": {"type": "long"}}},
+        "destination": {"properties": {"ip": {"type": "ip"}, "port": {"type": "long"}, "bytes": {"type": "long"}}},
+        "process": {"properties": {"pid": {"type": "long"}}}
+      }
+    }
+  }
+}

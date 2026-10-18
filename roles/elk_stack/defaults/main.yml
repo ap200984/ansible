@@ -8,6 +8,12 @@ elk_kibana_image: "docker.elastic.co/kibana/kibana:{{ elk_version }}"
 elk_elasticsearch_port: 9200
 elk_kibana_port: 5601
 elk_beats_port: 5044
+elk_log_bind_address: "{{ ansible_host | default('10.9.0.90') }}"
+elk_linux_logs_port: 10514
+elk_mikrotik_logs_port: 5514
+elk_linux_log_timezone: UTC
+elk_mikrotik_log_timezone: Europe/Moscow
+elk_logstash_queue_max_bytes: 1gb
 elk_elasticsearch_memory: 2g
 elk_logstash_memory: 1g
 elk_kibana_memory: 1g

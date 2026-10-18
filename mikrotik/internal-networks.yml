@@ -1,0 +1,31 @@
+---
+- name: Permit routed interior traffic and advertise owned GRE endpoints
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+    - ../vars/google-gre.yml
+  vars:
+    mikrotik_internal_prefixes: '{{ internal_routed_networks | default(tunnel_networks + ["10.251.0.0/24", "10.11.0.0/16"]) | unique | list }}'
+    mikrotik_internal_list: internal_routed_networks
+  tasks:
+    - name: Discover all managed router connection settings
+      ansible.builtin.set_fact:
+        mikrotik_internal_variable_files: '{{ lookup("fileglob", playbook_dir + "/host_vars/*.yml", wantlist=True) | sort }}'
+
+    - name: Require interior prefixes and managed router settings
+      ansible.builtin.assert:
+        that:
+          - mikrotik_internal_variable_files | length > 0
+          - mikrotik_internal_prefixes | length > 0
+
+    - name: Configure each managed router
+      ansible.builtin.include_tasks: internal-networks-router.yml
+      loop: '{{ mikrotik_internal_variable_files }}'
+      loop_control:
+        loop_var: mikrotik_internal_variable_file
+        label: '{{ mikrotik_internal_variable_file | basename | splitext | first }}'
+      when: >-
+        internal_networks_routers is not defined or
+        (mikrotik_internal_variable_file | basename | splitext | first) in internal_networks_routers

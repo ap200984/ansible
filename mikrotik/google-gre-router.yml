@@ -92,6 +92,19 @@
         disabled: 'no'
         network: '{{ google_gre_link.subnet.split("/")[0] }}'
         comment: GRE to VDS6
+    - path: /ip route
+      selector:
+        comment: Internal GRE direct peer
+      create: true
+      values:
+        comment: Internal GRE direct peer
+        routing-table: main
+        dst-address: '{{ google_gre_link.server_address }}/32'
+        gateway: gre-vds6
+        distance: '1'
+        scope: '10'
+        target-scope: '10'
+        disabled: 'no'
     - path: /routing table
       selector:
         name: google_ips_table

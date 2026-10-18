@@ -1,0 +1,102 @@
+---
+- name: Exercise the production Logstash parser with isolated TCP fixtures
+  hosts: elk
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../../roles/elk_stack/defaults/main.yml
+  tasks:
+    - name: Create a temporary fixture directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: ansible-logstash-fixtures-
+      register: logging_fixture_directory
+
+    - name: Run isolated parser fixtures
+      block:
+        - name: Permit the Logstash container user to write generated fixture results
+          ansible.builtin.file:
+            path: "{{ logging_fixture_directory.path }}"
+            state: directory
+            mode: "0777"
+
+        - name: Render the actual pipeline with an isolated JSON output
+          ansible.builtin.copy:
+            dest: "{{ logging_fixture_directory.path }}/logstash.conf"
+            mode: "0644"
+            content: >-
+              {{ lookup('ansible.builtin.template', '../../roles/elk_stack/templates/logstash.conf.j2')
+              | regex_replace('(?s)\noutput \{.*$', '\nfilter { mutate { copy => { "[@metadata][target_index]" => "fixture_target_index" } } }\noutput { file { path => "/fixtures/events.jsonl" codec => json_lines flush_interval => 0 } }\n') }}
+
+        - name: Copy fixture sender and assertions
+          ansible.builtin.copy:
+            src: run_fixtures.py
+            dest: "{{ logging_fixture_directory.path }}/run_fixtures.py"
+            mode: "0644"
+
+        - name: Start a separate Logstash without published ports or Elasticsearch access
+          community.docker.docker_container:
+            name: "{{ logging_fixture_directory.path | basename }}"
+            image: "{{ elk_logstash_image }}"
+            pull: never
+            state: started
+            network_mode: none
+            hostname: localhost
+            memory: 768m
+            env:
+              LS_JAVA_OPTS: -Xms128m -Xmx256m
+              XPACK_MONITORING_ENABLED: "false"
+            command:
+              - logstash
+              - --path.data
+              - /tmp/fixture-data
+              - --pipeline.workers
+              - "1"
+              - --log.level
+              - error
+              - -f
+              - /fixtures/logstash.conf
+            volumes:
+              - "{{ logging_fixture_directory.path }}:/fixtures:rw"
+
+        - name: Send Linux JSON and multi-event RouterOS CEF TCP streams and verify parsed documents
+          ansible.builtin.command:
+            argv:
+              - python3
+              - "{{ logging_fixture_directory.path }}/run_fixtures.py"
+              - "{{ logging_fixture_directory.path | basename }}"
+              - "{{ logging_fixture_directory.path }}/events.jsonl"
+          register: logging_fixture_result
+          changed_when: false
+
+        - name: Report fixture coverage
+          ansible.builtin.debug:
+            var: logging_fixture_result.stdout_lines
+
+      rescue:
+        - name: Collect isolated Logstash diagnostics
+          ansible.builtin.command:
+            argv: [docker, logs, "{{ logging_fixture_directory.path | basename }}"]
+          register: logging_fixture_diagnostics
+          changed_when: false
+          failed_when: false
+
+        - name: Show fixture diagnostics
+          ansible.builtin.debug:
+            var: logging_fixture_diagnostics.stdout_lines
+
+        - name: Fail the fixture run
+          ansible.builtin.fail:
+            msg: "Isolated Logstash fixtures failed; see parser diagnostics and assertion output above."
+
+      always:
+        - name: Remove the isolated fixture container
+          community.docker.docker_container:
+            name: "{{ logging_fixture_directory.path | basename }}"
+            state: absent
+            force_kill: true
+
+        - name: Remove temporary generated fixture data
+          ansible.builtin.file:
+            path: "{{ logging_fixture_directory.path }}"
+            state: absent

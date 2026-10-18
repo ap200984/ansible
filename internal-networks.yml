@@ -1,0 +1,197 @@
+---
+- name: Reconcile routed transport addresses on the existing AWG mesh
+  hosts: vds1:vds5:vds8
+  become: true
+  gather_facts: false
+  tags: [internal_awg]
+  tasks:
+    - name: Read the existing public mesh routing configuration
+      ansible.builtin.slurp:
+        src: /etc/amnezia/amneziawg/routing.json
+      register: internal_awg_routing
+      no_log: true
+
+    - name: Require the expected managed AWG interface
+      ansible.builtin.assert:
+        that:
+          - (internal_awg_routing.content | b64decode | from_json).interface == amneziawg_interface
+          - (internal_awg_routing.content | b64decode | from_json).peers | length > 0
+
+    - name: Install the transport ownership reconciler
+      ansible.builtin.copy:
+        src: roles/amneziawg/files/route-peers.py
+        dest: /usr/local/sbin/amneziawg-route-peers
+        owner: root
+        group: root
+        mode: '0755'
+      register: internal_awg_helper
+
+    - name: Add transport source aliases while preserving existing mesh peers
+      ansible.builtin.copy:
+        content: >-
+          {{ (internal_awg_routing.content | b64decode | from_json)
+             | combine({'source_aliases': amneziawg_source_aliases,
+                        'fixed': ((internal_awg_routing.content | b64decode | from_json).fixed | default({}))
+                          | combine(amneziawg_connected_leaf_owners.get(inventory_hostname, {}),
+                                    recursive=true, list_merge='append_rp')}) | to_nice_json }}
+        dest: /etc/amnezia/amneziawg/routing.json
+        owner: root
+        group: root
+        mode: '0600'
+      register: internal_awg_aliases
+
+    - name: Reload only the AWG route permission manager
+      ansible.builtin.systemd_service:
+        name: amneziawg-routing
+        enabled: true
+        state: '{{ "restarted" if internal_awg_helper.changed or internal_awg_aliases.changed else "started" }}'
+      when: not ansible_check_mode
+
+    - name: Reconcile permissions once before testing routed traffic
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/amneziawg-route-peers, --once]
+      register: internal_awg_reconcile
+      changed_when: "'AWG_ALLOWED_IPS_UPDATED' in internal_awg_reconcile.stdout"
+      when: not ansible_check_mode
+
+- name: Align shared ordinary WireGuard peer permissions with OSPF
+  hosts: vds1:vds8
+  become: true
+  gather_facts: false
+  tags: [internal_wireguard]
+  tasks:
+    - name: Install the ordinary WireGuard route permission manager
+      ansible.builtin.include_role:
+        name: wireguard
+        tasks_from: route-permissions.yml
+        apply:
+          tags: [internal_wireguard]
+
+- name: Permit the complete internal network set on the Linux hosts
+  hosts: vds*
+  become: true
+  gather_facts: false
+  tags: [internal_firewall]
+  tasks:
+    - name: Update the persistent routed-network firewall helper
+      ansible.builtin.template:
+        src: roles/ospf/templates/firewall.sh.j2
+        dest: /usr/local/sbin/ospf-firewall
+        owner: root
+        group: root
+        mode: '0755'
+      register: internal_firewall_config
+
+    - name: Apply the expanded network set
+      ansible.builtin.systemd_service:
+        name: ospf-firewall
+        enabled: true
+        state: '{{ "restarted" if internal_firewall_config.changed else "started" }}'
+      when: not ansible_check_mode
+
+    - name: Persist the active firewall and network sets
+      ansible.builtin.shell: |
+        set -e
+        iptables-save > /etc/iptables/rules.v4
+        ipset save > /etc/iptables/ipsets
+      changed_when: false
+      when: not ansible_check_mode
+
+- name: Advertise each existing VDS6 GRE endpoint without forming GRE adjacencies
+  hosts: vds6
+  become: true
+  gather_facts: false
+  tags: [internal_gre]
+  vars_files:
+    - vars/google-gre.yml
+  tasks:
+    - name: Verify the four GRE links already exist with their expected local addresses
+      ansible.builtin.command:
+        argv: [ip, -j, -4, address, show, dev, '{{ item.linux_interface }}']
+      loop: '{{ google_gre_links }}'
+      register: internal_gre_addresses
+      changed_when: false
+      check_mode: false
+
+    - name: Require existing GRE addresses before enabling passive advertisements
+      ansible.builtin.assert:
+        that:
+          - item.item.server_address in (item.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)
+      loop: '{{ internal_gre_addresses.results }}'
+      loop_control:
+        label: '{{ item.item.linux_interface }}'
+
+    - name: Persist direct GRE peers across tunnel restarts
+      ansible.builtin.copy:
+        src: roles/google-gre/files/tunnel
+        dest: /usr/local/sbin/google-gre-tunnel
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Preserve direct peer routes in the existing GRE startup units
+      ansible.builtin.template:
+        src: roles/google-gre/templates/tunnel.service.j2
+        dest: '/etc/systemd/system/{{ item.linux_interface }}.service'
+        owner: root
+        group: root
+        mode: '0644'
+      loop: '{{ google_gre_links }}'
+      register: internal_gre_units
+
+    - name: Reload changed GRE units without restarting established tunnels
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      when:
+        - internal_gre_units.changed
+        - not ansible_check_mode
+
+    - name: Keep each remote GRE endpoint on its existing direct tunnel
+      ansible.builtin.command:
+        argv:
+          - ip
+          - route
+          - replace
+          - '{{ item.router_address }}/32'
+          - dev
+          - '{{ item.linux_interface }}'
+          - src
+          - '{{ item.server_address }}'
+          - proto
+          - static
+          - metric
+          - '0'
+      loop: '{{ google_gre_links }}'
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: Persist the focused passive GRE host advertisement configuration
+      ansible.builtin.blockinfile:
+        path: /etc/frr/frr.conf
+        marker: '! {mark} Ansible passive GRE host advertisements'
+        insertbefore: '^end$'
+        block: '{{ lookup("ansible.builtin.template", "roles/ospf/templates/passive-gre.conf.j2") }}'
+        validate: /usr/bin/vtysh -C -f %s
+      register: internal_gre_ospf
+
+    - name: Apply passive GRE advertisements without restarting OSPF
+      ansible.builtin.command:
+        argv:
+          - vtysh
+          - -c
+          - configure terminal
+          - -c
+          - 'interface {{ item.linux_interface }}'
+          - -c
+          - ip ospf passive
+          - -c
+          - ip ospf network point-to-multipoint
+          - -c
+          - 'ip ospf area 0.0.0.0 {{ item.server_address }}'
+      loop: '{{ google_gre_links }}'
+      changed_when: internal_gre_ospf.changed
+      when: not ansible_check_mode
+
+- name: Apply the corresponding policy and owned GRE advertisements on MikroTik
+  ansible.builtin.import_playbook: mikrotik/internal-networks.yml
+  tags: [internal_mikrotik]

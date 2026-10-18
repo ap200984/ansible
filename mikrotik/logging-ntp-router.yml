@@ -1,0 +1,51 @@
+---
+- name: Configure the existing internal NTP service as a log source time reference
+  routeros_ssh:
+    host: '{{ mikrotik_logging_connection.router_host }}'
+    user: '{{ mikrotik_logging_connection.router_user }}'
+    port: '{{ mikrotik_logging_connection.router_port }}'
+    identity_file: '{{ mikrotik_logging_connection.router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+    proxy_command: '{{ router_proxy_command | default(mikrotik_logging_connection.router_proxy_command | default("none")) }}'
+    records:
+      - path: /system ntp client
+        values:
+          enabled: 'yes'
+      - path: /system ntp client servers
+        selector:
+          address: '{{ mikrotik_logging_connection.mikrotik_logging_ntp_server }}'
+        create: true
+        values:
+          address: '{{ mikrotik_logging_connection.mikrotik_logging_ntp_server }}'
+          iburst: 'yes'
+
+- name: Wait for the source clock to synchronize before logging probes
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ mikrotik_logging_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ mikrotik_logging_connection.router_port | string }}'
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default(mikrotik_logging_connection.router_proxy_command | default("none")) }}'
+      - '{{ mikrotik_logging_connection.router_user }}@{{ mikrotik_logging_connection.router_host }}'
+      - ':put [/system ntp client get status]'
+  register: mikrotik_logging_ntp_status
+  changed_when: false
+  until: mikrotik_logging_ntp_status.rc == 0 and mikrotik_logging_ntp_status.stdout | trim == 'synchronized'
+  retries: 12
+  delay: 5
+  when: not ansible_check_mode

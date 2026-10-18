@@ -3,3 +3,6 @@ router_host: 10.9.0.3
 router_user: ansible
 router_port: 22
 router_ssh_key: ~/.ssh/priv/ansible
+
+# 10.9.0.1 has no NTP server; use the existing managed LAN time service.
+mikrotik_logging_ntp_server: 10.9.1.70

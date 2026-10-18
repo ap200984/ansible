@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep AmneziaWG cryptokey routes aligned with FRR's single-path OSPF FIB.
+"""Keep WireGuard cryptokey routes aligned with FRR's single-path OSPF FIB.
 
 On a shared WireGuard interface, the packet destination (not its next hop)
 selects the peer. Each prefix must have exactly one owner. This reconciler
@@ -14,12 +14,23 @@ import subprocess
 import time
 
 
-def desired_prefixes(peers, routes, loopbacks=None, fixed=None):
+def desired_prefixes(peers, routes, loopbacks=None, fixed=None, source_aliases=None,
+                     fallback=None):
     loopbacks = loopbacks or {}
     fixed = fixed or {}
-    owners = {address + '/32': key for address, key in peers.items()}
+    # Retain declared permissions for legacy sources and networks absent from
+    # OSPF. A learned destination must be able to move to another peer; unlike
+    # fixed bootstrap/multicast permissions these are deliberately lower priority.
+    owners = {}
+    for address, prefixes in (fallback or {}).items():
+        for prefix in prefixes:
+            owners[str(ipaddress.ip_network(prefix))] = peers[address]
+    owners.update({address + '/32': key for address, key in peers.items()})
+    explicit_prefixes = {address + '/32' for address in peers}
     for address, key in peers.items():
-        owners[loopbacks.get(address, '10.255.0.' + address.rsplit('.', 1)[1] + '/32')] = key
+        loopback = loopbacks.get(address, '10.255.0.' + address.rsplit('.', 1)[1] + '/32')
+        owners[loopback] = key
+        explicit_prefixes.add(loopback)
     for route in routes:
         destination = route.get('dst', '')
         if destination == 'default' or not destination:
@@ -33,9 +44,34 @@ def desired_prefixes(peers, routes, loopbacks=None, fixed=None):
             raise ValueError('ECMP requires distinct per-peer interfaces; OSPF maximum-paths must remain 1')
         if candidates and destination not in {address + '/32' for address in peers}:
             owners[str(network)] = peers[candidates[0]]
+            explicit_prefixes.add(str(network))
     for address, prefixes in fixed.items():
         for prefix in prefixes:
             owners[prefix] = peers[address]
+            explicit_prefixes.add(prefix)
+    # A transport subnet can be connected on several mesh hubs while some of
+    # its hosts are behind a routed peer. Such source /32s do not appear in the
+    # OSPF destination list above. Grant them to the current owner of the host's
+    # advertised loopback, including after failover. Explicit destination and
+    # direct-neighbor ownership always takes precedence over inferred aliases.
+    alias_anchors = {}
+    for anchor, aliases in (source_aliases or {}).items():
+        network = ipaddress.ip_network(anchor)
+        if network.version != 4 or network.prefixlen != 32 or not network.subnet_of(ipaddress.ip_network('10.0.0.0/8')):
+            raise ValueError('Source alias anchors must be private IPv4 host prefixes')
+        if not isinstance(aliases, list):
+            raise ValueError('Source aliases must be lists of IPv4 host prefixes')
+        for alias in aliases:
+            network = ipaddress.ip_network(alias)
+            if network.version != 4 or network.prefixlen != 32 or not network.subnet_of(ipaddress.ip_network('10.0.0.0/8')):
+                raise ValueError('Source aliases must be private IPv4 host prefixes')
+            alias = str(network)
+            if alias in alias_anchors and alias_anchors[alias] != anchor:
+                raise ValueError('A source alias must have exactly one loopback anchor')
+            alias_anchors[alias] = anchor
+    for alias, anchor in alias_anchors.items():
+        if anchor in owners and alias not in explicit_prefixes:
+            owners[alias] = owners[anchor]
     return {key: sorted(prefix for prefix, owner in owners.items() if owner == key)
             for key in peers.values()}
 
@@ -44,13 +80,17 @@ def reconcile(config):
     interface = config['interface']
     routes = json.loads(subprocess.check_output(
         ['ip', '-j', '-4', 'route', 'show', 'dev', interface, 'proto', 'ospf'], text=True))
-    wanted = desired_prefixes(config['peers'], routes, config.get('loopbacks'), config.get('fixed'))
+    wanted = desired_prefixes(config['peers'], routes, config.get('loopbacks'),
+                              config.get('fixed'), config.get('source_aliases'),
+                              config.get('fallback'))
     command = config.get('command', 'awg')
     current = {}
     output = subprocess.check_output([command, 'show', interface, 'allowed-ips'], text=True)
     for line in output.splitlines():
         key, prefixes = line.split('\t', 1)
         current[key] = sorted(prefixes.replace(',', ' ').split()) if prefixes != '(none)' else []
+    if set(current) != set(wanted):
+        raise ValueError('Live peer identities differ from the managed routing configuration')
     # One set command installs the complete new ownership map. Adding/moving
     # prefixes can steal ownership, so subsequent removals must not clear a
     # prefix that another peer has just acquired.

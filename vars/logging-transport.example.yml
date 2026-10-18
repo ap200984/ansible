@@ -1,0 +1,17 @@
+---
+# Optional transport overrides for controllers that cannot use ~/.ssh/config.
+# Run from the repository root; this contains no credentials or private keys.
+logging_jump_host: 86.110.170.70
+logging_jump_port: 19020
+logging_jump_user: user
+logging_jump_key: '{{ lookup("env", "HOME") }}/.ssh/priv/user'
+router_proxy_command: >-
+  ssh -F /dev/null -i {{ logging_jump_key }} -p {{ logging_jump_port }}
+  -o BatchMode=yes -o StrictHostKeyChecking=yes
+  -o UserKnownHostsFile={{ lookup("env", "PWD") }}/mikrotik/known_hosts
+  -W %h:%p {{ logging_jump_user }}@{{ logging_jump_host }}
+ansible_ssh_common_args: >-
+  -F /dev/null
+  {% if inventory_hostname == 'elk' %}
+  -o ProxyCommand="{{ router_proxy_command }}"
+  {% endif %}

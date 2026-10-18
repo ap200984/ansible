@@ -1,0 +1,92 @@
+---
+# Read-only network verification. Detailed bounded results stay on the controller.
+- name: Verify routed internal networks with automatic and explicit VDS sources
+  hosts: "{{ internal_network_verify_hosts | default('vds2:vds6') }}"
+  become: true
+  gather_facts: false
+  vars:
+    internal_network_verify_artifact_directory: /tmp/internal-network-verify
+    internal_network_verify_require_success: true
+    internal_network_verify_timeout: 2
+    internal_network_verify_workers: 8
+    internal_network_verify_packets: 3
+    internal_network_verify_source_addresses:
+      - auto
+      - "10.255.0.{{ inventory_hostname | regex_replace('^vds', '') }}"
+      - "10.250.1.{{ inventory_hostname | regex_replace('^vds', '') }}"
+      - "10.250.2.{{ inventory_hostname | regex_replace('^vds', '') }}"
+    internal_network_verify_target_addresses:
+      - {name: k16_lan_gateway, ip: 10.9.0.1}
+      - {name: elasticsearch_host, ip: 10.9.0.90}
+      - {name: k16_kubernetes_gateway, ip: 10.9.1.1}
+      - {name: ekipazhnyi_lan_gateway, ip: 10.10.0.1}
+      - {name: k16_loopback, ip: 10.255.0.112}
+      - {name: vds2_loopback, ip: 10.255.0.2}
+      - {name: vds6_loopback, ip: 10.255.0.6}
+      - {name: k16_sstp_endpoint, ip: 10.250.0.112}
+      - {name: chr_wireguard_endpoint, ip: 10.250.1.7}
+      - {name: vds5_mesh_endpoint, ip: 10.250.2.5}
+      - {name: k16_l2tp_endpoint, ip: 10.250.3.112}
+      - {name: k16_gre_router, ip: 10.250.4.1}
+      - {name: k16_gre_linux, ip: 10.250.4.2}
+      - {name: ekipazhnyi_gre_router, ip: 10.250.4.5}
+      - {name: ekipazhnyi_gre_linux, ip: 10.250.4.6}
+      - {name: k21_gre_router, ip: 10.250.4.13}
+      - {name: k21_gre_linux, ip: 10.250.4.14}
+      - {name: misha_gre_router, ip: 10.250.4.17}
+      - {name: misha_gre_linux, ip: 10.250.4.18}
+    internal_network_verify_tcp_checks:
+      - {ip: 10.9.0.90, port: 10514}
+  tasks:
+    - name: Validate VDS source naming for the default source addresses
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname is match('^vds[0-9]+$')
+
+    - name: Collect source-specific ICMP, kernel routes and ELK TCP results
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - "{{ lookup('ansible.builtin.file', playbook_dir + '/tests/network/internal_network_matrix.py') }}"
+          - "{{ {'host': inventory_hostname, 'sources': internal_network_verify_source_addresses, 'targets': internal_network_verify_target_addresses, 'timeout': internal_network_verify_timeout, 'workers': internal_network_verify_workers, 'packets': internal_network_verify_packets, 'tcp_checks': internal_network_verify_tcp_checks} | to_json }}"
+      register: internal_network_verify_command
+      changed_when: false
+      check_mode: false
+
+    - name: Decode the bounded matrix result
+      ansible.builtin.set_fact:
+        internal_network_verify_result: "{{ internal_network_verify_command.stdout | from_json }}"
+
+    - name: Create the controller-only result directory
+      ansible.builtin.file:
+        path: "{{ internal_network_verify_artifact_directory }}"
+        state: directory
+        mode: '0750'
+      delegate_to: localhost
+      become: false
+
+    - name: Store detailed JSON on the controller without remote changes
+      ansible.builtin.copy:
+        content: "{{ internal_network_verify_result | to_nice_json }}\n"
+        dest: "{{ internal_network_verify_artifact_directory }}/{{ inventory_hostname }}.json"
+        mode: '0640'
+      delegate_to: localhost
+      become: false
+
+    - name: Report source counts and failed target addresses only
+      ansible.builtin.debug:
+        msg:
+          observed_utc: "{{ internal_network_verify_result.observed_utc }}"
+          summary: "{{ internal_network_verify_result.summary }}"
+          partial_loss_probes: "{{ internal_network_verify_result.partial_loss_probes }}"
+          tcp: "{{ internal_network_verify_result.tcp }}"
+          artifact: "{{ internal_network_verify_artifact_directory }}/{{ inventory_hostname }}.json"
+
+    - name: Require every active endpoint and ELK transport to be reachable
+      ansible.builtin.assert:
+        that:
+          - internal_network_verify_result.required_failures | int == 0
+          - internal_network_verify_result.tcp_failures | int == 0
+        fail_msg: "Some source-specific probes failed; kernel route details are in the controller JSON artifact."
+      when: internal_network_verify_require_success | bool

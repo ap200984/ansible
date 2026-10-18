@@ -1,0 +1,101 @@
+---
+- name: Load this router's connection settings without leaking prior router variables
+  ansible.builtin.include_vars:
+    file: '{{ mikrotik_logging_variable_file }}'
+    name: mikrotik_logging_connection
+
+- name: Identify the source independently of the router's IP address
+  ansible.builtin.set_fact:
+    mikrotik_logging_identity: '{{ mikrotik_logging_variable_file | basename | splitext | first }}'
+
+- name: Ensure configured log source time synchronization
+  ansible.builtin.include_tasks: logging-ntp-router.yml
+  when: mikrotik_logging_connection.mikrotik_logging_ntp_server is defined
+
+- name: Configure the dedicated CEF action and complementary rules
+  routeros_ssh:
+    host: '{{ mikrotik_logging_connection.router_host }}'
+    user: '{{ mikrotik_logging_connection.router_user }}'
+    port: '{{ mikrotik_logging_connection.router_port }}'
+    identity_file: '{{ mikrotik_logging_connection.router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+    proxy_command: '{{ router_proxy_command | default(mikrotik_logging_connection.router_proxy_command | default("none")) }}'
+    records:
+      - path: /system logging action
+        selector:
+          name: '{{ mikrotik_logging_action }}'
+        create: true
+        values:
+          name: '{{ mikrotik_logging_action }}'
+          target: remote
+          remote: '{{ mikrotik_logging_host }}'
+          remote-port: '{{ mikrotik_logging_port | string }}'
+          remote-protocol: tcp
+          remote-log-format: cef
+          cef-event-delimiter: "\n"
+          syslog-time-format: iso8601
+      # Topics in one rule are ANDed. The two complementary rules capture all
+      # events, including debug, without matching any event twice.
+      - path: /system logging
+        selector:
+          comment: Ansible ELK all non-debug topics
+        create: true
+        values:
+          comment: Ansible ELK all non-debug topics
+          action: '{{ mikrotik_logging_action }}'
+          topics: '!debug'
+          regex: ''
+          prefix: 'mikrotik:{{ mikrotik_logging_identity }}'
+          disabled: 'no'
+      - path: /system logging
+        selector:
+          comment: Ansible ELK debug topics
+        create: true
+        values:
+          comment: Ansible ELK debug topics
+          action: '{{ mikrotik_logging_action }}'
+          topics: debug
+          regex: ''
+          prefix: 'mikrotik:{{ mikrotik_logging_identity }}'
+          disabled: 'no'
+
+- name: Validate the optional end-to-end probe marker
+  ansible.builtin.assert:
+    that:
+      - mikrotik_logging_test_message is match('^[A-Za-z0-9_.:-]+$')
+    fail_msg: The logging probe marker must use letters, digits, dots, colons, underscores or hyphens
+  when: mikrotik_logging_test_message is defined
+
+- name: Emit warning and debug probes for this router
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ mikrotik_logging_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ mikrotik_logging_connection.router_port | string }}'
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default(mikrotik_logging_connection.router_proxy_command | default("none")) }}'
+      - '{{ mikrotik_logging_connection.router_user }}@{{ mikrotik_logging_connection.router_host }}'
+      - >-
+        :log warning "{{ mikrotik_logging_test_message }} router={{ mikrotik_logging_identity }} level=warning";
+        :log debug "{{ mikrotik_logging_test_message }} router={{ mikrotik_logging_identity }} level=debug";
+        :put "ELK_LOGGING_TEST_SENT"
+  register: mikrotik_logging_probe
+  changed_when: false
+  failed_when: mikrotik_logging_probe.rc != 0 or 'ELK_LOGGING_TEST_SENT' not in mikrotik_logging_probe.stdout
+  when:
+    - mikrotik_logging_test_message is defined
+    - not ansible_check_mode

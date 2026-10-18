@@ -2,7 +2,9 @@
 
 Runs Elasticsearch, Logstash, and Kibana as three Docker containers. Logstash
 accepts Beats events on TCP port `5044`, Elasticsearch uses `9200`, and Kibana
-uses `5601`.
+uses `5601`. Linux JSON file logs use TCP `10514` and RouterOS 7 CEF logs
+use TCP `5514`, bound to the ELK private address. See [central logging](../../docs/logging.md)
+for deployment, parsing, index templates and verification.
 
 Security is disabled, so expose these ports only on a trusted network or
 protect them with firewall rules and a reverse proxy.

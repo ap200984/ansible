@@ -1,0 +1,21 @@
+:local total 0;
+:local passed 0;
+:foreach source in={ {{ mikrotik_network_verify_site.value | join(';') }} } do={
+  :foreach target in={ {{ mikrotik_network_verify_targets | join(';') }} } do={
+    :set total ($total + 1);
+    :local received [/ping address=$target src-address=$source count=2 interval={{ mikrotik_network_verify_interval }}];
+    :if ($received > 0) do={:set passed ($passed + 1)} else={
+      :put ("REVERSE_FAIL source=".$source." target=".$target);
+    };
+  };
+};
+:put ("REVERSE_SUMMARY passed=".$passed." total=".$total);
+:put "GRE_DIRECT_ROUTE";
+/ip route print detail without-paging where comment="Internal GRE direct peer";
+:put "GRE_DEFAULT_ROUTE";
+/ip route print detail without-paging where routing-table="google_ips_table" and dst-address="0.0.0.0/0";
+:put ("GRE_DIRECT_ACTIVE=".[:len [/ip route find where comment="Internal GRE direct peer" and active]]);
+:put ("GRE_DEFAULT_ACTIVE=".[:len [/ip route find where comment="Google GRE default" and routing-table="google_ips_table" and dst-address="0.0.0.0/0" and active]]);
+:put ("GRE_PEER_REPLIES=".[/ping address={{ mikrotik_network_verify_gre.server_address }} src-address={{ mikrotik_network_verify_gre.router_address }} interface=gre-vds6 count=2 interval={{ mikrotik_network_verify_interval }}]);
+:put ("GRE_OSPF_NEIGHBORS=".[:len [/routing ospf neighbor find where interface="gre-vds6"]]);
+:put "REVERSE_PROBE_READY";

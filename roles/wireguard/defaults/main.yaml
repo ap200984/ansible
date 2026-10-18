@@ -8,3 +8,10 @@ wireguard_listen_port: 56685
 wireguard_mtu: 1420
 wireguard_private_key: ""
 wireguard_peers: []
+# The remaining ordinary shared wg0 links on these hosts have multiple site
+# peers. Their cryptokey destinations must follow OSPF rather than a static site
+# ownership list. Dedicated single-peer transports need no such reconciliation.
+wireguard_route_permissions_enabled: >-
+  {{ inventory_hostname in (chr_native_awg_hosts | default([])) and
+     wireguard_ospf | default(false) | bool }}
+wireguard_route_fixed_allowed_ips: {}

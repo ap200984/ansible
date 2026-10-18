@@ -1,20 +1,197 @@
 input {
   beats {
+    id => "existing_beats"
     port => 5044
+  }
+  tcp {
+    id => "linux_files_json"
+    port => 10514
+    ecs_compatibility => v8
+    dns_reverse_lookup_enabled => false
+    codec => json_lines { ecs_compatibility => v8 }
+    add_field => { "[@metadata][log_source]" => "linux" }
+  }
+  tcp {
+    id => "routeros_cef_tcp"
+    port => 5514
+    ecs_compatibility => v8
+    dns_reverse_lookup_enabled => false
+    codec => cef {
+      delimiter => "\n"
+      ecs_compatibility => v1
+      device => host
+      default_timezone => "{{ elk_mikrotik_log_timezone }}"
+      raw_data_field => "[event][original]"
+    }
+    add_field => { "[@metadata][log_source]" => "mikrotik" }
   }
 }
 
 filter {
-  if [@metadata][beat] == "auditbeat" {
-    mutate { add_field => { "[@metadata][target_index]" => "auditbeat-%{+YYYY.MM.dd}" } }
+  if [@metadata][log_source] == "linux" {
+    mutate {
+      copy => { "message" => "[event][original]" }
+      add_field => {
+        "[ecs][version]" => "8.11.0"
+        "[event][kind]" => "event"
+        "[@metadata][target_index]" => "linux-logs"
+      }
+      remove_field => [ "log_source" ]
+    }
+    if [log][file][path] =~ "/(syslog|auth.log|kern.log|daemon.log|messages|debug|user.log|mail.log|mail.err|mail.warn|mail.info|cron.log|ufw.log)$" {
+      grok {
+        match => { "message" => [
+          "^%{TIMESTAMP_ISO8601:[@metadata][log_timestamp]} %{NOTSPACE:[host][hostname]} %{DATA:[process][name]}(?:\[%{POSINT:[process][pid]:int}\])?: ?%{GREEDYDATA:[@metadata][body]}$",
+          "^%{SYSLOGTIMESTAMP:[@metadata][log_timestamp]} %{NOTSPACE:[host][hostname]} %{DATA:[process][name]}(?:\[%{POSINT:[process][pid]:int}\])?: ?%{GREEDYDATA:[@metadata][body]}$"
+        ] }
+        tag_on_failure => [ "_linux_syslogparsefailure" ]
+      }
+    } else if [log][file][path] == "/var/log/dpkg.log" {
+      grok {
+        match => { "message" => "^%{TIMESTAMP_ISO8601:[@metadata][log_timestamp]} %{WORD:[dpkg][action]} %{GREEDYDATA:[@metadata][body]}$" }
+        tag_on_failure => [ "_linux_dpkgparsefailure" ]
+        add_field => { "[process][name]" => "dpkg" }
+      }
+    } else if [log][file][path] == "/var/log/apt/history.log" {
+      grok {
+        match => { "message" => "^%{DATA:[apt][operation]}: +%{GREEDYDATA:[apt][detail]}$" }
+        tag_on_failure => []
+        add_field => { "[process][name]" => "apt" }
+      }
+      if [apt][operation] in [ "Start-Date", "End-Date" ] {
+        mutate { copy => { "[apt][detail]" => "[@metadata][log_timestamp]" } }
+      }
+    } else if [log][file][path] == "/var/log/apt/term.log" {
+      grok {
+        match => { "message" => "^Log (?:started|ended): +%{GREEDYDATA:[@metadata][log_timestamp]}$" }
+        tag_on_failure => []
+      }
+    } else if [log][file][path] == "/var/log/alternatives.log" {
+      grok {
+        match => { "message" => "^%{NOTSPACE:[process][name]} %{TIMESTAMP_ISO8601:[@metadata][log_timestamp]}: %{GREEDYDATA:[@metadata][body]}$" }
+        tag_on_failure => [ "_linux_alternativesparsefailure" ]
+      }
+    } else if [log][file][path] == "/var/log/cloud-init.log" {
+      grok {
+        match => { "message" => "^%{TIMESTAMP_ISO8601:[@metadata][log_timestamp]} - %{DATA:[log][logger]}\[%{WORD:[log][level]}\]: %{GREEDYDATA:[@metadata][body]}$" }
+        tag_on_failure => [ "_linux_cloudinitparsefailure" ]
+      }
+      mutate { lowercase => [ "[log][level]" ] }
+    } else if [log][file][path] == "/var/log/unattended-upgrades/unattended-upgrades.log" {
+      grok {
+        match => { "message" => "^%{TIMESTAMP_ISO8601:[@metadata][log_timestamp]} %{LOGLEVEL:[log][level]} %{GREEDYDATA:[@metadata][body]}$" }
+        tag_on_failure => []
+      }
+      mutate { lowercase => [ "[log][level]" ] }
+    }
+    if [@metadata][body] {
+      mutate { replace => { "message" => "%{[@metadata][body]}" } }
+    }
+    if [@metadata][log_timestamp] {
+      date {
+        match => [ "[@metadata][log_timestamp]", "ISO8601", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss,SSS", "yyyy-MM-dd  HH:mm:ss", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+        timezone => "{{ elk_linux_log_timezone }}"
+        locale => "en"
+        tag_on_failure => [ "_linux_dateparsefailure" ]
+      }
+    }
+    if [process][name] =~ "^sshd" {
+      grok {
+        match => { "message" => "^%{WORD:[@metadata][ssh_result]} %{WORD:[system][auth][ssh][method]} for (?:invalid user )?%{NOTSPACE:[user][name]} from %{IP:[source][ip]} port %{POSINT:[source][port]:int}(?: .*)?$" }
+        tag_on_failure => []
+      }
+      if [@metadata][ssh_result] == "Accepted" {
+        mutate { add_field => { "[event][outcome]" => "success" "[event][action]" => "ssh_login" } }
+      } else if [@metadata][ssh_result] == "Failed" {
+        mutate { add_field => { "[event][outcome]" => "failure" "[event][action]" => "ssh_login" } }
+      }
+    }
+  } else if [@metadata][log_source] == "mikrotik" {
+    mutate {
+      add_field => {
+        "[ecs][version]" => "8.11.0"
+        "[event][kind]" => "event"
+        "[event][module]" => "routeros"
+        "[event][dataset]" => "mikrotik.routeros"
+        "[observer][type]" => "router"
+        "[@metadata][target_index]" => "mikrotik-logs"
+      }
+      copy => { "[cef][name]" => "[mikrotik][topics]" }
+      rename => { "[event][severity]" => "[mikrotik][cef_severity]" }
+      lowercase => [ "[network][transport]" ]
+    }
+    mutate { split => { "[mikrotik][topics]" => "," } }
+    # RouterOS CEF uses named severities; retain the label and store ECS severity as a number.
+    translate {
+      source => "[mikrotik][cef_severity]"
+      target => "[event][severity]"
+      dictionary => { "Unknown" => "0" "Low" => "3" "Medium" => "5" "High" => "8" "Very-High" => "10" }
+      fallback => "0"
+    }
+    mutate {
+      convert => {
+        "[event][severity]" => "integer"
+        "[source][port]" => "integer"
+        "[destination][port]" => "integer"
+        "[source][bytes]" => "integer"
+        "[destination][bytes]" => "integer"
+        "[process][pid]" => "integer"
+      }
+    }
+    if "critical" in [mikrotik][topics] {
+      mutate { add_field => { "[log][level]" => "critical" } }
+    } else if "error" in [mikrotik][topics] {
+      mutate { add_field => { "[log][level]" => "error" } }
+    } else if "warning" in [mikrotik][topics] {
+      mutate { add_field => { "[log][level]" => "warning" } }
+    } else if "debug" in [mikrotik][topics] {
+      mutate { add_field => { "[log][level]" => "debug" } }
+    } else {
+      mutate { add_field => { "[log][level]" => "info" } }
+    }
+    if [message] =~ "^mikrotik:" {
+      grok {
+        match => { "message" => "^mikrotik:%{NOTSPACE:[@metadata][inventory_identity]}: %{GREEDYDATA:[@metadata][body]}$" }
+        tag_on_failure => []
+      }
+      if [@metadata][inventory_identity] {
+        mutate { replace => { "[host][name]" => "%{[@metadata][inventory_identity]}" "message" => "%{[@metadata][body]}" } }
+      }
+    }
+    if [log][syslog][header] {
+      grok {
+        match => { "[log][syslog][header]" => [
+          "^(?:<%{NONNEGINT}>)?%{TIMESTAMP_ISO8601:[@metadata][log_timestamp]} %{GREEDYDATA:[@metadata][router_hostname]}$",
+          "^(?:<%{NONNEGINT}>)?%{SYSLOGTIMESTAMP:[@metadata][log_timestamp]} %{GREEDYDATA:[@metadata][router_hostname]}$"
+        ] }
+        tag_on_failure => [ "_mikrotik_headerparsefailure" ]
+      }
+      # Two routers use UTC; ISO8601 offsets take precedence over this BSD fallback.
+      if [host][name] in [ "K16_112", "vds7_CHR" ] {
+        mutate { add_field => { "[@metadata][router_timezone]" => "UTC" } }
+      } else {
+        mutate { add_field => { "[@metadata][router_timezone]" => "{{ elk_mikrotik_log_timezone }}" } }
+      }
+      if [@metadata][log_timestamp] {
+        date {
+          match => [ "[@metadata][log_timestamp]", "ISO8601", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+          timezone => "%{[@metadata][router_timezone]}"
+          locale => "en"
+          tag_on_failure => [ "_mikrotik_dateparsefailure" ]
+        }
+      }
+    }
+  } else if [@metadata][beat] == "auditbeat" {
+    mutate { add_field => { "[@metadata][target_index]" => "auditbeat" } }
   } else {
-    mutate { add_field => { "[@metadata][target_index]" => "beats-%{+YYYY.MM.dd}" } }
+    mutate { add_field => { "[@metadata][target_index]" => "beats" } }
   }
 }
 
 output {
   elasticsearch {
     hosts => ["http://elasticsearch:9200"]
-    index => "%{[@metadata][target_index]}"
+    index => "%{[@metadata][target_index]}-%{+yyyy.MM.dd}"
+    ilm_enabled => false
   }
 }

@@ -94,3 +94,10 @@
   tags:
     - wireguard
     - "wireguard:service"
+
+- name: Keep shared ordinary WireGuard permissions aligned with OSPF
+  ansible.builtin.include_tasks: route-permissions.yml
+  when: wireguard_route_permissions_enabled | bool
+  tags:
+    - wireguard
+    - "wireguard:routing"

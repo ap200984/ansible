@@ -6,6 +6,12 @@
       - elk_elasticsearch_port | int > 0
       - elk_kibana_port | int > 0
       - elk_beats_port | int > 0
+      - elk_linux_logs_port | int > 0
+      - elk_linux_logs_port | int < 65536
+      - elk_mikrotik_logs_port | int > 0
+      - elk_mikrotik_logs_port | int < 65536
+      - elk_linux_logs_port | int != elk_mikrotik_logs_port | int
+      - elk_log_bind_address | length > 0
     fail_msg: ELK version and listening ports must be valid.
   tags: [elk, "elk:validate"]
 
@@ -57,18 +63,72 @@
     - { path: "{{ elk_install_dir }}", owner: root, group: root, mode: "0755" }
     - { path: "{{ elk_install_dir }}/elasticsearch", owner: "1000", group: root, mode: "0770" }
     - { path: "{{ elk_install_dir }}/logstash/pipeline", owner: root, group: root, mode: "0755" }
+    - { path: "{{ elk_install_dir }}/logstash/staging", owner: root, group: root, mode: "0755" }
+    - { path: "{{ elk_install_dir }}/logstash/data", owner: "1000", group: root, mode: "0770" }
   loop_control:
     label: "{{ item.path }}"
   tags: [elk, "elk:config"]
 
-- name: Install Logstash pipeline
+- name: Stage Logstash pipeline for validation
+  ansible.builtin.template:
+    src: logstash.conf.j2
+    dest: "{{ elk_install_dir }}/logstash/staging/logstash.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: elk_logstash_candidate
+  tags: [elk, "elk:config"]
+
+- name: Ensure the Logstash image is available for validation
+  community.docker.docker_image:
+    name: "{{ elk_logstash_image }}"
+    source: pull
+  when: not ansible_check_mode
+  tags: [elk, "elk:config"]
+
+- name: Validate the candidate with the deployed Logstash version
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - --network
+      - none
+      - -e
+      - LS_JAVA_OPTS=-Xms256m -Xmx256m
+      - --mount
+      - "type=bind,source={{ elk_install_dir }}/logstash/staging/logstash.conf,target=/tmp/logstash.conf,readonly"
+      - "{{ elk_logstash_image }}"
+      - logstash
+      - --config.test_and_exit
+      - --path.data
+      - /tmp/logstash-validation
+      - -f
+      - /tmp/logstash.conf
+  changed_when: false
+  when: not ansible_check_mode
+  tags: [elk, "elk:config"]
+
+- name: Install validated Logstash pipeline
+  ansible.builtin.copy:
+    src: "{{ elk_install_dir }}/logstash/staging/logstash.conf"
+    dest: "{{ elk_install_dir }}/logstash/pipeline/logstash.conf"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  register: elk_logstash_config
+  when: not ansible_check_mode
+  tags: [elk, "elk:config"]
+
+- name: Preview Logstash pipeline changes in check mode
   ansible.builtin.template:
     src: logstash.conf.j2
     dest: "{{ elk_install_dir }}/logstash/pipeline/logstash.conf"
     owner: root
     group: root
     mode: "0644"
-  register: elk_logstash_config
+  when: ansible_check_mode
   tags: [elk, "elk:config"]
 
 - name: Ensure ELK Docker network exists
@@ -81,7 +141,7 @@
   community.docker.docker_container:
     name: elasticsearch
     image: "{{ elk_elasticsearch_image }}"
-    pull: true
+    pull: missing
     state: started
     restart_policy: unless-stopped
     memory: "{{ elk_elasticsearch_memory }}"
@@ -113,11 +173,36 @@
   when: not ansible_check_mode
   tags: [elk, "elk:ready"]
 
+- name: Read the managed log index template
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ elk_elasticsearch_port }}/_index_template/ansible-system-logs"
+    status_code: [200, 404]
+    return_content: true
+  register: elk_existing_log_template
+  when: not ansible_check_mode
+  tags: [elk, "elk:config"]
+
+- name: Install mappings for Linux and MikroTik daily indices
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ elk_elasticsearch_port }}/_index_template/ansible-system-logs"
+    method: PUT
+    body_format: json
+    body: "{{ lookup('ansible.builtin.template', 'logs-index-template.json.j2') | from_json }}"
+    status_code: 200
+  changed_when: true
+  when:
+    - not ansible_check_mode
+    - >-
+      elk_existing_log_template.status == 404 or
+      elk_existing_log_template.json.index_templates[0].index_template !=
+      lookup('ansible.builtin.template', 'logs-index-template.json.j2') | from_json
+  tags: [elk, "elk:config"]
+
 - name: Start Logstash container
   community.docker.docker_container:
     name: logstash
     image: "{{ elk_logstash_image }}"
-    pull: true
+    pull: missing
     state: started
     restart_policy: unless-stopped
     recreate: "{{ elk_logstash_config.changed }}"
@@ -126,10 +211,16 @@
       - name: "{{ elk_network_name }}"
     ports:
       - "{{ elk_beats_port }}:5044"
+      - "{{ elk_log_bind_address }}:{{ elk_linux_logs_port }}:10514/tcp"
+      - "{{ elk_log_bind_address }}:{{ elk_mikrotik_logs_port }}:5514/tcp"
     volumes:
       - "{{ elk_install_dir }}/logstash/pipeline:/usr/share/logstash/pipeline:ro"
+      - "{{ elk_install_dir }}/logstash/data:/usr/share/logstash/data"
     env:
       LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+      QUEUE_TYPE: persisted
+      QUEUE_MAX_BYTES: "{{ elk_logstash_queue_max_bytes }}"
+      PIPELINE_ECS_COMPATIBILITY: v8
   when: not ansible_check_mode
   tags: [elk, "elk:containers"]
 
@@ -137,7 +228,7 @@
   community.docker.docker_container:
     name: kibana
     image: "{{ elk_kibana_image }}"
-    pull: true
+    pull: missing
     state: started
     restart_policy: unless-stopped
     memory: "{{ elk_kibana_memory }}"
@@ -180,5 +271,14 @@
     host: 127.0.0.1
     port: "{{ elk_beats_port }}"
     timeout: 180
+  when: not ansible_check_mode
+  tags: [elk, "elk:ready"]
+
+- name: Wait for Linux JSON and RouterOS CEF listeners on the private address
+  ansible.builtin.wait_for:
+    host: "{{ elk_log_bind_address }}"
+    port: "{{ item }}"
+    timeout: 180
+  loop: ["{{ elk_linux_logs_port }}", "{{ elk_mikrotik_logs_port }}"]
   when: not ansible_check_mode
   tags: [elk, "elk:ready"]

@@ -1,0 +1,5 @@
+---
+- name: Restart rsyslog for Linux file shipping
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted

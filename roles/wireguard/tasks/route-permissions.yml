@@ -1,0 +1,80 @@
+---
+- name: Select the ordinary peers remaining after the native CHR cutover
+  ansible.builtin.set_fact:
+    wireguard_route_active_peers: >-
+      {{ wireguard_peers | rejectattr('name', 'equalto', 'vds7') | list
+         if inventory_hostname in (chr_native_awg_hosts | default([]))
+         else wireguard_peers }}
+
+- name: Require the existing OSPF interface and declared direct peers
+  ansible.builtin.assert:
+    that:
+      - wireguard_ospf | default(false) | bool
+      - wireguard_interface == 'wg0'
+      - wireguard_route_active_peers | length > 0
+      - wireguard_route_active_peers | map(attribute='public_key') | unique | length == wireguard_route_active_peers | length
+
+- name: Validate peer bootstrap routes and preserved static permissions
+  ansible.builtin.assert:
+    that:
+      - item.allowed_ips[0] is match('^10\.(?:[0-9]{1,3}\.){2}[0-9]{1,3}/32$')
+      - item.public_key in ospf_peer_allowed_ips
+  loop: '{{ wireguard_route_active_peers }}'
+  loop_control:
+    label: '{{ item.name }}'
+
+- name: Read active public identities without private keys
+  ansible.builtin.command:
+    argv: [wg, show, '{{ wireguard_interface }}', peers]
+  register: wireguard_route_live_peers
+  changed_when: false
+  check_mode: false
+
+- name: Refuse to reconcile an unexpected peer set
+  ansible.builtin.assert:
+    that:
+      - wireguard_route_live_peers.stdout_lines | sort == wireguard_route_active_peers | map(attribute='public_key') | sort
+    fail_msg: The existing ordinary WireGuard peer set differs from the managed OSPF declarations.
+
+- name: Install the ordinary WireGuard cryptokey route reconciler
+  ansible.builtin.copy:
+    src: '{{ role_path }}/../amneziawg/files/route-peers.py'
+    dest: /usr/local/sbin/wireguard-route-peers
+    owner: root
+    group: root
+    mode: '0755'
+  register: wireguard_route_helper
+
+- name: Preserve bootstrap permissions and follow learned destination ownership
+  ansible.builtin.template:
+    src: route-permissions.json.j2
+    dest: /etc/wireguard/routing.json
+    owner: root
+    group: root
+    mode: '0600'
+    validate: /usr/bin/python3 -m json.tool %s
+  register: wireguard_route_config
+
+- name: Install the ordinary WireGuard permission service
+  ansible.builtin.template:
+    src: route-permissions.service.j2
+    dest: /etc/systemd/system/wireguard-routing.service
+    owner: root
+    group: root
+    mode: '0644'
+  register: wireguard_route_unit
+
+- name: Reconcile once without replacing interfaces or Linux routes
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/wireguard-route-peers, --config, /etc/wireguard/routing.json, --once]
+  register: wireguard_route_reconcile
+  changed_when: "'AWG_ALLOWED_IPS_UPDATED' in wireguard_route_reconcile.stdout"
+  when: not ansible_check_mode
+
+- name: Enable continuous ordinary WireGuard permission reconciliation
+  ansible.builtin.systemd_service:
+    name: wireguard-routing
+    enabled: true
+    daemon_reload: '{{ wireguard_route_unit.changed }}'
+    state: '{{ "restarted" if wireguard_route_helper.changed or wireguard_route_config.changed or wireguard_route_unit.changed else "started" }}'
+  when: not ansible_check_mode

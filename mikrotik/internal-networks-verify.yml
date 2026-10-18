@@ -1,0 +1,38 @@
+---
+# Read-only reverse verification; artifacts contain bounded ping and route data.
+- name: Verify MikroTik return paths to the VDS tunnel endpoints
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../vars/google-gre.yml
+  vars:
+    mikrotik_network_verify_artifact_directory: /tmp/mikrotik-internal-network-verify
+    mikrotik_network_verify_require_success: true
+    # RouterOS uses the probe interval as its reply deadline. VDS2 RTT exceeds 200 ms.
+    mikrotik_network_verify_interval: 1s
+    mikrotik_network_verify_sources:
+      K16_112: [10.9.0.1, 10.255.0.112, 10.250.0.112, 10.250.4.1]
+      3Ekipazhnyi64: [10.10.0.1, 10.255.0.64, 10.250.0.64, 10.250.4.5]
+      k16_21: [10.255.0.21, 10.250.0.21, 10.250.4.13]
+      Misha: [10.255.0.24, 10.250.0.24, 10.250.4.17]
+    mikrotik_network_verify_targets:
+      - 10.255.0.2
+      - 10.250.1.2
+      - 10.250.2.2
+      - 10.255.0.6
+      - 10.250.1.6
+      - 10.250.2.6
+  tasks:
+    - name: Create the controller-only verification directory
+      ansible.builtin.file:
+        path: '{{ mikrotik_network_verify_artifact_directory }}'
+        state: directory
+        mode: '0750'
+
+    - name: Verify each routed site router
+      ansible.builtin.include_tasks: internal-networks-verify-router.yml
+      loop: '{{ mikrotik_network_verify_sources | dict2items }}'
+      loop_control:
+        loop_var: mikrotik_network_verify_site
+        label: '{{ mikrotik_network_verify_site.key }}'

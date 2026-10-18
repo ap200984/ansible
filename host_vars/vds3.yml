@@ -25,3 +25,8 @@ https_proxy_destination_exceptions:
   - address: 0.0.0.0/0
     http_ports: [1955]
     https_ports: [1956]
+
+# AppArmor prevents imfile from watching the /var/log parent directory.
+# Scan exact configured paths; preserve the distribution security profile.
+linux_log_shipping_file_mode: polling
+linux_log_shipping_polling_interval: 2

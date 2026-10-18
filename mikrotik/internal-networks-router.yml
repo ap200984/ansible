@@ -1,0 +1,112 @@
+---
+- name: Load this router's connection settings
+  ansible.builtin.include_vars:
+    file: '{{ mikrotik_internal_variable_file }}'
+    name: mikrotik_internal_connection
+
+- name: Identify this router and prepare pinned SSH transport
+  ansible.builtin.set_fact:
+    mikrotik_internal_identity: '{{ mikrotik_internal_variable_file | basename | splitext | first }}'
+    mikrotik_internal_ssh:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ mikrotik_internal_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ mikrotik_internal_connection.router_port | string }}'
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default(mikrotik_internal_connection.router_proxy_command | default("none")) }}'
+      - '{{ mikrotik_internal_connection.router_user }}@{{ mikrotik_internal_connection.router_host }}'
+
+- name: Define scoped interior input, forwarding and source NAT exemptions
+  ansible.builtin.set_fact:
+    mikrotik_internal_records:
+      - path: /ip firewall filter
+        selector: {comment: Ansible internal networks input}
+        create: true
+        values:
+          comment: Ansible internal networks input
+          chain: input
+          action: accept
+          src-address-list: '{{ mikrotik_internal_list }}'
+          dst-address-list: '{{ mikrotik_internal_list }}'
+          disabled: 'no'
+      - path: /ip firewall filter
+        selector: {comment: Ansible internal networks forward}
+        create: true
+        values:
+          comment: Ansible internal networks forward
+          chain: forward
+          action: accept
+          src-address-list: '{{ mikrotik_internal_list }}'
+          dst-address-list: '{{ mikrotik_internal_list }}'
+          disabled: 'no'
+      - path: /ip firewall nat
+        selector: {comment: Ansible internal networks no NAT}
+        create: true
+        values:
+          comment: Ansible internal networks no NAT
+          chain: srcnat
+          action: accept
+          src-address-list: '{{ mikrotik_internal_list }}'
+          dst-address-list: '{{ mikrotik_internal_list }}'
+          disabled: 'no'
+
+- name: Pin the direct GRE peer and advertise this router's own GRE host address
+  ansible.builtin.set_fact:
+    mikrotik_internal_records: >-
+      {{ mikrotik_internal_records + [{
+        'path': '/ip route',
+        'selector': {'comment': 'Internal GRE direct peer'},
+        'create': true,
+        'values': {'comment': 'Internal GRE direct peer', 'routing-table': 'main',
+          'dst-address': internal_gre_link.server_address ~ '/32',
+          'gateway': 'gre-vds6', 'distance': '1', 'scope': '10',
+          'target-scope': '10', 'disabled': 'no'}
+      }, {
+        'path': '/routing ospf interface-template',
+        'selector': {'comment': 'OSPF GRE local endpoint'},
+        'create': true, 'flags': ['passive'],
+        'values': {'comment': 'OSPF GRE local endpoint', 'area': 'tunnel-backbone',
+          'interfaces': 'gre-vds6', 'type': 'ptmp', 'passive': 'yes',
+          'use-bfd': 'no', 'disabled': 'no'}
+      }] }}
+  vars:
+    internal_gre_link: '{{ google_gre_links | selectattr("identity", "equalto", mikrotik_internal_identity) | first }}'
+  when:
+    - internal_networks_manage_gre | default(true) | bool
+    - mikrotik_internal_identity in (google_gre_links | map(attribute='identity') | list)
+
+- name: Reconcile the dedicated interior policy and owned GRE advertisement
+  routeros_ssh:
+    host: '{{ mikrotik_internal_connection.router_host }}'
+    user: '{{ mikrotik_internal_connection.router_user }}'
+    port: '{{ mikrotik_internal_connection.router_port }}'
+    identity_file: '{{ mikrotik_internal_connection.router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+    proxy_command: '{{ router_proxy_command | default(mikrotik_internal_connection.router_proxy_command | default("none")) }}'
+    records: '{{ mikrotik_internal_records }}'
+
+- name: Reconcile interior prefixes, rule order and single-peer permissions
+  ansible.builtin.command:
+    argv: '{{ mikrotik_internal_ssh + [lookup("template", "internal-networks-policy.rsc.j2").splitlines() | join(" ")] }}'
+  register: mikrotik_internal_policy
+  # The generated check-mode script reads state and reports planned changes only.
+  check_mode: false
+  changed_when: '"ANSIBLE_INTERNAL_CHANGED" in mikrotik_internal_policy.stdout'
+  failed_when: >-
+    mikrotik_internal_policy.rc != 0 or
+    'ANSIBLE_INTERNAL_READY' not in mikrotik_internal_policy.stdout or
+    'syntax error' in mikrotik_internal_policy.stdout or
+    'failure:' in mikrotik_internal_policy.stdout

@@ -5,22 +5,48 @@ ip_address: "{{ ansible_host }}"
 # Shared LAN and tunnel prefixes, available to Linux and localhost RouterOS plays.
 k16_k112_main_network: 10.9.0.0/24
 k16_k112_k8s_network: 10.9.1.0/24
+k16_k112_lan_network: 10.9.0.0/23
+ekipazh_lan_network: 10.10.0.0/16
 sstp_tunnels_network: 10.250.0.0/24
 wireguard_tunnels_network: 10.250.1.0/24
 amneziawg_tunnels_network: 10.250.2.0/24
 l2tp_tunnels_network: 10.250.3.0/24
+gre_tunnels_network: 10.250.4.0/24
 loopback_network: 10.255.0.0/24
 # Requested dedicated K16 AWG transport; independent of the 10.250.2 mesh.
 k16_amneziawg_network: 10.255.2.0/24
-tunnel_networks:
-  - '{{ k16_k112_main_network }}'
-  - '{{ k16_k112_k8s_network }}'
+internal_networks:
+  - '{{ k16_k112_lan_network }}'
+  - '{{ ekipazh_lan_network }}'
   - '{{ sstp_tunnels_network }}'
   - '{{ wireguard_tunnels_network }}'
   - '{{ amneziawg_tunnels_network }}'
   - '{{ l2tp_tunnels_network }}'
+  - '{{ gre_tunnels_network }}'
   - '{{ loopback_network }}'
-  - '{{ k16_amneziawg_network }}'
+tunnel_networks: '{{ internal_networks + [k16_amneziawg_network] }}'
+
+# A transport address belongs to the same node as its OSPF loopback even when
+# a connected /24 hides its /32 from the shared AWG interface's OSPF routes.
+amneziawg_source_aliases:
+  '10.255.0.1/32': [10.250.1.1/32, 10.250.2.1/32]
+  '10.255.0.2/32': [10.250.1.2/32, 10.250.2.2/32]
+  '10.255.0.5/32': [10.250.1.5/32, 10.250.2.5/32]
+  '10.255.0.6/32': [10.250.1.6/32, 10.250.2.6/32, 10.250.4.2/32, 10.250.4.6/32, 10.250.4.14/32, 10.250.4.18/32]
+  '10.255.0.8/32': [10.250.1.8/32, 10.250.2.8/32]
+  '10.255.0.7/32': [10.250.1.7/32, 10.251.0.7/32]
+  '10.255.0.112/32': [10.250.0.112/32, 10.250.3.112/32, 10.255.2.112/32, 10.250.4.1/32]
+  '10.255.0.64/32': [10.250.0.64/32, 10.250.1.64/32, 10.250.3.64/32, 10.250.4.5/32]
+  '10.255.0.21/32': [10.250.0.21/32, 10.250.1.21/32, 10.250.3.21/32, 10.250.4.13/32]
+  '10.255.0.24/32': [10.250.0.24/32, 10.250.3.24/32, 10.255.2.24/32, 10.250.4.17/32]
+
+# The connected mesh /24 selects wg1 for these leaves regardless of the
+# loopback's OSPF next hop. Their physical shared-interface next hop is VDS5.
+amneziawg_connected_leaf_owners:
+  vds1:
+    '10.250.2.5': [10.250.2.2/32, 10.250.2.6/32]
+  vds8:
+    '10.250.2.5': [10.250.2.2/32, 10.250.2.6/32]
 
 # Shared-interface destinations have one owner; direct neighbor /32s take precedence.
 ospf_peer_allowed_ips:

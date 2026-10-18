@@ -1,5 +1,71 @@
 # MikroTik configuration
 
+## Interior network reachability
+
+`internal-networks.yml` adds a dedicated `internal_routed_networks` address
+list and scoped input, forwarding and source NAT exemptions. Both source and
+destination must belong to the interior list. The playbook puts its rules
+before existing configurable rules in their chains and adds required prefixes to single-peer
+WireGuard interfaces. Existing addresses and peer permissions are preserved;
+interfaces with multiple peers retain their explicit destination ownership.
+
+Prefixes come from `internal_routed_networks`, defaulting to shared
+`tunnel_networks` plus the existing SSTP and `10.11.0.0/16` ranges. The four
+routers with `gre-vds6` receive a separate passive OSPF point-to-multipoint
+template that advertises their own GRE endpoint `/32`. A direct peer `/32`
+route pinned to `gre-vds6` keeps the opposite endpoint on the GRE interface
+when OSPF learns that endpoint through the underlay. The Google GRE playbook
+also restores this bootstrap route. Existing OSPF
+costs, neighbors and PPP routes remain unchanged. Verify the first router's
+LSDB before applying GRE advertisements to the remaining routers; Linux VDS6
+must advertise its own endpoint `/32` addresses separately.
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ANSIBLE_REMOTE_TEMP=/tmp/ansible-remote-local \
+  ansible-playbook -i localhost, mikrotik/internal-networks.yml \
+  -e @vars/logging-transport.example.yml --check
+```
+
+`-e '{"internal_networks_routers":["K16_112"]}'` selects a router for a canary.
+`-e internal_networks_manage_gre=false` applies only the interior policy and
+peer permissions.
+
+## Central logging to ELK
+
+`logging.yml` forwards logs from every router in `host_vars/*.yml` to
+`10.9.0.90:5514` using RouterOS 7 CEF over TCP. The dedicated action
+`ansibleelk` leaves existing actions and rules in place. Complementary
+`!debug` and `debug` rules include every topic, including debug and packet
+events. Their `mikrotik:<inventory identity>` prefix identifies the source
+even when multiple routers appear behind the same address.
+
+CEF records have a newline delimiter for Logstash TCP framing. The router
+adds its identity, model, RouterOS version, topics and severity to each record;
+Logstash can also parse the CEF extension fields. This requires RouterOS 7
+with CEF and `remote-protocol=tcp` support, available on the captured 7.24.5
+routers. See the [official logging action reference](https://manual.mikrotik.com/docs/cli-reference/system/logging/action/).
+
+Apply the ELK Logstash pipeline first, then run from the repository root:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/logging.yml --check
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/logging.yml
+```
+
+`mikrotik_logging_host` and `mikrotik_logging_port` override the destination.
+`-e '{"mikrotik_logging_routers":["Logia_Kitchen"]}'` limits the run to selected
+inventory identities. Set `-e mikrotik_logging_test_message=ansible-elk-20261017`
+to emit one warning and one debug event per router for end-to-end checks;
+check mode does not emit events. The playbook uses pinned `mikrotik/known_hosts` and the
+existing `router_proxy_command` override for routed SSH access. Root
+`logging.yml` includes this playbook after configuring Logstash and the VDS
+collectors.
+
+An optional `mikrotik_logging_ntp_server` in a router's host variables adds a
+time source and waits for synchronization before probes. Logia_SouthRoom uses
+the existing managed server `10.9.1.70`; its former `10.9.0.1` source has no NTP
+listener. Other configured time sources are retained.
+
 Linux-only `wg0`/`wg1` consolidation was safely rolled back because the
 vds1/vds8 CHR identities collide. See
 [normalization status](topology/linux-interface-normalization-status.md).
@@ -321,6 +387,31 @@ transport `10.255.2.24`, native VDS `wg4`/UDP 56709. See
 Four site routers use GRE to VDS6 for Google IPv4 traffic via `google_ips_table`.
 Address allocation, scheduled prefix refresh and rebuild details are in
 [Google GRE routing](../docs/google-gre.md).
+
+`internal-networks.yml` maintains the dedicated internal-prefix list, input and
+forward permits, source-NAT exemption, and additive permissions on single-peer
+WireGuard interfaces for all seven routers. On the four GRE site routers it
+also advertises only the router's own GRE `/32` through passive OSPF and retains
+a direct `/32` route to the opposite GRE endpoint. Run the root
+[`internal-networks.yml`](../internal-networks.yml) to apply the corresponding
+Linux and MikroTik changes together; see [the network guide](../docs/internal-networks.md).
+
+The read-only reverse check probes 84 LAN/tunnel-source combinations towards
+VDS2/VDS6, verifies the direct GRE peer and existing Google default route, and
+requires no GRE OSPF neighbors:
+
+```sh
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local \
+ANSIBLE_REMOTE_TEMP=/tmp/ansible-remote-local \
+ansible-playbook -i inventory -i localhost, mikrotik/internal-networks-verify.yml \
+  -e @vars/logging-transport.example.yml
+```
+
+Detailed bounded results stay in `/tmp/mikrotik-internal-network-verify/` on the
+controller. The default probe interval is one second: RouterOS also uses the
+interval as its reply deadline, and VDS2's round-trip time exceeds 200 ms.
+Set `mikrotik_network_verify_require_success=false` only when
+collecting a diagnostic matrix while a route repair is still in progress.
 
 Telegram and DNS-learned ChatGPT/WhatsApp/Instagram GRE routing can be
 reapplied with root `service-gre.yml` using the same pinned SSH jump transport

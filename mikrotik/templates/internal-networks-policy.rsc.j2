@@ -1,0 +1,49 @@
+{% for prefix in mikrotik_internal_prefixes %}
+:local entries [/ip firewall address-list find where list="{{ mikrotik_internal_list }}" and address="{{ prefix }}"];
+:if ([:len $entries] > 1) do={:error "Ambiguous managed interior prefix"};
+:if ([:len $entries] = 0) do={
+  {% if not ansible_check_mode %}/ip firewall address-list add list="{{ mikrotik_internal_list }}" address={{ prefix }} comment="Ansible internal routed networks";{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+} else={
+  :if ([/ip firewall address-list get $entries disabled]) do={
+    {% if not ansible_check_mode %}/ip firewall address-list set $entries disabled=no;{% endif %}
+    :put "ANSIBLE_INTERNAL_CHANGED";
+  };
+};
+{% endfor %}
+{% for spec in [
+  {'path': '/ip firewall filter', 'chain': 'input', 'comment': 'Ansible internal networks input'},
+  {'path': '/ip firewall filter', 'chain': 'forward', 'comment': 'Ansible internal networks forward'},
+  {'path': '/ip firewall nat', 'chain': 'srcnat', 'comment': 'Ansible internal networks no NAT'}
+] %}
+:local rules [{{ spec.path }} find where comment="{{ spec.comment }}"];
+:if ([:len $rules] > 1) do={:error "Ambiguous managed interior policy rule"};
+:if ([:len $rules] = 0) do={
+  {% if not ansible_check_mode %}:error "Missing managed interior policy rule";{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+} else={
+  :local first [:pick [{{ spec.path }} find where chain="{{ spec.chain }}" and dynamic=no] 0];
+  :if ([:pick $rules 0] != $first) do={
+    {% if not ansible_check_mode %}{{ spec.path }} move $rules destination=$first;{% endif %}
+    :put "ANSIBLE_INTERNAL_CHANGED";
+  };
+};
+{% endfor %}
+:foreach peer in=[/interface wireguard peers find] do={
+  :local iface [/interface wireguard peers get $peer interface];
+  :if ([:len [/interface wireguard peers find where interface=$iface]] = 1) do={
+    :local allowed [/interface wireguard peers get $peer allowed-address];
+    :local changed false;
+    {% for prefix in mikrotik_internal_prefixes %}
+    :if ([:typeof [:find $allowed {{ prefix }}]] = "nil") do={
+      :set allowed ($allowed,{{ prefix }});
+      :set changed true;
+    };
+    {% endfor %}
+    :if ($changed) do={
+      {% if not ansible_check_mode %}/interface wireguard peers set $peer allowed-address=$allowed;{% endif %}
+      :put "ANSIBLE_INTERNAL_CHANGED";
+    };
+  } else={:put ("ANSIBLE_INTERNAL_MULTIPEER_UNCHANGED=".$iface)};
+};
+:put "ANSIBLE_INTERNAL_READY";

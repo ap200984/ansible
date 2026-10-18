@@ -1,0 +1,64 @@
+# {{ ansible_managed }}
+# Exact active text files only: no journals, wtmp/btmp/lastlog or rotated files.
+module(load="imfile" statefile.directory={{ linux_log_shipping_state_directory | to_json }}{% if linux_log_shipping_file_mode != 'inotify' %}
+       mode={{ linux_log_shipping_file_mode | to_json }}
+       PollingInterval={{ linux_log_shipping_polling_interval | string | to_json }}{% endif %})
+
+template(name="ElkLinuxFilesJSON" type="list") {
+    constant(value="{")
+    constant(value="\"log_source\":\"linux\",")
+    property(name="timegenerated" outname="@timestamp" dateFormat="rfc3339" format="jsonf")
+    constant(value=",")
+    property(name="msg" outname="message" format="jsonf")
+    constant(value=",\"host\":{")
+    property(name="$!elk_host" outname="name" format="jsonf")
+    constant(value="},\"log\":{\"file\":{")
+    property(name="$!metadata!filename" outname="path" format="jsonf")
+    constant(value="}},\"event\":{\"module\":\"system\",")
+    property(name="$!elk_dataset" outname="dataset" format="jsonf")
+    constant(value="}}\n")
+}
+
+# imfile events never enter the normal local-file rules, preventing a loop.
+ruleset(name="ElkLinuxFilesForward") {
+    set $!elk_host = {{ inventory_hostname | to_json }};
+{% for source in linux_log_shipping_files %}
+    if $!metadata!filename == {{ source.path | to_json }} then set $!elk_dataset = {{ source.dataset | to_json }};
+{% endfor %}
+    action(
+        name="elk_linux_files"
+        type="omfwd"
+        target={{ linux_log_shipping_host | to_json }}
+        port={{ linux_log_shipping_port | string | to_json }}
+        protocol="tcp"
+        TCP_Framing="traditional"
+        KeepAlive="on"
+        template="ElkLinuxFilesJSON"
+        action.resumeRetryCount="-1"
+        action.resumeInterval="5"
+        queue.type="LinkedList"
+        queue.filename="elk-linux-files"
+        queue.spoolDirectory={{ linux_log_shipping_state_directory | to_json }}
+        queue.size={{ linux_log_shipping_queue_size | string | to_json }}
+        queue.highWatermark={{ ((linux_log_shipping_queue_size | int * 8) // 10) | string | to_json }}
+        queue.lowWatermark={{ ((linux_log_shipping_queue_size | int * 2) // 10) | string | to_json }}
+        queue.maxDiskSpace={{ linux_log_shipping_queue_max_disk_space | to_json }}
+        queue.saveOnShutdown="on"
+    )
+    stop
+}
+
+{% for source in linux_log_shipping_files %}
+input(
+    type="imfile"
+    File={{ source.path | to_json }}
+    Tag={{ source.dataset | to_json }}
+    Severity="info"
+    Facility="local6"
+    addMetadata="on"
+    PersistStateInterval={{ linux_log_shipping_state_interval | string | to_json }}
+    reopenOnTruncate="on"
+    freshStartTail="off"
+    Ruleset="ElkLinuxFilesForward"
+)
+{% endfor %}

@@ -1,0 +1,14 @@
+[Unit]
+Description=Align ordinary WireGuard AllowedIPs with single-path OSPF routes
+After=wg-quick@{{ wireguard_interface }}.service frr.service
+Requires=wg-quick@{{ wireguard_interface }}.service
+PartOf=wg-quick@{{ wireguard_interface }}.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/wireguard-route-peers --config /etc/wireguard/routing.json
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

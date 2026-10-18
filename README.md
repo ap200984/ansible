@@ -2,6 +2,10 @@
 
 This is my awesome ansible repository!
 
+Central Debian/Ubuntu VDS and MikroTik CEF logging: [deployment and verification](docs/logging.md).
+
+Internal tunnel/LAN routing: [policy, repair and verification](docs/internal-networks.md).
+
 # add new key on main machine (if not exist):
 ssh-keygen -t ed25519 -C "ansible"
 Generating public/private ed25519 key pair.

@@ -8,5 +8,13 @@
     "10.250.1.7": "{{ normalized_chr_public_keys[inventory_hostname] }}"
 {% endif %}
   },
-  "fixed": {% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}{"10.250.1.7": ["224.0.0.5/32"]}{% else %}{}{% endif %}
+  "fixed": {{ ({'10.250.1.7': ['224.0.0.5/32']} if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts else {})
+      | combine((amneziawg_connected_leaf_owners | default({})).get(inventory_hostname, {}), recursive=true, list_merge='append_rp') | to_json }},
+  "source_aliases": {{ amneziawg_source_aliases | default({
+      '10.255.0.1/32': ['10.250.1.1/32', '10.250.2.1/32'],
+      '10.255.0.2/32': ['10.250.1.2/32', '10.250.2.2/32'],
+      '10.255.0.5/32': ['10.250.1.5/32', '10.250.2.5/32'],
+      '10.255.0.6/32': ['10.250.1.6/32', '10.250.2.6/32'],
+      '10.255.0.8/32': ['10.250.1.8/32', '10.250.2.8/32']
+    }) | to_json }}
 }

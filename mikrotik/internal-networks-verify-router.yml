@@ -1,0 +1,68 @@
+---
+- name: Load the verified router's pinned connection settings
+  ansible.builtin.include_vars:
+    file: 'host_vars/{{ mikrotik_network_verify_site.key }}.yml'
+    name: mikrotik_network_verify_connection
+
+- name: Identify the router's existing GRE peer
+  ansible.builtin.set_fact:
+    mikrotik_network_verify_gre: '{{ google_gre_links | selectattr("identity", "equalto", mikrotik_network_verify_site.key) | first }}'
+    mikrotik_network_verify_expected: '{{ (mikrotik_network_verify_site.value | length) * (mikrotik_network_verify_targets | length) }}'
+
+- name: Probe explicit LAN and tunnel sources without changing the router
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ mikrotik_network_verify_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ mikrotik_network_verify_connection.router_port | string }}'
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=12
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default(mikrotik_network_verify_connection.router_proxy_command | default("none")) }}'
+      - '{{ mikrotik_network_verify_connection.router_user }}@{{ mikrotik_network_verify_connection.router_host }}'
+      - '{{ lookup("template", "internal-networks-verify.rsc.j2").splitlines() | join(" ") }}'
+  register: mikrotik_network_verify_probe
+  changed_when: false
+  check_mode: false
+  failed_when: >-
+    mikrotik_network_verify_probe.rc != 0 or
+    'REVERSE_PROBE_READY' not in mikrotik_network_verify_probe.stdout
+
+- name: Store the bounded routing and ping artifact on the controller
+  ansible.builtin.copy:
+    dest: '{{ mikrotik_network_verify_artifact_directory }}/{{ mikrotik_network_verify_site.key }}.txt'
+    content: '{{ mikrotik_network_verify_probe.stdout }}{{ "\n" }}'
+    mode: '0640'
+
+- name: Report reverse reachability and GRE health
+  ansible.builtin.debug:
+    msg:
+      router: '{{ mikrotik_network_verify_site.key }}'
+      summary: '{{ mikrotik_network_verify_probe.stdout | regex_findall("REVERSE_SUMMARY[^\r\n]+") }}'
+      failures: '{{ mikrotik_network_verify_probe.stdout | regex_findall("REVERSE_FAIL [^\r\n]+") }}'
+      gre: '{{ mikrotik_network_verify_probe.stdout | regex_findall("GRE_(?:DIRECT_ACTIVE|DEFAULT_ACTIVE|PEER_REPLIES|OSPF_NEIGHBORS)=[0-9]+") }}'
+      artifact: '{{ mikrotik_network_verify_artifact_directory }}/{{ mikrotik_network_verify_site.key }}.txt'
+
+- name: Require complete reverse reachability and the existing GRE egress path
+  ansible.builtin.assert:
+    that:
+      - "('REVERSE_SUMMARY passed=' ~ mikrotik_network_verify_expected ~ ' total=' ~ mikrotik_network_verify_expected) in mikrotik_network_verify_probe.stdout"
+      - "'REVERSE_FAIL ' not in mikrotik_network_verify_probe.stdout"
+      - "'GRE_DIRECT_ACTIVE=1' in mikrotik_network_verify_probe.stdout"
+      - "'GRE_DEFAULT_ACTIVE=1' in mikrotik_network_verify_probe.stdout"
+      - "mikrotik_network_verify_probe.stdout is search('GRE_PEER_REPLIES=[1-9]')"
+      - "'GRE_OSPF_NEIGHBORS=0' in mikrotik_network_verify_probe.stdout"
+    fail_msg: 'Reverse reachability or GRE health failed; see the controller artifact.'
+  when: mikrotik_network_verify_require_success | bool

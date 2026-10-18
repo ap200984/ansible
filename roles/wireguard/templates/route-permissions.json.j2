@@ -1,0 +1,10 @@
+{% set ns = namespace(peers={}, fallback={}, fixed={}) %}
+{% for peer in wireguard_route_active_peers %}
+{% set address = peer.allowed_ips[0].split('/')[0] %}
+{% set ns.peers = ns.peers | combine({address: peer.public_key}) %}
+{% set ns.fallback = ns.fallback | combine({address: ospf_peer_allowed_ips[peer.public_key]}) %}
+{% set ns.fixed = ns.fixed | combine({address: wireguard_route_fixed_allowed_ips.get(peer.public_key, [])}) %}
+{% endfor %}
+{{ {'interface': wireguard_interface, 'command': 'wg', 'peers': ns.peers,
+    'fallback': ns.fallback, 'fixed': ns.fixed,
+    'source_aliases': amneziawg_source_aliases | default({})} | to_nice_json }}

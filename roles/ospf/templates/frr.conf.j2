@@ -93,3 +93,8 @@ router ospf
 ! BEGIN Ansible loopback source policy
 {% include 'roles/ospf/templates/loopback-source.conf.j2' %}
 ! END Ansible loopback source policy
+{% if inventory_hostname == 'vds6' and google_gre_enabled | default(false) | bool %}
+! BEGIN Ansible passive GRE host advertisements
+{% include 'roles/ospf/templates/passive-gre.conf.j2' %}
+! END Ansible passive GRE host advertisements
+{% endif %}

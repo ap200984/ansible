@@ -1,0 +1,133 @@
+---
+- name: Validate Linux file shipping settings
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution in ['Debian', 'Ubuntu']
+      - linux_log_shipping_host | string | length > 0
+      - linux_log_shipping_port | int > 0
+      - linux_log_shipping_port | int <= 65535
+      - linux_log_shipping_queue_size | int >= 100
+      - linux_log_shipping_state_interval | int > 0
+      - linux_log_shipping_file_mode in ['inotify', 'polling']
+      - linux_log_shipping_polling_interval | int >= 1
+      - linux_log_shipping_files | length > 0
+      - linux_log_shipping_files | map(attribute='path') | list | unique | length == linux_log_shipping_files | length
+    fail_msg: Linux file shipping requires Debian/Ubuntu and valid unique source files.
+
+- name: Validate exact active text file paths
+  ansible.builtin.assert:
+    that:
+      - source.path is match('^/var/log/[A-Za-z0-9_./-]+$')
+      - "'..' not in source.path"
+      - source.path is not search('(?:\\.[0-9]+|\\.gz|\\.xz|\\.bz2|\\.zip)$')
+      - source.path is not search('/(?:journal|wtmp|btmp|lastlog|faillog)(?:/|$)')
+      - source.dataset is match('^linux\\.[a-z0-9_]+$')
+    fail_msg: Use explicit active text files in /var/log and linux.<source> datasets.
+  loop: "{{ linux_log_shipping_files }}"
+  loop_control:
+    loop_var: source
+    label: "{{ source.path }}"
+
+- name: Check whether distribution rsyslog is already available
+  ansible.builtin.stat:
+    path: /usr/sbin/rsyslogd
+  register: linux_log_shipping_rsyslog_binary
+
+- name: Install distribution rsyslog package when absent
+  ansible.builtin.apt:
+    name: rsyslog
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: not linux_log_shipping_rsyslog_binary.stat.exists
+
+- name: Read distribution rsyslog configuration
+  ansible.builtin.slurp:
+    src: /etc/rsyslog.conf
+  register: linux_log_shipping_main_config
+
+- name: Determine rsyslog runtime account
+  ansible.builtin.set_fact:
+    linux_log_shipping_runtime_user: >-
+      {{ ((linux_log_shipping_main_config.content | b64decode)
+         | regex_findall('(?im)^[ ]*[$]PrivDropToUser[ ]+([a-zA-Z0-9_-]+)') | first) | default('root') }}
+    linux_log_shipping_runtime_group: >-
+      {{ ((linux_log_shipping_main_config.content | b64decode)
+         | regex_findall('(?im)^[ ]*[$]PrivDropToGroup[ ]+([a-zA-Z0-9_-]+)') | first) | default('root') }}
+
+- name: Allow unprivileged rsyslog to read standard adm logs
+  ansible.builtin.user:
+    name: "{{ linux_log_shipping_runtime_user }}"
+    groups: adm
+    append: true
+  when: linux_log_shipping_runtime_user != 'root'
+  notify: Restart rsyslog for Linux file shipping
+
+- name: Create Linux file shipping state and queue directory
+  ansible.builtin.file:
+    path: "{{ linux_log_shipping_state_directory }}"
+    state: directory
+    owner: "{{ linux_log_shipping_runtime_user }}"
+    group: "{{ linux_log_shipping_runtime_group }}"
+    mode: "0750"
+
+- name: Ensure rsyslog drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/rsyslog.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install and validate Linux file shipping configuration
+  block:
+    - name: Configure Linux file shipping to Logstash
+      ansible.builtin.template:
+        src: 60-elk-files.conf.j2
+        dest: "{{ linux_log_shipping_config_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+      register: linux_log_shipping_config
+      notify: Restart rsyslog for Linux file shipping
+
+    - name: Validate complete rsyslog configuration before restart
+      ansible.builtin.command:
+        argv: [/usr/sbin/rsyslogd, -N1, -f, /etc/rsyslog.conf]
+      changed_when: false
+
+  rescue:
+    - name: Restore previous Linux file shipping configuration
+      ansible.builtin.copy:
+        src: "{{ linux_log_shipping_config.backup_file }}"
+        dest: "{{ linux_log_shipping_config_path }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0644"
+      when: linux_log_shipping_config.backup_file is defined
+
+    - name: Remove newly introduced invalid Linux file shipping configuration
+      ansible.builtin.file:
+        path: "{{ linux_log_shipping_config_path }}"
+        state: absent
+      when:
+        - linux_log_shipping_config is changed
+        - linux_log_shipping_config.backup_file is not defined
+
+    - name: Stop on invalid rsyslog configuration without restarting service
+      ansible.builtin.fail:
+        msg: >-
+          Complete rsyslog configuration validation failed; the shipping configuration
+          was restored and the running daemon was not restarted. {{ ansible_failed_result.msg | default('') }}
+          {{ ansible_failed_result.stderr | default('') }}
+
+- name: Validate and activate Linux file shipping before ensuring service is running
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start rsyslog
+  ansible.builtin.service:
+    name: rsyslog
+    enabled: true
+    state: started

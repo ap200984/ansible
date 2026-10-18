@@ -1,0 +1,20 @@
+---
+- name: Configure central log reception and Elasticsearch storage
+  hosts: elk
+  become: true
+  gather_facts: true
+  tags: [logging_server]
+  roles:
+    - elk_stack
+
+- name: Ship standard Debian and Ubuntu log files from every VDS
+  hosts: vds*
+  become: true
+  gather_facts: true
+  tags: [logging_linux]
+  roles:
+    - linux_log_shipping
+
+- name: Configure RouterOS CEF logging
+  ansible.builtin.import_playbook: mikrotik/logging.yml
+  tags: [logging_mikrotik]

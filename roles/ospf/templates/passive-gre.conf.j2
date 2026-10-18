@@ -1,0 +1,8 @@
+{% set gre_links = google_gre_links | default((lookup('ansible.builtin.file', 'vars/google-gre.yml') | from_yaml).google_gre_links) %}
+{% for link in gre_links %}
+interface {{ link.linux_interface }}
+ ip ospf passive
+ ip ospf network point-to-multipoint
+ ip ospf area 0.0.0.0 {{ link.server_address }}
+!
+{% endfor %}

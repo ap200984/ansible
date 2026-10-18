@@ -1,0 +1,168 @@
+---
+- name: Choose a common marker for end-to-end logging verification
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Freeze the marker and expected managed sources for this run
+      ansible.builtin.set_fact:
+        logging_verification_marker: "{{ logging_test_marker | default('ansible-elk-verify-' ~ now(utc=true, fmt='%Y%m%dT%H%M%S')) }}"
+        logging_verification_expected_linux: "{{ logging_expected_linux_hosts | default(['vds1', 'vds2', 'vds3', 'vds5', 'vds6', 'vds8']) }}"
+        logging_verification_expected_mikrotik: "{{ logging_expected_mikrotik_hosts | default(['3Ekipazhnyi64', 'K16_112', 'Logia_Kitchen', 'Logia_SouthRoom', 'Misha', 'k16_21', 'vds7_CHR']) }}"
+
+    - name: Validate the logging probe marker
+      ansible.builtin.assert:
+        that:
+          - logging_verification_marker is match('^[A-Za-z0-9_.:-]+$')
+          - logging_verification_expected_linux | length > 0
+          - logging_verification_expected_mikrotik | length > 0
+
+- name: Generate system and authentication log probes on every VDS
+  hosts: vds*
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Write a marker through each standard syslog facility
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/logger
+          - --priority
+          - "{{ item }}"
+          - --tag
+          - ansible-elk-verify
+          - --
+          - "{{ hostvars['localhost'].logging_verification_marker }} host={{ inventory_hostname }} facility={{ item }}"
+      loop: [user.notice, authpriv.notice]
+      changed_when: false
+      when: not ansible_check_mode
+
+# Reconcile existing actions idempotently and emit warning + debug probes with
+# exactly the same frozen marker. Router connection settings remain in the vault.
+- name: Generate MikroTik warning and debug log probes
+  ansible.builtin.import_playbook: mikrotik/logging.yml
+  vars:
+    mikrotik_logging_test_message: "{{ hostvars['localhost'].logging_verification_marker }}"
+
+- name: Verify parsed log arrival in Elasticsearch without returning log documents
+  hosts: elk
+  become: true
+  gather_facts: false
+  vars:
+    logging_verification_api: "http://127.0.0.1:{{ elk_elasticsearch_port | default(9200) }}"
+    logging_verification_marker: "{{ hostvars['localhost'].logging_verification_marker }}"
+    logging_verification_expected_linux: "{{ hostvars['localhost'].logging_verification_expected_linux }}"
+    logging_verification_expected_mikrotik: "{{ hostvars['localhost'].logging_verification_expected_mikrotik }}"
+  tasks:
+    - name: Wait for system and authentication file probes from all VDS
+      ansible.builtin.uri:
+        url: "{{ logging_verification_api }}/linux-logs-*/_search?ignore_unavailable=true&allow_no_indices=true"
+        method: POST
+        body_format: json
+        use_proxy: false
+        body:
+          size: 0
+          query:
+            bool:
+              filter:
+                - match_phrase:
+                    message: "{{ logging_verification_marker }}"
+                - range:
+                    '@timestamp': {gte: now-15m}
+          aggs:
+            sources:
+              terms: {field: host.name, size: 100}
+              aggs:
+                files:
+                  terms: {field: log.file.path, size: 100}
+            syslog_sources:
+              filter:
+                term: {log.file.path: /var/log/syslog}
+              aggs:
+                hosts:
+                  terms: {field: host.name, size: 100}
+            auth_sources:
+              filter:
+                term: {log.file.path: /var/log/auth.log}
+              aggs:
+                hosts:
+                  terms: {field: host.name, size: 100}
+            parse_failures:
+              filter:
+                terms:
+                  tags: [_jsonparsefailure, _linux_syslogparsefailure, _linux_dateparsefailure]
+        status_code: 200
+        return_content: true
+      register: logging_linux_probe_result
+      until: >-
+        logging_verification_expected_linux | difference(
+          logging_linux_probe_result.json.aggregations.syslog_sources.hosts.buckets | default([]) | map(attribute='key') | list) | length == 0 and
+        logging_verification_expected_linux | difference(
+          logging_linux_probe_result.json.aggregations.auth_sources.hosts.buckets | default([]) | map(attribute='key') | list) | length == 0
+      retries: 30
+      delay: 2
+      when: not ansible_check_mode
+
+    - name: Wait for warning and debug probes from all MikroTik routers
+      ansible.builtin.uri:
+        url: "{{ logging_verification_api }}/mikrotik-logs-*/_search?ignore_unavailable=true&allow_no_indices=true"
+        method: POST
+        body_format: json
+        use_proxy: false
+        body:
+          size: 0
+          query:
+            bool:
+              filter:
+                - match_phrase:
+                    message: "{{ logging_verification_marker }}"
+                - range:
+                    '@timestamp': {gte: now-15m}
+          aggs:
+            sources:
+              terms: {field: host.name, size: 100}
+              aggs:
+                levels:
+                  terms: {field: log.level, size: 20}
+            warning_sources:
+              filter:
+                term: {log.level: warning}
+              aggs:
+                hosts:
+                  terms: {field: host.name, size: 100}
+            debug_sources:
+              filter:
+                term: {log.level: debug}
+              aggs:
+                hosts:
+                  terms: {field: host.name, size: 100}
+            parse_failures:
+              filter:
+                terms:
+                  tags: [_cefparsefailure, _mikrotik_headerparsefailure, _mikrotik_dateparsefailure]
+        status_code: 200
+        return_content: true
+      register: logging_mikrotik_probe_result
+      until: >-
+        logging_verification_expected_mikrotik | difference(
+          logging_mikrotik_probe_result.json.aggregations.warning_sources.hosts.buckets | default([]) | map(attribute='key') | list) | length == 0 and
+        logging_verification_expected_mikrotik | difference(
+          logging_mikrotik_probe_result.json.aggregations.debug_sources.hosts.buckets | default([]) | map(attribute='key') | list) | length == 0
+      retries: 30
+      delay: 2
+      when: not ansible_check_mode
+
+    - name: Require parsing without errors for generated probes
+      ansible.builtin.assert:
+        that:
+          - logging_linux_probe_result.json.aggregations.parse_failures.doc_count | int == 0
+          - logging_mikrotik_probe_result.json.aggregations.parse_failures.doc_count | int == 0
+        fail_msg: Probe events arrived but parsing failed; inspect the Logstash failure tags.
+      when: not ansible_check_mode
+
+    - name: Report only verified sources and counts
+      ansible.builtin.debug:
+        msg:
+          marker: "{{ logging_verification_marker }}"
+          linux: "{{ logging_linux_probe_result.json.aggregations.sources.buckets }}"
+          mikrotik: "{{ logging_mikrotik_probe_result.json.aggregations.sources.buckets }}"
+      when: not ansible_check_mode

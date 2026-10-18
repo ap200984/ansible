@@ -1,0 +1,31 @@
+---
+- name: Forward every MikroTik log to ELK using RouterOS 7 CEF over TCP
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    mikrotik_logging_host: 10.9.0.90
+    mikrotik_logging_port: 5514
+    mikrotik_logging_action: ansibleelk
+  tasks:
+    - name: Discover every managed MikroTik
+      ansible.builtin.set_fact:
+        mikrotik_logging_variable_files: '{{ lookup("fileglob", playbook_dir + "/host_vars/*.yml", wantlist=True) | sort }}'
+
+    - name: Require managed MikroTik connection settings
+      ansible.builtin.assert:
+        that:
+          - mikrotik_logging_variable_files | length > 0
+          - mikrotik_logging_port | int >= 1
+          - mikrotik_logging_port | int <= 65535
+          - mikrotik_logging_action is match('^[A-Za-z0-9]+$')
+
+    - name: Configure remote logging on each MikroTik
+      ansible.builtin.include_tasks: logging-router.yml
+      loop: '{{ mikrotik_logging_variable_files }}'
+      loop_control:
+        loop_var: mikrotik_logging_variable_file
+        label: '{{ mikrotik_logging_variable_file | basename | splitext | first }}'
+      when: >-
+        mikrotik_logging_routers is not defined or
+        (mikrotik_logging_variable_file | basename | splitext | first) in mikrotik_logging_routers

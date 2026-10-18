@@ -10,6 +10,7 @@ local_endpoint=$3
 remote_endpoint=$4
 address=$5
 mtu=$6
+peer_address=${7:-}
 if ip link show "$interface" >/dev/null 2>&1; then
     ip tunnel change "$interface" mode gre local "$local_endpoint" remote "$remote_endpoint" ttl 64
 else
@@ -17,3 +18,8 @@ else
 fi
 ip address replace "$address" dev "$interface"
 ip link set "$interface" mtu "$mtu" up
+if [ -n "$peer_address" ]; then
+    # Keep the opposite endpoint directly on GRE after its /32 is learned over
+    # OSPF. This also preserves the established internet egress return path.
+    ip route replace "$peer_address/32" dev "$interface" src "${address%/*}" proto static metric 0
+fi

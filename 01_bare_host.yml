@@ -36,6 +36,8 @@
       when: wireguard_enabled | default(false) | bool
     - utils
     - rsyslog
+    - role: linux_log_shipping
+      when: inventory_hostname is match('^vds[0-9]+$')
     - docker
     - auditbeat
     - zabbix_agent

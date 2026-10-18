@@ -1,0 +1,60 @@
+---
+linux_log_shipping_host: 10.9.0.90
+linux_log_shipping_port: 10514
+linux_log_shipping_config_path: /etc/rsyslog.d/60-elk-files.conf
+linux_log_shipping_state_directory: /var/spool/rsyslog/elk-files
+linux_log_shipping_queue_max_disk_space: 1g
+linux_log_shipping_queue_size: 10000
+linux_log_shipping_state_interval: 100
+linux_log_shipping_file_mode: inotify
+linux_log_shipping_polling_interval: 2
+# Existing active files are read from the beginning once, then offsets persist.
+linux_log_shipping_files:
+  - path: /var/log/syslog
+    dataset: linux.syslog
+  - path: /var/log/auth.log
+    dataset: linux.auth
+  - path: /var/log/kern.log
+    dataset: linux.kernel
+  - path: /var/log/daemon.log
+    dataset: linux.daemon
+  - path: /var/log/messages
+    dataset: linux.messages
+  - path: /var/log/debug
+    dataset: linux.debug
+  - path: /var/log/user.log
+    dataset: linux.user
+  - path: /var/log/mail.log
+    dataset: linux.mail
+  - path: /var/log/mail.err
+    dataset: linux.mail_error
+  - path: /var/log/mail.warn
+    dataset: linux.mail_warning
+  - path: /var/log/mail.info
+    dataset: linux.mail_info
+  - path: /var/log/cron.log
+    dataset: linux.cron
+  - path: /var/log/dpkg.log
+    dataset: linux.dpkg
+  - path: /var/log/alternatives.log
+    dataset: linux.alternatives
+  - path: /var/log/boot.log
+    dataset: linux.boot
+  - path: /var/log/apt/history.log
+    dataset: linux.apt_history
+  - path: /var/log/apt/term.log
+    dataset: linux.apt_term
+  - path: /var/log/cloud-init.log
+    dataset: linux.cloud_init
+  - path: /var/log/cloud-init-output.log
+    dataset: linux.cloud_init_output
+  - path: /var/log/dmesg
+    dataset: linux.dmesg
+  - path: /var/log/ufw.log
+    dataset: linux.ufw
+  - path: /var/log/unattended-upgrades/unattended-upgrades.log
+    dataset: linux.unattended_upgrades
+  - path: /var/log/unattended-upgrades/unattended-upgrades-dpkg.log
+    dataset: linux.unattended_upgrades_dpkg
+  - path: /var/log/unattended-upgrades/unattended-upgrades-shutdown.log
+    dataset: linux.unattended_upgrades_shutdown

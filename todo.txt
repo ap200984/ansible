@@ -6,6 +6,48 @@
 + rolllout all machines
 + check ssh access by key
 
+- iptables andaddress lists
+- bruteforce protection
+
+
+I have lists of mu networks and list of my hosts below:
+
+trusted networks:
+    10.255.0.0/24 - loopbacks
+    10.250.0.0/24 - SSTP network
+    10.250.1.0/24 - Wireguard network
+    10.250.2.0/24 - Amnezia network
+    10.250.3.0/24 - l2tp network
+    10.250.4.0/24 - GRE network
+    10.9.0.0/23   - k16_112 network
+    10.10.0.0/24  - 3Ekipazhnyi_64 network
+    10.11.0.0/24  - k16_21 network
+
+trusted hosts:
+    86.110.170.70/32    - k16_112
+    45.141.102.72/32    - vds1
+    38.247.137.237/32   - vds2
+    217.144.189.206/32  - vds5
+    195.245.239.82/32   - vds6
+    62.60.216.73/32     - Mikrotik on vds7
+    194.113.106.136     - vds8
+
+Add them to ipsets trusted_networks and trusted_hosts on vds1,vds2,vds5,vds6 and vd8. Also Add them to address lists with same names "trusted_networks" and "trusted_hosts" on Mikrotiks vds7, K16_112, 3Ekipazhnyi64, k16_21 and Misha.
+The trusted prefixes should be allowed for coresponding chains: INPUT and FORWARD (be smart here).
+All trusted netwoks should be allowed inside wireguard and amnezia tunnels.
+If there are any redundant firewall filter rules or iptables rules overlaping with them - remove them.
+
+VDSes and mikrotiks without public IPs should not have any iptables rules and firewall rules.
+vds1,vds2,vds5,vds6 and vd8 shloud stay reachable over ssh via port 19022. Activate there ssh simple bruteforce protection - every IP attempting to acces more than 5 times with wrong creds shloud be placed into Balcklist ipset fro 2 weeks.
+Same protection shloud be used on vds3 and k16_k112_server.
+Also gather information from K16_k112 and vds7 about IP ports opened for the world and their services: wireguard, sstp, l2tp, ssh, http, https etc...
+
+
+
+ssh bruteforce protection on VDSes (only with public IPs)- put in black list for 2 weeks if 5 attempts are unsuccessful
+
+mikrotik (only with public IPS) l2tp bruteforce - put in black list for 2 weeks if 5 attempts are unsuccessful
+ 
 
 + install k8s
 
