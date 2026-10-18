@@ -1,0 +1,13 @@
+[Unit]
+Description=Install the SSH blacklist ipset rule
+After=netfilter-persistent.service
+Before=fail2ban.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/ssh-blacklist-firewall
+ExecReload=/usr/local/sbin/ssh-blacklist-firewall
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Normalize trusted INPUT policy and remove redundant legacy rules
+After=network-online.target ipset-persistent-restore.service ospf-firewall.service plain-wireguard-firewall.service linux-normalized-firewall.service chr-native-awg-firewall.service ssh-blacklist-firewall.service fail2ban.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/trusted-rule-cleanup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

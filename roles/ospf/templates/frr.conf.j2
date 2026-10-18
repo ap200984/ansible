@@ -44,7 +44,7 @@ interface {{ name }}
 {% endfor %}
 {% if chr_native_this_host | default(false) | bool or inventory_hostname in (chr_native_awg_hosts | default([])) %}
 interface wg2
- ip ospf area 0.0.0.0 10.250.1.{{ inventory_hostname[3:] }}
+ ip ospf area 0.0.0.0 10.250.6.{{ inventory_hostname[3:] }}
  ip ospf network point-to-point
  ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
  ip ospf hello-interval 60
@@ -56,7 +56,7 @@ interface wg2
 {% endif %}
 {% if k16_amneziawg_enabled | default(false) | bool %}
 interface wg3
- ip ospf area 0.0.0.0 10.255.2.{{ inventory_hostname[3:] }}
+ ip ospf area 0.0.0.0 10.250.6.{{ inventory_hostname[3:] }}
  ip ospf network point-to-point
  ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
  ip ospf hello-interval 60
@@ -66,7 +66,7 @@ interface wg3
 {% endif %}
 {% if misha_amneziawg_enabled | default(false) | bool %}
 interface wg4
- ip ospf area 0.0.0.0 10.255.2.{{ inventory_hostname[3:] }}
+ ip ospf area 0.0.0.0 10.250.6.{{ inventory_hostname[3:] }}
  ip ospf network point-to-point
  ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}
  ip ospf hello-interval 60
@@ -79,7 +79,7 @@ router ospf
  maximum-paths 1
  passive-interface lo
 {% for peer in ospf_neighbors %}
-{% if peer != '10.250.1.7' or not (chr_native_this_host | default(false) | bool or inventory_hostname in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([])))) %}
+{% if peer != '10.250.6.7' or not (chr_native_this_host | default(false) | bool or inventory_hostname in ((chr_native_awg_hosts | default([])) + (chr_plain_wg_hosts | default([])))) %}
  neighbor {{ peer }} poll-interval 60
 {% endif %}
 {% endfor %}

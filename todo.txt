@@ -43,6 +43,174 @@ Same protection shloud be used on vds3 and k16_k112_server.
 Also gather information from K16_k112 and vds7 about IP ports opened for the world and their services: wireguard, sstp, l2tp, ssh, http, https etc...
 
 
+1. why do I still have /32 addresses in my iptabls rules for 10.* network? Aint they hgave to be included into trusted_hosts and trusted_network ipstes?
+user@vds5:~$ sudo iptables -S | grep INPUT
+-P INPUT DROP
+-A INPUT -p tcp -m tcp --dport 19022 -m set --match-set Blacklist src -m comment --comment ansible-ssh-blacklist -j DROP
+-A INPUT -m set --match-set trusted_networks src -j ACCEPT
+-A INPUT -p tcp -m tcp --dport 19022 -j ACCEPT
+-A INPUT -s 10.250.1.7/32 -i wg0 -p ospf -j ACCEPT
+-A INPUT -s 195.245.239.82/32 -p udp -m udp --dport 56716 -m comment --comment plain-wg-transport -j ACCEPT
+-A INPUT -s 38.247.137.237/32 -p udp -m udp --dport 56712 -m comment --comment plain-wg-transport -j ACCEPT
+-A INPUT -s 62.60.216.73/32 -p udp -m udp --dport 56695 -m comment --comment plain-wg-transport -j ACCEPT
+-A INPUT -s 194.113.106.136/32 -p udp -m udp --dport 56702 -j ACCEPT
+-A INPUT -s 45.141.102.72/32 -p udp -m udp --dport 56702 -j ACCEPT
+-A INPUT -s 10.250.1.7/32 -i wg1 -p ospf -j ACCEPT
+-A INPUT -s 62.60.216.73/32 -p udp -m udp --dport 56695 -j ACCEPT
+-A INPUT -m set --match-set trusted_hosts src -j ACCEPT
+-A INPUT -s 127.0.0.0/8 -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -m set --match-set allowed_hosts src -m comment --comment "Accept connections to SSH port from allowed_hosts" -j ACCEPT
+-A INPUT -p tcp -m multiport --dports 80,443,19022,1953,3000,5222,5269,5280,5443,19022 -j ACCEPT
+-A INPUT -p tcp -m multiport --dports 56685 -j ACCEPT
+-A INPUT -p icmp -m icmp --icmp-type 8 -j DROP
+
+2. If fail2ban already bans IP why do I stiil see logs in auth.loig like below?
+user@vds5:~$ sudo cat /var/log/auth.log | grep "Failed password for invalid user"| tail -10
+2026-10-18T19:56:42.795233+00:00 vds5 sshd[1631998]: Failed password for invalid user apache from 77.83.39.29 port 51556 ssh2
+2026-10-18T19:57:08.854969+00:00 vds5 sshd[1632135]: Failed password for invalid user hf-2023 from 77.83.39.36 port 39574 ssh2
+2026-10-18T19:58:48.410249+00:00 vds5 sshd[1632460]: Failed password for invalid user posftp from 77.83.39.4 port 43562 ssh2
+2026-10-18T19:59:35.471951+00:00 vds5 sshd[1632638]: Failed password for invalid user edp from 77.83.39.45 port 61888 ssh2
+2026-10-18T20:00:17.323182+00:00 vds5 sshd[1632882]: Failed password for invalid user dell from 77.83.39.32 port 35682 ssh2
+2026-10-18T20:00:24.911985+00:00 vds5 sshd[1632917]: Failed password for invalid user zhaojie from 77.83.39.21 port 62348 ssh2
+2026-10-18T20:01:25.870612+00:00 vds5 sshd[1633168]: Failed password for invalid user test from 77.83.39.41 port 23556 ssh2
+2026-10-18T20:01:57.997000+00:00 vds5 sshd[1633297]: Failed password for invalid user lxy from 77.83.39.29 port 48290 ssh2
+2026-10-18T20:04:03.862212+00:00 vds5 sshd[1633840]: Failed password for invalid user xm from 77.83.39.4 port 63124 ssh2
+2026-10-18T20:04:41.543032+00:00 vds5 sshd[1633937]: Failed password for invalid user devops from 77.83.39.45 port 38660 ssh2
+user@vds5:~$ date
+Sun Oct 18 08:04:56 PM UTC 2026
+
+
+Переставь правила в iptables в тком порядке
+-A INPUT -s 127.0.0.0/8 -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -m set --match-set trusted_hosts src -j ACCEPT
+-A INPUT -m set --match-set trusted_networks src -j ACCEPT
+-A INPUT -p tcp -m tcp --dport 19022 -m set --match-set Blacklist src -m comment --comment ansible-ssh-blacklist -j DROP
+-A INPUT -p tcp -m tcp --dport 19022 -j ACCEPT
+
+А вот эти выглядят лишними
+-A INPUT -m set --match-set allowed_hosts src -m comment --comment "Accept connections to SSH port from allowed_hosts" -j ACCEPT
+-A INPUT -p tcp -m multiport --dports 80,443,19022,1953,3000,5222,5269,5280,5443,19022 -j ACCEPT
+-A INPUT -p tcp -m multiport --dports 56685 -j ACCEPT
+-A INPUT -p icmp -m icmp --icmp-type 8 -j DROP
+проверь и удали, если я прав
+
+
+
+Можно ли настроить fail2ban так, чтобы он блокировал префикс /24 в случае перебора паролей/пользоателей разными ip из одного префикса /24?
+Это выглядит более разумно в моем случае
+2026-10-18T19:00:23.560064+00:00 vds5 sshd[1618328]: Failed password for invalid user npc from 77.83.39.35 port 62550 ssh2
+2026-10-18T19:00:59.323662+00:00 vds5 sshd[1618648]: Failed password for invalid user liuxiaoyang from 77.83.39.15 port 13206 ssh2
+2026-10-18T19:01:01.348025+00:00 vds5 sshd[1618655]: Failed password for invalid user oravis from 77.83.39.40 port 50954 ssh2
+2026-10-18T19:01:11.328043+00:00 vds5 sshd[1618707]: Failed password for invalid user office from 77.83.39.41 port 37084 ssh2
+2026-10-18T19:01:13.791848+00:00 vds5 sshd[1618713]: Failed password for invalid user data from 77.83.39.16 port 29266 ssh2
+2026-10-18T19:01:50.691008+00:00 vds5 sshd[1618857]: Failed password for invalid user zxwl from 77.83.39.8 port 21372 ssh2
+2026-10-18T19:01:58.613123+00:00 vds5 sshd[1618905]: Failed password for invalid user eemre from 77.83.39.36 port 52158 ssh2
+2026-10-18T19:03:05.155588+00:00 vds5 sshd[1619189]: Failed password for invalid user vadim from 77.83.39.4 port 35902 ssh2
+2026-10-18T19:03:08.440039+00:00 vds5 sshd[1619241]: Failed password for invalid user xy from 77.83.39.10 port 7248 ssh2
+2026-10-18T19:03:23.311086+00:00 vds5 sshd[1619298]: Failed password for invalid user zhanghl from 77.83.39.17 port 52938 ssh2
+2026-10-18T19:04:01.724028+00:00 vds5 sshd[1619422]: Failed password for invalid user lotus from 77.83.39.45 port 49810 ssh2
+2026-10-18T19:04:03.195659+00:00 vds5 sshd[1619438]: Failed password for invalid user liangjj from 77.83.39.32 port 28692 ssh2
+2026-10-18T19:04:13.940183+00:00 vds5 sshd[1619451]: Failed password for invalid user jiaocy from 77.83.39.12 port 24816 ssh2
+2026-10-18T19:05:09.959181+00:00 vds5 sshd[1619699]: Failed password for invalid user admin from 77.83.39.21 port 42452 ssh2
+2026-10-18T19:05:16.093526+00:00 vds5 sshd[1619766]: Failed password for invalid user tang1 from 77.83.39.35 port 33326 ssh2
+2026-10-18T19:06:07.549883+00:00 vds5 sshd[1619944]: Failed password for invalid user kj from 77.83.39.29 port 39460 ssh2
+2026-10-18T19:06:14.676773+00:00 vds5 sshd[1619994]: Failed password for invalid user haorui from 77.83.39.41 port 16476 ssh2
+2026-10-18T19:07:00.415723+00:00 vds5 sshd[1620136]: Failed password for invalid user administrador from 77.83.39.36 port 13704 ssh2
+2026-10-18T19:08:18.101928+00:00 vds5 sshd[1620446]: Failed password for invalid user csg from 77.83.39.4 port 64490 ssh2
+2026-10-18T19:09:04.070211+00:00 vds5 sshd[1620922]: Failed password for invalid user jbx from 77.83.39.32 port 7222 ssh2
+2026-10-18T19:09:08.027909+00:00 vds5 sshd[1620963]: Failed password for invalid user adminagora from 77.83.39.45 port 40026 ssh2
+2026-10-18T19:09:23.911930+00:00 vds5 sshd[1621058]: Failed password for invalid user liucb from 77.83.39.12 port 60186 ssh2
+2026-10-18T19:09:43.938194+00:00 vds5 sshd[1621092]: Failed password for invalid user dipens from 77.83.39.20 port 39326 ssh2
+2026-10-18T19:10:11.999611+00:00 vds5 sshd[1621196]: Failed password for invalid user sunaq from 77.83.39.21 port 20016 ssh2
+2026-10-18T19:10:23.713272+00:00 vds5 sshd[1621247]: Failed password for invalid user caopu from 77.83.39.35 port 54252 ssh2
+2026-10-18T19:11:12.219678+00:00 vds5 sshd[1621454]: Failed password for invalid user upcftst from 77.83.39.29 port 57586 ssh2
+2026-10-18T19:11:20.227861+00:00 vds5 sshd[1621505]: Failed password for invalid user quwei from 77.83.39.41 port 3352 ssh2
+2026-10-18T19:11:57.954910+00:00 vds5 sshd[1621641]: Failed password for invalid user ubuntu from 77.83.39.36 port 20870 ssh2
+2026-10-18T19:13:31.147882+00:00 vds5 sshd[1621959]: Failed password for invalid user yaozhao from 77.83.39.4 port 15170 ssh2
+2026-10-18T19:14:17.378906+00:00 vds5 sshd[1622124]: Failed password for invalid user dm from 77.83.39.32 port 53462 ssh2
+2026-10-18T19:14:23.916593+00:00 vds5 sshd[1622153]: Failed password for invalid user bitnami from 77.83.39.12 port 36326 ssh2
+2026-10-18T19:14:25.636032+00:00 vds5 sshd[1622157]: Failed password for invalid user darshb from 77.83.39.45 port 48518 ssh2
+2026-10-18T19:15:00.660151+00:00 vds5 sshd[1622307]: Failed password for invalid user yklee from 77.83.39.20 port 26160 ssh2
+2026-10-18T19:15:19.232100+00:00 vds5 sshd[1622378]: Failed password for invalid user sfy from 77.83.39.21 port 7656 ssh2
+2026-10-18T19:15:31.147996+00:00 vds5 sshd[1622428]: Failed password for invalid user admin from 77.83.39.35 port 43718 ssh2
+2026-10-18T19:16:19.588107+00:00 vds5 sshd[1622613]: Failed password for invalid user hamrah from 77.83.39.29 port 45564 ssh2
+2026-10-18T19:16:32.467898+00:00 vds5 sshd[1622648]: Failed password for invalid user lian from 77.83.39.41 port 41450 ssh2
+2026-10-18T19:17:01.638301+00:00 vds5 sshd[1622772]: Failed password for invalid user wuchuhui from 77.83.39.36 port 48792 ssh2
+2026-10-18T19:18:28.041409+00:00 vds5 sshd[1623071]: Failed password for invalid user paulo from 77.83.39.4 port 24938 ssh2
+2026-10-18T19:19:32.845513+00:00 vds5 sshd[1623297]: Failed password for invalid user admin from 77.83.39.12 port 39046 ssh2
+2026-10-18T19:19:35.455955+00:00 vds5 sshd[1623326]: Failed password for invalid user liuhj from 77.83.39.45 port 58270 ssh2
+2026-10-18T19:20:10.952038+00:00 vds5 sshd[1623478]: Failed password for invalid user teamspeak from 77.83.39.20 port 2940 ssh2
+2026-10-18T19:20:15.599996+00:00 vds5 sshd[1623486]: Failed password for invalid user LouisSu123 from 77.83.39.21 port 43320 ssh2
+2026-10-18T19:20:40.790652+00:00 vds5 sshd[1623555]: Failed password for invalid user zhangmingjuan from 77.83.39.35 port 24518 ssh2
+2026-10-18T19:21:26.388020+00:00 vds5 sshd[1623733]: Failed password for invalid user niuz from 77.83.39.29 port 51100 ssh2
+2026-10-18T19:21:30.863211+00:00 vds5 sshd[1623761]: Failed password for invalid user zhangc from 77.83.39.41 port 27870 ssh2
+2026-10-18T19:22:13.387679+00:00 vds5 sshd[1623904]: Failed password for invalid user jqq from 77.83.39.36 port 53708 ssh2
+2026-10-18T19:24:35.939806+00:00 vds5 sshd[1624448]: Failed password for invalid user yuandl from 77.83.39.45 port 18726 ssh2
+2026-10-18T19:24:44.158482+00:00 vds5 sshd[1624475]: Failed password for invalid user darshb from 77.83.39.12 port 40038 ssh2
+2026-10-18T19:25:10.900382+00:00 vds5 sshd[1624584]: Failed password for invalid user darshb from 77.83.39.21 port 8284 ssh2
+2026-10-18T19:25:40.082484+00:00 vds5 sshd[1624700]: Failed password for invalid user spring from 77.83.39.35 port 12726 ssh2
+2026-10-18T19:26:28.826837+00:00 vds5 sshd[1624879]: Failed password for invalid user yfzhang from 77.83.39.29 port 36550 ssh2
+2026-10-18T19:26:45.936178+00:00 vds5 sshd[1624924]: Failed password for invalid user sam from 77.83.39.41 port 59928 ssh2
+2026-10-18T19:28:14.012069+00:00 vds5 sshd[1625261]: Failed password for invalid user mini from 77.83.39.4 port 35490 ssh2
+2026-10-18T19:29:39.457832+00:00 vds5 sshd[1625569]: Failed password for invalid user thjeong from 77.83.39.45 port 26194 ssh2
+2026-10-18T19:29:44.967836+00:00 vds5 sshd[1625586]: Failed password for invalid user temp from 77.83.39.12 port 7584 ssh2
+2026-10-18T19:29:51.821772+00:00 vds5 sshd[1625593]: Failed password for invalid user sucheng from 77.83.39.32 port 14296 ssh2
+2026-10-18T19:30:03.046142+00:00 vds5 sshd[1625700]: Failed password for invalid user info from 77.83.39.21 port 30444 ssh2
+2026-10-18T19:30:25.157777+00:00 vds5 sshd[1625759]: Failed password for invalid user saidurga from 77.83.39.35 port 27296 ssh2
+2026-10-18T19:31:47.916787+00:00 vds5 sshd[1626312]: Failed password for invalid user cxh from 77.83.39.41 port 46404 ssh2
+2026-10-18T19:32:02.207195+00:00 vds5 sshd[1626495]: Failed password for invalid user huashan from 77.83.39.36 port 28284 ssh2
+2026-10-18T19:33:18.844263+00:00 vds5 sshd[1626830]: Failed password for invalid user admin from 77.83.39.4 port 10230 ssh2
+2026-10-18T19:34:32.415854+00:00 vds5 sshd[1627079]: Failed password for invalid user wujun from 77.83.39.45 port 31232 ssh2
+2026-10-18T19:34:46.379972+00:00 vds5 sshd[1627135]: Failed password for invalid user dmdba from 77.83.39.32 port 64648 ssh2
+2026-10-18T19:35:15.449908+00:00 vds5 sshd[1627239]: Failed password for invalid user wangwang from 77.83.39.21 port 8970 ssh2
+2026-10-18T19:35:31.788712+00:00 vds5 sshd[1627276]: Failed password for invalid user caoll22 from 77.83.39.35 port 15862 ssh2
+2026-10-18T19:35:41.894193+00:00 vds5 sshd[1627344]: Failed password for invalid user zhouwen from 77.83.39.20 port 2380 ssh2
+2026-10-18T19:36:17.619262+00:00 vds5 sshd[1627501]: Failed password for invalid user darshb from 77.83.39.29 port 63862 ssh2
+2026-10-18T19:36:36.147303+00:00 vds5 sshd[1627546]: Failed password for invalid user lkw66 from 77.83.39.41 port 29728 ssh2
+2026-10-18T19:36:59.275843+00:00 vds5 sshd[1627657]: Failed password for invalid user renzhc from 77.83.39.36 port 46436 ssh2
+2026-10-18T19:38:14.354441+00:00 vds5 sshd[1627925]: Failed password for invalid user daill from 77.83.39.4 port 14726 ssh2
+2026-10-18T19:39:35.864089+00:00 vds5 sshd[1628205]: Failed password for invalid user weixj from 77.83.39.45 port 32080 ssh2
+2026-10-18T19:39:42.848888+00:00 vds5 sshd[1628225]: Failed password for invalid user amanda from 77.83.39.32 port 28500 ssh2
+2026-10-18T19:39:55.464055+00:00 vds5 sshd[1628299]: Failed password for invalid user amir from 77.83.39.12 port 59532 ssh2
+2026-10-18T19:40:03.395743+00:00 vds5 sshd[1628326]: Failed password for invalid user wxy from 77.83.39.21 port 34710 ssh2
+2026-10-18T19:40:30.596437+00:00 vds5 sshd[1628416]: Failed password for invalid user abe from 77.83.39.35 port 62130 ssh2
+2026-10-18T19:40:44.971903+00:00 vds5 sshd[1628446]: Failed password for invalid user corerain from 77.83.39.20 port 4798 ssh2
+2026-10-18T19:41:32.431907+00:00 vds5 sshd[1628625]: Failed password for invalid user guest from 77.83.39.29 port 55970 ssh2
+2026-10-18T19:41:39.029781+00:00 vds5 sshd[1628654]: Failed password for invalid user yyf from 77.83.39.41 port 18848 ssh2
+2026-10-18T19:42:09.663991+00:00 vds5 sshd[1628812]: Failed password for invalid user sistemas from 77.83.39.36 port 40680 ssh2
+2026-10-18T19:43:31.557779+00:00 vds5 sshd[1629081]: Failed password for invalid user kasia from 77.83.39.4 port 31440 ssh2
+2026-10-18T19:44:36.118911+00:00 vds5 sshd[1629320]: Failed password for invalid user prime from 77.83.39.45 port 12526 ssh2
+2026-10-18T19:44:59.132009+00:00 vds5 sshd[1629444]: Failed password for invalid user whl from 77.83.39.12 port 6214 ssh2
+2026-10-18T19:45:11.379713+00:00 vds5 sshd[1629480]: Failed password for invalid user baozean from 77.83.39.21 port 35406 ssh2
+2026-10-18T19:45:34.508298+00:00 vds5 sshd[1629537]: Failed password for invalid user wjj from 77.83.39.35 port 38506 ssh2
+2026-10-18T19:46:31.084061+00:00 vds5 sshd[1629777]: Failed password for invalid user yujiong from 77.83.39.41 port 50138 ssh2
+2026-10-18T19:46:35.110045+00:00 vds5 sshd[1629795]: Failed password for invalid user etop from 77.83.39.29 port 43696 ssh2
+2026-10-18T19:47:12.634816+00:00 vds5 sshd[1629919]: Failed password for invalid user cgc from 77.83.39.36 port 52610 ssh2
+2026-10-18T19:48:33.575819+00:00 vds5 sshd[1630193]: Failed password for invalid user nas from 77.83.39.4 port 59562 ssh2
+2026-10-18T19:49:31.163175+00:00 vds5 sshd[1630435]: Failed password for invalid user admin from 77.83.39.45 port 44520 ssh2
+2026-10-18T19:49:52.412072+00:00 vds5 sshd[1630476]: Failed password for invalid user lpf from 77.83.39.32 port 59048 ssh2
+2026-10-18T19:50:07.239971+00:00 vds5 sshd[1630563]: Failed password for invalid user zzh from 77.83.39.12 port 29894 ssh2
+2026-10-18T19:50:11.613631+00:00 vds5 sshd[1630587]: Failed password for invalid user muazin from 77.83.39.21 port 11902 ssh2
+2026-10-18T19:50:40.299971+00:00 vds5 sshd[1630670]: Failed password for invalid user jayarajpb from 77.83.39.35 port 16632 ssh2
+2026-10-18T19:51:24.055596+00:00 vds5 sshd[1630841]: Failed password for invalid user hz from 77.83.39.41 port 28136 ssh2
+2026-10-18T19:51:36.880026+00:00 vds5 sshd[1630880]: Failed password for invalid user china from 77.83.39.29 port 13770 ssh2
+2026-10-18T19:52:06.728067+00:00 vds5 sshd[1630991]: Failed password for invalid user cache from 77.83.39.36 port 40782 ssh2
+2026-10-18T19:53:30.864774+00:00 vds5 sshd[1631294]: Failed password for invalid user info from 77.83.39.4 port 32576 ssh2
+2026-10-18T19:54:38.888069+00:00 vds5 sshd[1631523]: Failed password for invalid user reception from 77.83.39.45 port 32248 ssh2
+2026-10-18T19:54:53.839508+00:00 vds5 sshd[1631622]: Failed password for invalid user liujie from 77.83.39.32 port 35216 ssh2
+2026-10-18T19:55:10.751867+00:00 vds5 sshd[1631659]: Failed password for invalid user qw from 77.83.39.12 port 47040 ssh2
+2026-10-18T19:55:34.866584+00:00 vds5 sshd[1631761]: Failed password for invalid user support from 77.83.39.35 port 37640 ssh2
+2026-10-18T19:56:11.812205+00:00 vds5 sshd[1631897]: Failed password for invalid user administrator from 77.83.39.20 port 3880 ssh2
+2026-10-18T19:56:42.795233+00:00 vds5 sshd[1631998]: Failed password for invalid user apache from 77.83.39.29 port 51556 ssh2
+2026-10-18T19:57:08.854969+00:00 vds5 sshd[1632135]: Failed password for invalid user hf-2023 from 77.83.39.36 port 39574 ssh2
+2026-10-18T19:58:48.410249+00:00 vds5 sshd[1632460]: Failed password for invalid user posftp from 77.83.39.4 port 43562 ssh2
+2026-10-18T19:59:35.471951+00:00 vds5 sshd[1632638]: Failed password for invalid user edp from 77.83.39.45 port 61888 ssh2
+
+
+
+
 
 ssh bruteforce protection on VDSes (only with public IPs)- put in black list for 2 weeks if 5 attempts are unsuccessful
 

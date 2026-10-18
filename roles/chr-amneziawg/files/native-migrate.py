@@ -18,12 +18,12 @@ def prepare(original, peer_key, number):
         '\n[Peer]\n' + part.strip() + '\n' for part in parts[1:] if part not in peers)
     native = f'''# Managed native AmneziaWG CHR link; original wg0 identity preserved.
 [Interface]
-Address = 10.250.1.{number}/24
+Address = 10.250.6.{number}/24
 PrivateKey = {key}
 ListenPort = 56707
 MTU = 1340
 Table = off
-PostUp = ip route replace 10.250.1.7/32 dev %i src 10.250.1.{number}
+PostUp = ip route replace 10.250.6.7/32 dev %i src 10.250.6.{number}
 Jc = 4
 Jmin = 40
 Jmax = 80

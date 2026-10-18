@@ -31,7 +31,7 @@
         state: started
         enabled: true
     - name: Verify the existing peer through wg0
-      ansible.builtin.command: ping -I wg0 -c 3 -W 3 10.250.1.7
+      ansible.builtin.command: ping -I wg0 -c 3 -W 3 10.250.6.7
       changed_when: false
     - name: Point the existing FRR interface configuration at wg0
       ansible.builtin.replace:

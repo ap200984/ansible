@@ -32,6 +32,8 @@
     - users
     - python3
     - iptables
+    - role: ssh_bruteforce
+      when: inventory_hostname in (ssh_bruteforce_linux_hosts | default([]))
     - role: wireguard
       when: wireguard_enabled | default(false) | bool
     - utils

@@ -1,0 +1,27 @@
+---
+- name: Apply explicit trusted sets on public Linux VDSes
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  roles:
+    - iptables
+
+- name: Protect every published Linux SSH service from password guessing
+  hosts: vds1:vds2:vds3:vds5:vds6:vds8:k16_k112_server
+  become: true
+  gather_facts: false
+  roles:
+    - ssh_bruteforce
+
+- name: Refresh dynamic ordinary WireGuard permissions
+  hosts: vds1:vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Reconcile OSPF-selected WireGuard AllowedIPs
+      ansible.builtin.include_role:
+        name: wireguard
+        tasks_from: route-permissions.yml
+
+- name: Apply trusted lists and tunnel permissions on public edge MikroTiks
+  ansible.builtin.import_playbook: mikrotik/trusted-access.yml

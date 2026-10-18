@@ -8,7 +8,7 @@ ospf_bfd_enabled: true
 ospf_sstp_cost: 60000
 
 misha_amneziawg_enabled: true
-misha_amneziawg_address: 10.255.2.24
+misha_amneziawg_address: 10.250.6.24
 misha_amneziawg_containers: [misha-awg-vds1, misha-awg-vds8]
 
 google_gre_enabled: true

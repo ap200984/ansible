@@ -68,7 +68,7 @@
           tags: [internal_wireguard]
 
 - name: Permit the complete internal network set on the Linux hosts
-  hosts: vds*
+  hosts: vds1:vds2:vds5:vds6:vds8
   become: true
   gather_facts: false
   tags: [internal_firewall]
@@ -93,7 +93,6 @@
       ansible.builtin.shell: |
         set -e
         iptables-save > /etc/iptables/rules.v4
-        ipset save > /etc/iptables/ipsets
       changed_when: false
       when: not ansible_check_mode
 

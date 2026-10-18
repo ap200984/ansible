@@ -1,0 +1,16 @@
+---
+- name: Verify canonical trusted policy on every managed MikroTik
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+  vars:
+    trusted_verify_routers: [vds7_CHR, K16_112, 3Ekipazhnyi64, k16_21, Misha]
+  tasks:
+    - name: Verify each RouterOS policy
+      ansible.builtin.include_tasks: trusted-access-verify-router.yml
+      loop: '{{ trusted_verify_routers }}'
+      loop_control:
+        loop_var: trusted_verify_identity
+        label: '{{ trusted_verify_identity }}'

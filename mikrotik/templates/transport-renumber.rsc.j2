@@ -1,0 +1,25 @@
+{% if transport_identity == 'vds7_CHR' %}
+{% for node in [1, 2, 5, 6, 8] %}
+:local addr{{ node }} [/ip address find where interface="vds{{ node }}_interface"];
+:if ([:len $addr{{ node }}] != 1) do={:error "Expected one vds{{ node }} transport address"};
+/ip address set $addr{{ node }} address=10.250.6.7/32 network=10.250.6.{{ node }};
+:local oldNeighbor{{ node }} [/routing ospf static-neighbor find where address="10.250.1.{{ node }}%vds{{ node }}_interface"];
+:if ([:len $oldNeighbor{{ node }}] > 0) do={/routing ospf static-neighbor set $oldNeighbor{{ node }} address=10.250.6.{{ node }}%vds{{ node }}_interface};
+:local route{{ node }} [/ip route find where (dst-address="10.250.1.{{ node }}/32" or dst-address="10.250.7.{{ node }}/32") and static];
+:if ([:len $route{{ node }}] > 0) do={/ip route set $route{{ node }} dst-address=10.250.6.{{ node }}/32 gateway=10.250.6.{{ node }}%vds{{ node }}_interface};
+{% endfor %}
+/ip route remove [find where dst-address="10.250.6.7/32" and static];
+{% else %}
+{% set local = 112 if transport_identity == 'K16_112' else 24 %}
+{% for node in [1, 8] %}
+:local addr{{ node }} [/ip address find where interface="wg_vds{{ node }}"];
+:if ([:len $addr{{ node }}] != 1) do={:error "Expected one wg_vds{{ node }} transport address"};
+/ip address set $addr{{ node }} address=10.250.6.{{ local }}/32 network=10.250.6.{{ node }};
+:local neighbor{{ node }} [/routing ospf static-neighbor find where address="10.255.2.{{ node }}%wg_vds{{ node }}" or address="10.250.6.{{ node }}%wg_vds{{ node }}"];
+:if ([:len $neighbor{{ node }}] > 0) do={/routing ospf static-neighbor set $neighbor{{ node }} address=10.250.6.{{ node }}%wg_vds{{ node }}};
+/ip route set [find where comment="vds{{ node }} WireGuard server"] dst-address=10.250.6.{{ node }}/32 gateway=wg_vds{{ node }};
+/ip route set [find where routing-table="bfd-vds{{ node }}" and comment="BFD peer interface"] dst-address=10.250.6.{{ node }}/32 gateway=wg_vds{{ node }};
+/ip firewall mangle set [find where comment="BFD force vds{{ node }} interface"] src-address=10.250.6.{{ local }} dst-address=10.250.6.{{ node }};
+{% endfor %}
+{% endif %}
+:put "TRANSPORT_RENUMBERED";

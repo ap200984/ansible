@@ -15,12 +15,24 @@
       - '{{ router_port | string }}'
       - -o
       - BatchMode=yes
+      - -o
+      - ConnectTimeout=15
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ playbook_dir }}/known_hosts'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
       - '{{ router_user }}@{{ router_host }}'
       - >-
+        /ip route remove [find where dst-address="10.251.0.0/24" and static];
+        {% if client.identity == '3Ekipazhnyi64' %}
+        /interface wireguard peers remove [find where name="wg_client_vds5" and disabled=yes];
+        {% endif %}
         {% for interface_name in client.interfaces %}
         :local p{{ loop.index }} [/interface wireguard peers find where interface="{{ interface_name }}"];
         :if ([:len $p{{ loop.index }}] != 1) do={:error "Expected exactly one existing WireGuard peer"};
-        /interface wireguard peers set $p{{ loop.index }} allowed-address={{ (['10.0.0.0/8', '224.0.0.5/32'] if ((client.identity == 'K16_112' and k16_amneziawg_enabled | default(false) | bool) or (client.identity == 'Misha' and misha_amneziawg_enabled | default(false) | bool)) else tunnel_networks + ['10.251.0.0/24', '10.10.0.0/16', '10.11.0.0/16']) | join(',') }};
+        /interface wireguard peers set $p{{ loop.index }} allowed-address={{ (['10.0.0.0/8', '224.0.0.5/32'] if ((client.identity == 'K16_112' and k16_amneziawg_enabled | default(false) | bool) or (client.identity == 'Misha' and misha_amneziawg_enabled | default(false) | bool)) else (tunnel_networks + ['224.0.0.5/32']) | unique) | join(',') }};
         {% endfor %}
         :put "WIREGUARD_TRUST_VERIFIED"
   register: wireguard_trust_result

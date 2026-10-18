@@ -1,13 +1,13 @@
 # K16 AmneziaWG links
 
 K16_112 ↔ vds1 and K16_112 ↔ vds8 were migrated on 2026-10-11.
-The requested transport subnet is **10.255.2.0/24**. The existing VDS-to-VDS
+The requested transport subnet is **10.250.6.0/24**. The existing VDS-to-VDS
 AmneziaWG mesh continues to use 10.250.2.0/24.
 
 | Link | K16 interface/address | Native VDS interface/address | OSPF cost |
 | --- | --- | --- | --- |
-| K16 ↔ vds1 | wg_vds1, 10.255.2.112/32, peer network 10.255.2.1 | wg3, 10.255.2.1/24 | 1000 |
-| K16 ↔ vds8 | wg_vds8, 10.255.2.112/32, peer network 10.255.2.8 | wg3, 10.255.2.8/24 | 30000 |
+| K16 ↔ vds1 | wg_vds1, 10.250.6.112/32, peer network 10.250.6.1 | wg3, 10.250.6.1/24 | 1000 |
+| K16 ↔ vds8 | wg_vds8, 10.250.6.112/32, peer network 10.250.6.8 | wg3, 10.250.6.8/24 | 30000 |
 
 RouterOS keeps its existing WireGuard interfaces and identities. Their local
 peers point to the two ARM64 framing proxies, while the public uplink uses

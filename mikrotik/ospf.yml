@@ -7,12 +7,6 @@
     - ../group_vars/all/main.yml
     - vars/ospf-topology.yml
   tasks:
-  - name: Trust the requested routed networks
-    ansible.builtin.include_tasks: ospf-trusted.yml
-    loop: '{{ ospf_routers }}'
-    loop_control:
-      loop_var: ospf_router
-      label: '{{ ospf_router.identity }}'
   - name: Configure each MikroTik
     ansible.builtin.include_tasks: ospf-router.yml
     loop: '{{ ospf_routers | rejectattr("identity", "in", skip_ospf_routers | default([]))

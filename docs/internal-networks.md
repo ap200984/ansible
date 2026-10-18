@@ -15,10 +15,11 @@ The common `internal_networks` list covers:
 | L2TP | `10.250.3.0/24` |
 | GRE | `10.250.4.0/24` |
 | K16 main and Kubernetes LANs | `10.9.0.0/23` |
-| Ekipazhnyi LANs | `10.10.0.0/16` |
+| Ekipazhnyi LAN | `10.10.0.0/24` |
+| K16_21 LAN | `10.11.0.0/24` |
 
-The existing `10.255.2.0/24`, `10.251.0.0/24` and `10.11.0.0/16` transport/site
-permissions remain available where already used.
+The existing `10.250.6.0/24` transport permissions remain
+available where already used, but they are not part of the general trusted set.
 
 ## Cause and corrections
 
@@ -45,10 +46,11 @@ destinations and the L2TP server address when OSPF selected another site as
 next hop. Existing site permissions remain a fallback; explicit OSPF routes
 take precedence, and direct peer addresses remain fixed.
 
-The Linux firewall's trusted set also omitted `10.10.0.0/16`. Captured ICMP
+The Linux firewall's trusted set also omitted the Ekipazhnyi LAN. Captured ICMP
 headers showed replies entering VDS1 from the Ekipazhnyi router and being
 dropped before forwarding to VDS5. The expanded set permits these replies.
-MikroTik receives an explicit internal-prefix list, input/forward permits and
+The trusted policy now uses the exact `10.10.0.0/24` and `10.11.0.0/24`
+site prefixes. MikroTik receives an explicit internal-prefix list, input/forward permits and
 source-NAT exemption before existing rules. Existing single-peer WireGuard
 interfaces gain missing internal prefixes additively.
 

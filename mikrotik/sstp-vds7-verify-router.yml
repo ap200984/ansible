@@ -1,0 +1,56 @@
+---
+- name: Load RouterOS connection settings
+  ansible.builtin.include_vars:
+    file: 'host_vars/{{ verify_identity }}.yml'
+    name: sstp_verify_connection
+
+- name: Check SSTP endpoints and obsolete prefix references
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ sstp_verify_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ sstp_verify_connection.router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=15
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ playbook_dir }}/known_hosts'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ sstp_verify_connection.router_user }}@{{ sstp_verify_connection.router_host }}'
+      - >-
+        :local oldCount 0;
+        :set oldCount ($oldCount + [:len [/ip address find where address~"10.251."]]);
+        :set oldCount ($oldCount + [:len [/ip route find where dst-address~"10.251."]]);
+        :set oldCount ($oldCount + [:len [/ip firewall address-list find where address~"10.251."]]);
+        :set oldCount ($oldCount + [:len [/interface wireguard peers find where allowed-address~"10.251."]]);
+        :if ($oldCount != 0) do={:error ("Obsolete 10.251 references: " . $oldCount)};
+        {% if verify_identity == 'vds7_CHR' %}
+        {% for tunnel in tunnels %}
+        :local s{{ loop.index }} [/ppp secret find where name="{{ tunnel.user }}"];
+        :if ([:len $s{{ loop.index }}] != 1) do={:error "Missing PPP secret {{ tunnel.user }}"};
+        :if ([/ppp secret get $s{{ loop.index }} local-address] != "{{ sstp_vds7_server_address }}") do={:error "Wrong vds7 local address"};
+        :if ([/ppp secret get $s{{ loop.index }} remote-address] != "{{ tunnel.address }}") do={:error "Wrong client remote address"};
+        {% endfor %}
+        {% else %}
+        {% set expected = (tunnels | selectattr('identity', 'equalto', verify_identity) | first) %}
+        :local a [/ip address find where interface="sstp-vds7"];
+        :if ([:len $a] != 1) do={:error "SSTP address not ready"};
+        :if ([/ip address get $a address] != "{{ expected.address }}/32") do={:error "Wrong SSTP client address"};
+        :if ([/ip address get $a network] != "{{ sstp_vds7_server_address }}") do={:error "Wrong SSTP server address"};
+        {% endif %}
+        :put "SSTP_ADDRESSING_VERIFIED {{ verify_identity }}";
+  register: sstp_verify_result
+  changed_when: false
+  failed_when: sstp_verify_result.rc != 0 or 'SSTP_ADDRESSING_VERIFIED' not in sstp_verify_result.stdout
+
+- name: Report verified RouterOS identity
+  ansible.builtin.debug:
+    msg: '{{ sstp_verify_result.stdout }}'

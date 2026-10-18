@@ -21,12 +21,11 @@ unchanged. Ordinary site peers remain on wg0; the CHR peer was removed only
 from wg0 and moved to wg2. Its original private identity stays on its own
 Linux host and is preserved in the 0600 native configuration. Public UDP
 56707 is accepted only from CHR. Native AWG uses MTU 1340, numbered
-10.250.1.N/24, Table=off, no static routed destinations except the transport
+10.250.6.N/24, Table=off, no static routed destinations except the transport
 neighbor /32, and keepalive disabled. CHR and wg2 use point-to-point OSPF
 with matching 60/240 timers and original costs (1000, vds5 1001, vds8 30000).
 OSPF multicast 224.0.0.5/32 is allowed only on the dedicated peer. CHR return
-transport /32s are pinned to their respective VDS interfaces. The preserved
-Linux source address also exists on wg0; OSPF is explicitly interface-bound.
+transport /32s are pinned to their respective VDS interfaces; OSPF is explicitly interface-bound.
 
 Official installed packages identify module build `202609061402+4569c4c`
 and tools build `202608130144+ee0f0a9` (Ubuntu suffix varies by OS). No kernel

@@ -1,0 +1,53 @@
+---
+- name: Align existing FRR interfaces with the renumbered transport
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  vars:
+    transport_node: '{{ inventory_hostname[3:] }}'
+  tasks:
+    - name: Update the CHR OSPF interface address
+      ansible.builtin.replace:
+        path: /etc/frr/frr.conf
+        regexp: '(?m)^(interface {{ "wg2" if inventory_hostname in ["vds1", "vds8"] else "wg0" }}\n ip ospf area 0\.0\.0\.0 )10\.250\.1\.{{ transport_node }}$'
+        replace: '\g<1>10.250.6.{{ transport_node }}'
+        backup: true
+      register: transport_frr_chr
+    - name: Update the CHR unicast neighbor on plain WireGuard nodes
+      ansible.builtin.replace:
+        path: /etc/frr/frr.conf
+        regexp: '(?m)^ neighbor 10\.250\.1\.7( poll-interval 60)?$'
+        replace: ' neighbor 10.250.6.7\1'
+        backup: true
+      when: inventory_hostname in ['vds2', 'vds5', 'vds6']
+      register: transport_frr_neighbor
+    - name: Update K16 and Misha dedicated OSPF addresses
+      ansible.builtin.replace:
+        path: /etc/frr/frr.conf
+        regexp: '10\.255\.2\.{{ transport_node }}'
+        replace: '10.250.6.{{ transport_node }}'
+        backup: true
+      when: inventory_hostname in ['vds1', 'vds8']
+      register: transport_frr_sites
+    - name: Validate the repaired FRR configuration
+      ansible.builtin.command: vtysh -C -f /etc/frr/frr.conf
+      changed_when: false
+    - name: Apply the repaired OSPF interface addresses
+      ansible.builtin.systemd_service:
+        name: frr
+        state: restarted
+      when: >-
+        transport_frr_chr.changed or
+        transport_frr_neighbor.changed | default(false) or
+        transport_frr_sites.changed | default(false)
+    - name: Wait for at least one Full OSPF adjacency after renumbering
+      ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
+      register: transport_ospf_neighbors
+      changed_when: false
+      until: transport_ospf_neighbors.stdout is search('Full/')
+      retries: 24
+      delay: 5
+    - name: Verify the vds7 loopback over the new transport topology
+      ansible.builtin.command:
+        argv: [ping, -I, '10.255.0.{{ transport_node }}', -c, '3', -W, '3', 10.255.0.7]
+      changed_when: false

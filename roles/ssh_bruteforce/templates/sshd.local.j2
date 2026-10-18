@@ -1,0 +1,16 @@
+[sshd]
+enabled = false
+
+{% if ssh_bruteforce_subnet_enabled | bool %}
+[sshd-subnet]
+enabled = true
+filter = sshd
+backend = systemd
+mode = normal
+port = {{ ssh_bruteforce_port }}
+maxretry = 1
+findtime = {{ ssh_bruteforce_findtime }}
+bantime = {{ ssh_bruteforce_findtime }}
+usedns = no
+action = ssh-subnet-blacklist[name=sshd-subnet]
+{% endif %}

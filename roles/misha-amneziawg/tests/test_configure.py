@@ -12,7 +12,7 @@ class MigrationTests(unittest.TestCase):
     def test_native_retains_identity_and_uses_dedicated_transport(self):
         native = helper.prepare(self.original, 8)
         self.assertIn('PrivateKey = original-key', native)
-        self.assertIn('Address = 10.255.2.8/24', native)
+        self.assertIn('Address = 10.250.6.8/24', native)
         self.assertIn('PublicKey = ' + helper.Misha_KEY, native)
         self.assertIn('Table = off', native)
         self.assertIn('AllowedIPs = 10.0.0.0/8, 224.0.0.5/32', native)

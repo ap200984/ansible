@@ -6,6 +6,10 @@ Central Debian/Ubuntu VDS and MikroTik CEF logging: [deployment and verification
 
 Internal tunnel/LAN routing: [policy, repair and verification](docs/internal-networks.md).
 
+Trusted networks and SSH protection: [deployment and verification](docs/trusted-access.md).
+
+Public RouterOS exposure: [vds7_CHR and K16_112 audit](docs/edge-exposure.md).
+
 # add new key on main machine (if not exist):
 ssh-keygen -t ed25519 -C "ansible"
 Generating public/private ed25519 key pair.

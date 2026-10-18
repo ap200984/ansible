@@ -9,7 +9,7 @@ and ordinary `wg1` to vds5; vds5 uses `wg0` to CHR and independent
 proxy services have been removed from vds1/vds2/vds5/vds6/vds8. Addresses,
 dedicated CHR links use point-to-point OSPF. K16 uses two ARM64 C containers to vds1/vds8 native `wg3`; Misha uses
 two ARM C containers on USB storage to native `wg4`. Both use
-transport `10.255.2.0/24`.
+transport `10.250.6.0/24`.
 All 25 OSPF links have BFD enabled; SSTP is a backup with cost 60000.
 Four GRE tunnels now connect K16, 3Ekipazhnyi64, k16_21 and Misha to VDS6
 for Google IPv4 policy traffic over OSPF loopback endpoints.
@@ -36,11 +36,11 @@ flowchart LR
   V5["vds5 · wg0 · .5"]
   V6["vds6 · wg0 · .6"]
   V1 <-->|WG| E & R
-  K <-->|AWG wg3 · 10.255.2.112 ↔ 10.255.2.1 · cost 1000| V1
+  K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.1 · cost 1000| V1
   V8 <-->|WG| E & R
-  K <-->|AWG wg3 · 10.255.2.112 ↔ 10.255.2.8 · cost 30000| V8
-  M <-->|AWG wg4 · 10.255.2.24 ↔ 10.255.2.1 · cost 1000| V1
-  M <-->|AWG wg4 · 10.255.2.24 ↔ 10.255.2.8 · cost 30000| V8
+  K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.8 · cost 30000| V8
+  M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.1 · cost 1000| V1
+  M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.8 · cost 30000| V8
   C <-->|CHR C container ↔ Linux native AWG wg2| V1 & V8
   C <-->|WireGuard wg0| V2 & V5 & V6
   V5 <-->|WireGuard| V2 & V6
@@ -59,16 +59,16 @@ Transport addressing uses each node's suffix above:
 | --- | --- | --- | --- |
 | WireGuard sites 64/21 to vds1 | 10.250.1.N/24 | 10.250.1.1 | 1000 |
 | WireGuard sites 64/21 to vds8 | 10.250.1.N/24 | 10.250.1.8 | 30000 |
-| K16 C container ↔ vds1 native AWG wg3 | 10.255.2.112/32 | 10.255.2.1/24 | 1000 |
-| K16 C container ↔ vds8 native AWG wg3 | 10.255.2.112/32 | 10.255.2.8/24 | 30000 |
-| Misha C container ↔ vds1 native AWG wg4 | 10.255.2.24/32 | 10.255.2.1/24 | 1000 |
-| Misha C container ↔ vds8 native AWG wg4 | 10.255.2.24/32 | 10.255.2.8/24 | 30000 |
-| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.1.7/32 | vds1/vds8 10.250.1.N/24 | 1000; vds8 30000 |
-| CHR ↔ ordinary Linux wg0 | CHR 10.250.1.7/32 | vds2/vds5/vds6 10.250.1.N/24 | 1000; vds5 1001 |
+| K16 C container ↔ vds1 native AWG wg3 | 10.250.6.112/32 | 10.250.6.1/24 | 1000 |
+| K16 C container ↔ vds8 native AWG wg3 | 10.250.6.112/32 | 10.250.6.8/24 | 30000 |
+| Misha C container ↔ vds1 native AWG wg4 | 10.250.6.24/32 | 10.250.6.1/24 | 1000 |
+| Misha C container ↔ vds8 native AWG wg4 | 10.250.6.24/32 | 10.250.6.8/24 | 30000 |
+| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.6.7/32 | vds1/vds8 10.250.6.N/24 | 1000; vds8 30000 |
+| CHR ↔ ordinary Linux wg0 | CHR 10.250.6.7/32 | vds2/vds5/vds6 10.250.6.N/24 | 1000; vds5 1001 |
 | Ordinary WG star to vds5 | vds2/vds6 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG star to vds5 | vds1/vds8 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG vds1 ↔ vds8 | 10.250.2.1/24 | 10.250.2.8/24 | 200 |
-| SSTP to CHR | 10.250.0.N/32 | Legacy PPP endpoint 10.251.0.7 | 60000 |
+| SSTP to CHR | 10.250.0.N/32 | PPP endpoint 10.250.0.7 | 60000 |
 | L2TP to K16_112 | 10.250.3.N/32 | 10.250.3.112 | 100 |
 
 There are nine ordinary WireGuard, nine AmneziaWG (two K16 links, two Misha
@@ -82,7 +82,7 @@ are addresses in `10.9.0.0/24`, not transport suffixes.
 All 25 tunnel adjacencies were Full and all 50 BFD endpoints were Up after
 migration on 2026-10-11. All 90 directed loopback checks across ten routers/VDSes
 passed using dynamically learned OSPF routes. Loopbacks remain in
-`10.255.0.0/24`; the K16/Misha AWG transport is separately `10.255.2.0/24`.
+`10.255.0.0/24`; the K16/Misha AWG transport is separately `10.250.6.0/24`.
 Existing inter-VDS mesh transport remains `10.250.2.0/24`.
 
 BFD uses platform defaults: FRR transmit/receive 300 ms, multiplier 3;

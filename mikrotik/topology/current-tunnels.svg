@@ -20,13 +20,13 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#182b45} .title{font-size:30px;
 </g>
 <g class="awg"><path d="M750 430 H940 M750 280 L940 410 M635 300 V390"/></g>
 <g class="wg"><path d="M1170 260 H1320 M1055 300 V390 M1170 280 L1320 410 M1170 430 H1320 M1170 410 L1320 280"/></g>
-<g><rect x="65" y="195" width="240" height="60" rx="10" class="node"/><text x="82" y="220" class="label">K16_112</text><text x="82" y="243" class="detail">10.255.2.112/32 · AWG</text>
+<g><rect x="65" y="195" width="240" height="60" rx="10" class="node"/><text x="82" y="220" class="label">K16_112</text><text x="82" y="243" class="detail">10.250.6.112/32 · AWG</text>
 <rect x="65" y="275" width="240" height="60" rx="10" class="node"/><text x="82" y="300" class="label">3Ekipazhnyi64</text><text x="82" y="323" class="detail">10.250.1.64/24</text>
 <rect x="65" y="355" width="240" height="60" rx="10" class="node"/><text x="82" y="380" class="label">k16_21</text><text x="82" y="403" class="detail">10.250.1.21/24</text>
-<rect x="65" y="435" width="240" height="60" rx="10" class="node"/><text x="82" y="460" class="label">Misha</text><text x="82" y="483" class="detail">10.255.2.24/32 · AWG</text>
-<rect x="520" y="390" width="230" height="80" rx="10" class="node"/><text x="539" y="417" class="label">vds1 · WG + AWG</text><text x="539" y="441" class="detail">10.250.{1,2}.1 · 10.255.2.1</text><text x="539" y="461" class="small">wg0 sites · wg1–4 AWG</text>
-<rect x="520" y="220" width="230" height="80" rx="10" class="node"/><text x="539" y="247" class="label">vds8 · WG + AWG</text><text x="539" y="271" class="detail">10.250.{1,2}.8 · 10.255.2.8</text><text x="539" y="291" class="small">wg0 sites · wg1–4 AWG</text>
-<rect x="940" y="220" width="230" height="80" rx="10" class="node"/><text x="959" y="247" class="label">vds7_CHR · WG + AWG</text><text x="959" y="271" class="detail">10.250.1.7/32</text><text x="959" y="291" class="small">2 AWG containers: vds1/vds8</text>
+<rect x="65" y="435" width="240" height="60" rx="10" class="node"/><text x="82" y="460" class="label">Misha</text><text x="82" y="483" class="detail">10.250.6.24/32 · AWG</text>
+<rect x="520" y="390" width="230" height="80" rx="10" class="node"/><text x="539" y="417" class="label">vds1 · WG + AWG</text><text x="539" y="441" class="detail">10.250.{1,2}.1 · 10.250.6.1</text><text x="539" y="461" class="small">wg0 sites · wg1–4 AWG</text>
+<rect x="520" y="220" width="230" height="80" rx="10" class="node"/><text x="539" y="247" class="label">vds8 · WG + AWG</text><text x="539" y="271" class="detail">10.250.{1,2}.8 · 10.250.6.8</text><text x="539" y="291" class="small">wg0 sites · wg1–4 AWG</text>
+<rect x="940" y="220" width="230" height="80" rx="10" class="node"/><text x="959" y="247" class="label">vds7_CHR · WG + AWG</text><text x="959" y="271" class="detail">10.250.6.7/32</text><text x="959" y="291" class="small">2 AWG containers: vds1/vds8</text>
 <rect x="1320" y="390" width="215" height="80" rx="10" class="node"/><text x="1337" y="417" class="label">vds2 · WireGuard</text><text x="1337" y="441" class="detail">10.250.{1,2}.2/24</text><text x="1337" y="461" class="small">wg0 CHR · wg1 mesh</text>
 <rect x="940" y="390" width="230" height="80" rx="10" class="node"/><text x="959" y="417" class="label">vds5 · WG + AWG</text><text x="959" y="441" class="detail">10.250.{1,2}.5/24</text><text x="959" y="461" class="small">wg0 CHR · wg1 AWG · WG leaves</text>
 <rect x="1320" y="220" width="215" height="80" rx="10" class="node"/><text x="1337" y="247" class="label">vds6 · WireGuard</text><text x="1337" y="271" class="detail">10.250.{1,2}.6/24</text><text x="1337" y="291" class="small">wg0 CHR · wg1 mesh</text></g>
@@ -40,7 +40,7 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#182b45} .title{font-size:30px;
 <rect x="65" y="704" width="260" height="43" rx="8" class="node"/><text x="78" y="732" class="detail">3Ekipazhnyi64 · 10.250.0.64</text>
 <rect x="65" y="759" width="260" height="43" rx="8" class="node"/><text x="78" y="787" class="detail">k16_21 · 10.250.0.21</text>
 <rect x="65" y="814" width="260" height="43" rx="8" class="node"/><text x="78" y="842" class="detail">Misha · 10.250.0.24</text>
-<rect x="515" y="707" width="240" height="96" rx="10" class="node"/><text x="532" y="736" class="label">vds7_CHR</text><text x="532" y="762" class="detail">PPP endpoint 10.251.0.7</text><text x="532" y="787" class="small">62.60.216.73:443</text></g>
+<rect x="515" y="707" width="240" height="96" rx="10" class="node"/><text x="532" y="736" class="label">vds7_CHR</text><text x="532" y="762" class="detail">PPP endpoint 10.250.0.7</text><text x="532" y="787" class="small">62.60.216.73:443</text></g>
 <text x="65" y="883" class="small">Client transport: /32 · BFD enabled · Failover after preferred routes disappear</text>
 <rect x="805" y="580" width="765" height="320" rx="18" class="panel"/>
 <text x="830" y="617" class="heading">L2TP · 3 links · OSPF cost 100</text>

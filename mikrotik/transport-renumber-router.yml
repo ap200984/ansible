@@ -1,0 +1,34 @@
+---
+- name: Load RouterOS connection settings
+  ansible.builtin.include_vars:
+    file: '{{ transport_router.vars_file }}'
+    name: transport_connection
+- name: Apply the idempotent transport renumbering script
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ transport_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ transport_connection.router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ transport_connection.router_user }}@{{ transport_connection.router_host }}'
+      - '{{ lookup("template", "mikrotik/templates/transport-renumber.rsc.j2").splitlines() | join(" ") }}'
+  vars:
+    transport_identity: '{{ transport_router.identity }}'
+  register: transport_renumber
+  changed_when: true
+  failed_when: >-
+    transport_renumber.rc != 0 or
+    'TRANSPORT_RENUMBERED' not in transport_renumber.stdout or
+    'failure:' in transport_renumber.stdout or
+    'syntax error' in transport_renumber.stdout

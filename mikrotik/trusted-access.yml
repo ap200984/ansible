@@ -1,0 +1,6 @@
+---
+- name: Apply trusted address lists and tunnel permissions
+  ansible.builtin.import_playbook: internal-networks.yml
+  vars:
+    internal_networks_manage_gre: false
+    internal_networks_routers: '{{ trusted_firewall_mikrotik_hosts }}'

@@ -17,9 +17,9 @@ edge [fontname="DejaVu Sans",fontsize=10];
 "K16_112" -- "vds9" [color="#2563a6",fontcolor="#2563a6",style="dashed",label="WG · wg-vds9\nK16_112: 10.8.1.2/32\nvds9: unknown\nendpoint 90.156.218.209:34182"];
 "3Ekipazhnyi64" -- "vds1" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · wg_vds1\n3Ekipazhnyi64: 10.250.101.1/32\nvds1: 10.250.1.1\nendpoint 45.141.102.72:56685"];
 "3Ekipazhnyi64" -- "vds8" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · wg_vds8\n3Ekipazhnyi64: 10.250.108.1/32\nvds8: 10.250.8.1\nendpoint 194.113.106.136:56699"];
-"vds7_CHR" -- "vds5" [color="#2563a6",fontcolor="#2563a6",style="dashed",label="WG · vds5_interface\nvds7_CHR: 10.250.7.5/32\nvds5: unknown\nendpoint 217.144.189.206:56695"];
-"vds7_CHR" -- "vds6" [color="#2563a6",fontcolor="#2563a6",style="dashed",label="WG · vds6_interface\nvds7_CHR: 10.250.7.6/32\nvds6: unknown\nendpoint 195.245.239.82:56696"];
-"vds7_CHR" -- "vds1" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · vds1_interface\nvds7_CHR: 10.250.7.1/32\nvds1: 10.250.1.7\nendpoint 45.141.102.72:56685"];
-"vds7_CHR" -- "vds8" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · vds8_interface\nvds7_CHR: 10.250.7.8/32\nvds8: 10.250.8.7\nendpoint 194.113.106.136:56699"];
-"vds7_CHR" -- "vds2" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · vds2_interface\nvds7_CHR: 10.250.7.2/32\nvds2: 10.250.2.7\nendpoint 38.247.137.237:56698"];
+"vds7_CHR" -- "vds5" [color="#2563a6",fontcolor="#2563a6",style="dashed",label="WG · vds5_interface\nvds7_CHR: 10.250.6.5/32\nvds5: unknown\nendpoint 217.144.189.206:56695"];
+"vds7_CHR" -- "vds6" [color="#2563a6",fontcolor="#2563a6",style="dashed",label="WG · vds6_interface\nvds7_CHR: 10.250.6.6/32\nvds6: unknown\nendpoint 195.245.239.82:56696"];
+"vds7_CHR" -- "vds1" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · vds1_interface\nvds7_CHR: 10.250.6.1/32\nvds1: 10.250.6.7\nendpoint 45.141.102.72:56685"];
+"vds7_CHR" -- "vds8" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · vds8_interface\nvds7_CHR: 10.250.6.8/32\nvds8: 10.250.8.7\nendpoint 194.113.106.136:56699"];
+"vds7_CHR" -- "vds2" [color="#2563a6",fontcolor="#2563a6",style="solid",label="WG · vds2_interface\nvds7_CHR: 10.250.6.2/32\nvds2: 10.250.2.7\nendpoint 38.247.137.237:56698"];
 }

@@ -8,43 +8,72 @@ set -eu
 {% if inventory_hostname in (chr_plain_wg_hosts | default([])) and inventory_hostname not in (linux_wg_normalized_hosts | default([])) %}
 /usr/local/sbin/plain-wireguard-firewall
 {% endif %}
-{% if amneziawg_enabled | default(false) | bool %}
-# Expose the dedicated tunnel port only to the configured public endpoints.
-{% for peer in amneziawg_peers[inventory_hostname] %}
-iptables -C INPUT -s {{ amneziawg_endpoints[peer] }}/32 -p udp --dport {{ amneziawg_port }} -j ACCEPT 2>/dev/null ||
-    iptables -I INPUT 1 -s {{ amneziawg_endpoints[peer] }}/32 -p udp --dport {{ amneziawg_port }} -j ACCEPT
-{% endfor %}
-{% endif %}
 # Never translate routed traffic inside the private 10/8 network.
 iptables -t nat -C POSTROUTING -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT 2>/dev/null ||
     iptables -t nat -I POSTROUTING 1 -s 10.0.0.0/8 -d 10.0.0.0/8 -m comment --comment internal-10-no-snat -j ACCEPT
-# Swap the set atomically so existing firewall references remain valid.
-ipset create tunnel_networks hash:net -exist
-ipset create tunnel_networks_next hash:net -exist
-ipset flush tunnel_networks_next
-{% for prefix in tunnel_networks %}
-ipset add tunnel_networks_next {{ prefix }} -exist
+# Replace the two explicit trust sets atomically.
+ipset create trusted_networks hash:net -exist
+ipset create trusted_networks_next hash:net -exist
+ipset flush trusted_networks_next
+{% for prefix in trusted_networks %}
+ipset add trusted_networks_next {{ prefix }} -exist
 {% endfor %}
-ipset swap tunnel_networks_next tunnel_networks
-ipset destroy tunnel_networks_next
+ipset swap trusted_networks_next trusted_networks
+ipset destroy trusted_networks_next
+ipset create trusted_hosts hash:ip -exist
+ipset create trusted_hosts_next hash:ip -exist
+ipset flush trusted_hosts_next
+{% for host in trusted_hosts %}
+ipset add trusted_hosts_next {{ host | regex_replace('/32$', '') }} -exist
+{% endfor %}
+ipset swap trusted_hosts_next trusted_hosts
+ipset destroy trusted_hosts_next
+
+# Remove superseded broad and set-based permits installed by older roles.
 for chain in INPUT FORWARD; do
-    iptables -C "$chain" -m set --match-set tunnel_networks src -j ACCEPT 2>/dev/null ||
-        iptables -I "$chain" 1 -m set --match-set tunnel_networks src -j ACCEPT
+    while iptables -C "$chain" -m set --match-set tunnel_networks src -j ACCEPT 2>/dev/null; do
+        iptables -D "$chain" -m set --match-set tunnel_networks src -j ACCEPT
+    done
+    for prefix in 10.250.0.0/16 10.255.0.0/16; do
+        while iptables -C "$chain" -s "$prefix" -j ACCEPT 2>/dev/null; do
+            iptables -D "$chain" -s "$prefix" -j ACCEPT
+        done
+    done
 done
-iptables -C OUTPUT -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null ||
-    iptables -I OUTPUT 1 -m set --match-set tunnel_networks dst -j ACCEPT
-iptables -t nat -C POSTROUTING -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null ||
-    iptables -t nat -I POSTROUTING 1 -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT
+while iptables -C FORWARD -m set --match-set trusted_hosts src -j ACCEPT 2>/dev/null; do
+    iptables -D FORWARD -m set --match-set trusted_hosts src -j ACCEPT
+done
+while iptables -C OUTPUT -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null; do
+    iptables -D OUTPUT -m set --match-set tunnel_networks dst -j ACCEPT
+done
+while iptables -t nat -C POSTROUTING -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT 2>/dev/null; do
+    iptables -t nat -D POSTROUTING -m set --match-set tunnel_networks src -m set --match-set tunnel_networks dst -j ACCEPT
+done
+ipset destroy tunnel_networks 2>/dev/null || true
+
+# Public trusted hosts may manage this machine; private prefixes may also transit it.
+for chain in INPUT FORWARD; do
+    iptables -C "$chain" -m set --match-set trusted_networks src -j ACCEPT 2>/dev/null ||
+        iptables -I "$chain" 1 -m set --match-set trusted_networks src -j ACCEPT
+done
+iptables -C INPUT -m set --match-set trusted_hosts src -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -m set --match-set trusted_hosts src -j ACCEPT
 
 {% if k16_amneziawg_enabled | default(false) | bool %}
-iptables -C INPUT -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT 2>/dev/null ||
-    iptables -I INPUT 1 -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT
-iptables -C INPUT -i wg3 -s 10.255.2.112/32 -j ACCEPT 2>/dev/null ||
-    iptables -I INPUT 1 -i wg3 -s 10.255.2.112/32 -j ACCEPT
+iptables -C INPUT -i wg3 -s 10.250.6.112/32 -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -i wg3 -s 10.250.6.112/32 -j ACCEPT
 {% endif %}
 {% if misha_amneziawg_enabled | default(false) | bool %}
 iptables -C INPUT -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT 2>/dev/null ||
     iptables -I INPUT 1 -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT
-iptables -C INPUT -i wg4 -s 10.255.2.24/32 -j ACCEPT 2>/dev/null ||
-    iptables -I INPUT 1 -i wg4 -s 10.255.2.24/32 -j ACCEPT
+iptables -C INPUT -i wg4 -s 10.250.6.24/32 -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -i wg4 -s 10.250.6.24/32 -j ACCEPT
 {% endif %}
+if [ -x /usr/local/sbin/trusted-rule-cleanup ]; then
+    /usr/local/sbin/trusted-rule-cleanup
+elif ipset list Blacklist >/dev/null 2>&1; then
+    while iptables -C INPUT -p tcp --dport 19022 -m set --match-set Blacklist src -m comment --comment ansible-ssh-blacklist -j DROP 2>/dev/null; do
+        iptables -D INPUT -p tcp --dport 19022 -m set --match-set Blacklist src -m comment --comment ansible-ssh-blacklist -j DROP
+    done
+    iptables -I INPUT 1 -p tcp --dport 19022 -m set --match-set Blacklist src -m comment --comment ansible-ssh-blacklist -j DROP
+fi

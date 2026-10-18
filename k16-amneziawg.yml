@@ -61,8 +61,8 @@
       ansible.builtin.shell: |
         iptables -C INPUT -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT 2>/dev/null ||
         iptables -I INPUT 1 -s 86.110.170.70/32 -p udp --dport 56708 -m comment --comment k16-awg -j ACCEPT
-        iptables -C INPUT -i wg3 -s 10.255.2.112/32 -j ACCEPT 2>/dev/null ||
-        iptables -I INPUT 1 -i wg3 -s 10.255.2.112/32 -j ACCEPT
+        iptables -C INPUT -i wg3 -s 10.250.6.112/32 -j ACCEPT 2>/dev/null ||
+        iptables -I INPUT 1 -i wg3 -s 10.250.6.112/32 -j ACCEPT
       changed_when: false
     - name: Start the native interface
       ansible.builtin.systemd_service:
@@ -105,7 +105,7 @@
               - -c
               - interface wg3
               - -c
-              - 'ip ospf area 0.0.0.0 10.255.2.{{ k16_awg_number }}'
+              - 'ip ospf area 0.0.0.0 10.250.6.{{ k16_awg_number }}'
               - -c
               - ip ospf network point-to-point
               - -c
@@ -145,7 +145,7 @@
           ansible.builtin.command: vtysh -c 'show bfd peers json'
           register: k16_bfd
           changed_when: false
-          until: k16_bfd.stdout | from_json | selectattr('peer', 'equalto', '10.255.2.112') | selectattr('status', 'equalto', 'up') | list | length == 1
+          until: k16_bfd.stdout | from_json | selectattr('peer', 'equalto', '10.250.6.112') | selectattr('status', 'equalto', 'up') | list | length == 1
           retries: 12
           delay: 5
         - name: Verify routed K16 loopback from the VDS loopback

@@ -1,8 +1,8 @@
 {% for prefix in mikrotik_internal_prefixes %}
 :local entries [/ip firewall address-list find where list="{{ mikrotik_internal_list }}" and address="{{ prefix }}"];
-:if ([:len $entries] > 1) do={:error "Ambiguous managed interior prefix"};
+:if ([:len $entries] > 1) do={:error "Ambiguous managed trusted network"};
 :if ([:len $entries] = 0) do={
-  {% if not ansible_check_mode %}/ip firewall address-list add list="{{ mikrotik_internal_list }}" address={{ prefix }} comment="Ansible internal routed networks";{% endif %}
+  {% if not ansible_check_mode %}/ip firewall address-list add list="{{ mikrotik_internal_list }}" address={{ prefix }} comment="Ansible trusted networks";{% endif %}
   :put "ANSIBLE_INTERNAL_CHANGED";
 } else={
   :if ([/ip firewall address-list get $entries disabled]) do={
@@ -11,35 +11,174 @@
   };
 };
 {% endfor %}
-{% for spec in [
-  {'path': '/ip firewall filter', 'chain': 'input', 'comment': 'Ansible internal networks input'},
-  {'path': '/ip firewall filter', 'chain': 'forward', 'comment': 'Ansible internal networks forward'},
-  {'path': '/ip firewall nat', 'chain': 'srcnat', 'comment': 'Ansible internal networks no NAT'}
-] %}
-:local rules [{{ spec.path }} find where comment="{{ spec.comment }}"];
-:if ([:len $rules] > 1) do={:error "Ambiguous managed interior policy rule"};
-:if ([:len $rules] = 0) do={
-  {% if not ansible_check_mode %}:error "Missing managed interior policy rule";{% endif %}
+{% for host in mikrotik_internal_hosts %}
+:local hostEntries [/ip firewall address-list find where list="{{ mikrotik_trusted_hosts_list }}" and address="{{ host }}"];
+:if ([:len $hostEntries] > 1) do={
+  {% if not ansible_check_mode %}/ip firewall address-list remove $hostEntries;
+  /ip firewall address-list add list="{{ mikrotik_trusted_hosts_list }}" address={{ host }} comment="Ansible trusted hosts";{% endif %}
   :put "ANSIBLE_INTERNAL_CHANGED";
 } else={
-  :local first [:pick [{{ spec.path }} find where chain="{{ spec.chain }}" and dynamic=no] 0];
-  :if ([:pick $rules 0] != $first) do={
-    {% if not ansible_check_mode %}{{ spec.path }} move $rules destination=$first;{% endif %}
+  :if ([:len $hostEntries] = 0) do={
+    {% if not ansible_check_mode %}/ip firewall address-list add list="{{ mikrotik_trusted_hosts_list }}" address={{ host }} comment="Ansible trusted hosts";{% endif %}
     :put "ANSIBLE_INTERNAL_CHANGED";
+  } else={
+    :if ([/ip firewall address-list get $hostEntries disabled]) do={
+      {% if not ansible_check_mode %}/ip firewall address-list set $hostEntries disabled=no;{% endif %}
+      :put "ANSIBLE_INTERNAL_CHANGED";
+    };
   };
 };
 {% endfor %}
+
+{% for rule in [
+  {'chain': 'input', 'comment': 'Ansible trusted networks input', 'list': mikrotik_internal_list},
+  {'chain': 'forward', 'comment': 'Ansible trusted networks forward', 'list': mikrotik_internal_list},
+  {'chain': 'input', 'comment': 'Ansible trusted hosts input', 'list': mikrotik_trusted_hosts_list},
+  {'chain': 'forward', 'comment': 'Ansible trusted hosts forward', 'list': mikrotik_trusted_hosts_list}
+] %}
+:local managedFilter [/ip firewall filter find where comment="{{ rule.comment }}"];
+:if ([:len $managedFilter] > 1) do={:error "Ambiguous managed trusted filter"};
+:if ([:len $managedFilter] = 0) do={
+  {% if not ansible_check_mode %}/ip firewall filter add chain={{ rule.chain }} action=accept src-address-list={{ rule.list }} comment="{{ rule.comment }}" disabled=no;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+} else={
+  {% if not ansible_check_mode %}/ip firewall filter set $managedFilter chain={{ rule.chain }} action=accept src-address-list={{ rule.list }} disabled=no;{% endif %}
+};
+{% endfor %}
+:local managedNat [/ip firewall nat find where comment="Ansible trusted networks no NAT"];
+:if ([:len $managedNat] > 1) do={:error "Ambiguous managed trusted NAT"};
+:if ([:len $managedNat] = 0) do={
+  {% if not ansible_check_mode %}/ip firewall nat add chain=srcnat action=accept src-address-list={{ mikrotik_internal_list }} dst-address-list={{ mikrotik_internal_list }} comment="Ansible trusted networks no NAT" disabled=no;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+} else={
+  {% if not ansible_check_mode %}/ip firewall nat set $managedNat chain=srcnat action=accept src-address-list={{ mikrotik_internal_list }} dst-address-list={{ mikrotik_internal_list }} disabled=no;{% endif %}
+};
+
+{% for spec in [
+  {'path': '/ip firewall filter', 'chain': 'input', 'comment': 'Ansible trusted networks input'},
+  {'path': '/ip firewall filter', 'chain': 'input', 'comment': 'Ansible trusted hosts input'},
+  {'path': '/ip firewall filter', 'chain': 'forward', 'comment': 'Ansible trusted networks forward'},
+  {'path': '/ip firewall filter', 'chain': 'forward', 'comment': 'Ansible trusted hosts forward'},
+  {'path': '/ip firewall nat', 'chain': 'srcnat', 'comment': 'Ansible trusted networks no NAT'}
+] %}
+:local rules [{{ spec.path }} find where comment="{{ spec.comment }}"];
+:if ([:len $rules] > 1) do={:error "Ambiguous managed trusted policy rule"};
+:if ([:len $rules] = 0) do={
+  {% if not ansible_check_mode %}:error "Missing managed trusted policy rule";{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+} else={
+  :local destination [];
+  {% if spec.path == '/ip firewall nat' %}:set destination [/ip firewall nat find where chain=srcnat and (action=masquerade or action=src-nat) and dynamic=no];{% else %}:set destination [/ip firewall filter find where chain="{{ spec.chain }}" and action=drop and dynamic=no];{% endif %}
+  :if ([:len $destination] > 0) do={
+    :local order [{{ spec.path }} find];
+    :if ([:find $order [:pick $rules 0]] > [:find $order [:pick $destination 0]]) do={
+      {% if not ansible_check_mode %}{{ spec.path }} move $rules destination=[:pick $destination 0];{% endif %}
+      :put "ANSIBLE_INTERNAL_CHANGED";
+    };
+  };
+};
+{% endfor %}
+
+{% for comment in ['Ansible internal networks input', 'Ansible internal networks forward', 'Shared tunnel networks input', 'Shared tunnel networks forward', 'OSPF trusted input 10.250.0.0/16', 'OSPF trusted forward 10.250.0.0/16', 'OSPF trusted input 10.255.0.0/16', 'OSPF trusted forward 10.255.0.0/16'] %}
+:local obsoleteFilter [/ip firewall filter find where comment="{{ comment }}"];
+:if ([:len $obsoleteFilter] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall filter remove $obsoleteFilter;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+{% endfor %}
+{% for comment in ['Ansible internal networks no NAT', 'Shared tunnel networks no NAT'] %}
+:local obsoleteNat [/ip firewall nat find where comment="{{ comment }}"];
+:if ([:len $obsoleteNat] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall nat remove $obsoleteNat;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+{% endfor %}
+:local obsoleteAddresses [/ip firewall address-list find where comment="Ansible internal routed networks" or comment="Shared tunnel networks"];
+:if ([:len $obsoleteAddresses] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall address-list remove $obsoleteAddresses;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+
+:local obsoleteBroadRules [/ip firewall filter find where src-address-list="ospf-routed-networks" or dst-address-list="ospf-routed-networks"];
+:if ([:len $obsoleteBroadRules] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall filter remove $obsoleteBroadRules;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+:local obsoleteOspfEntries [/ip firewall address-list find where list="ospf-routed-networks"];
+:if ([:len $obsoleteOspfEntries] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall address-list remove $obsoleteOspfEntries;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+{% if mikrotik_internal_identity in ['vds7_CHR', '3Ekipazhnyi64', 'k16_21', 'Misha'] %}
+:local obsoleteTrustedRules [/ip firewall filter find where src-address-list="Trusted" or dst-address-list="Trusted"];
+:if ([:len $obsoleteTrustedRules] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall filter remove $obsoleteTrustedRules;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+:local obsoleteTrustedEntries [/ip firewall address-list find where list="Trusted"];
+:if ([:len $obsoleteTrustedEntries] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall address-list remove $obsoleteTrustedEntries;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+{% endif %}
+{% if mikrotik_internal_identity == 'K16_112' %}
+{% for prefix in ['10.1.0.0/16', '10.19.0.0/16', '10.20.0.0/16', '10.0.255.0/24', '10.9.2.0/24', '10.9.10.0/24', '10.9.200.0/24', '10.9.255.0/29', '10.10.50.0/24', '10.10.100.0/24', '10.11.100.0/24', '10.20.255.0/24', '10.251.0.0/24'] %}
+:local obsoleteMgmt [/ip firewall address-list find where list="MGMT Networks" and address="{{ prefix }}"];
+:if ([:len $obsoleteMgmt] > 0) do={
+  {% if not ansible_check_mode %}/ip firewall address-list remove $obsoleteMgmt;{% endif %}
+  :put "ANSIBLE_INTERNAL_CHANGED";
+};
+{% endfor %}
+{% endif %}
+
+:foreach stale in=[/ip firewall address-list find where list="{{ mikrotik_internal_list }}" and comment="Ansible trusted networks"] do={
+  :local keep false;
+  :local value [:tostr [/ip firewall address-list get $stale address]];
+  {% for prefix in mikrotik_internal_prefixes %}:if ($value = "{{ prefix }}") do={:set keep true};
+  {% endfor %}
+  :if (!$keep) do={
+    {% if not ansible_check_mode %}/ip firewall address-list remove $stale;{% endif %}
+    :put "ANSIBLE_INTERNAL_CHANGED";
+  };
+};
+:foreach stale in=[/ip firewall address-list find where list="{{ mikrotik_trusted_hosts_list }}" and comment="Ansible trusted hosts"] do={
+  :local keep false;
+  :local value [:tostr [/ip firewall address-list get $stale address]];
+  {% for host in mikrotik_internal_hosts %}:if ($value = "{{ host }}") do={:set keep true};
+  {% endfor %}
+  :if (!$keep) do={
+    {% if not ansible_check_mode %}/ip firewall address-list remove $stale;{% endif %}
+    :put "ANSIBLE_INTERNAL_CHANGED";
+  };
+};
+
 :foreach peer in=[/interface wireguard peers find] do={
   :local iface [/interface wireguard peers get $peer interface];
   :if ([:len [/interface wireguard peers find where interface=$iface]] = 1) do={
-    :local allowed [/interface wireguard peers get $peer allowed-address];
-    :local changed false;
-    {% for prefix in mikrotik_internal_prefixes %}
-    :if ([:typeof [:find $allowed {{ prefix }}]] = "nil") do={
-      :set allowed ($allowed,{{ prefix }});
-      :set changed true;
+    :local original [/interface wireguard peers get $peer allowed-address];
+    :local broad false;
+    :if ([:typeof [:find $original 0.0.0.0/0]] != "nil") do={:set broad true};
+    :if ([:typeof [:find $original 10.0.0.0/8]] != "nil") do={:set broad true};
+    :local allowed [:toarray ""];
+    :foreach entry in=$original do={
+      :local value [:tostr $entry];
+      :local obsolete false;
+      :if ($value = "10.10.0.0/16") do={:set obsolete true};
+      :if ($value = "10.11.0.0/16") do={:set obsolete true};
+      {% for prefix in mikrotik_internal_prefixes %}:if ($broad and $value = "{{ prefix }}") do={:set obsolete true};
+      {% endfor %}
+      :if (!$obsolete) do={:set allowed ($allowed,$entry)};
     };
-    {% endfor %}
+    :local changed false;
+    :if ([:len $allowed] != [:len $original]) do={:set changed true};
+    :if (!$broad) do={
+      {% for prefix in mikrotik_internal_prefixes %}
+      :if ([:typeof [:find $allowed {{ prefix }}]] = "nil") do={
+        :set allowed ($allowed,{{ prefix }});
+        :set changed true;
+      };
+      {% endfor %}
+    };
     :if ($changed) do={
       {% if not ansible_check_mode %}/interface wireguard peers set $peer allowed-address=$allowed;{% endif %}
       :put "ANSIBLE_INTERNAL_CHANGED";

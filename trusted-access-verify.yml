@@ -1,0 +1,178 @@
+---
+- name: Verify trusted sets and their Linux firewall scope
+  hosts: vds1:vds2:vds5:vds6:vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read the managed trusted ipsets
+      ansible.builtin.command: ipset save {{ item }}
+      loop: [trusted_networks, trusted_hosts]
+      register: trusted_access_ipsets
+      changed_when: false
+
+    - name: Decode the active trusted ipset members
+      ansible.builtin.set_fact:
+        trusted_access_active_networks: >-
+          {{ trusted_access_ipsets.results[0].stdout_lines
+             | select('match', '^add trusted_networks ')
+             | map('regex_replace', '^add trusted_networks ', '') | sort | list }}
+        trusted_access_active_hosts: >-
+          {{ trusted_access_ipsets.results[1].stdout_lines
+             | select('match', '^add trusted_hosts ')
+             | map('regex_replace', '^add trusted_hosts ', '')
+             | map('regex_replace', '/32$', '') | sort | list }}
+
+    - name: Require the exact trusted members
+      ansible.builtin.assert:
+        that:
+          - trusted_access_active_networks == (trusted_networks | sort)
+          - trusted_access_active_hosts == (trusted_hosts | map('regex_replace', '/32$', '') | sort | list)
+
+    - name: Require the scoped trusted firewall permits
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - iptables -C INPUT -m set --match-set trusted_networks src -j ACCEPT
+        - iptables -C FORWARD -m set --match-set trusted_networks src -j ACCEPT
+        - iptables -C INPUT -m set --match-set trusted_hosts src -j ACCEPT
+      changed_when: false
+
+    - name: Read the managed INPUT prefix
+      ansible.builtin.shell: iptables -S INPUT | sed -n '2,7p'
+      register: trusted_access_input_prefix
+      changed_when: false
+
+    - name: Require the exact managed INPUT order
+      ansible.builtin.assert:
+        that:
+          - trusted_access_input_prefix.stdout_lines == trusted_access_expected_input_prefix
+      vars:
+        trusted_access_expected_input_prefix:
+          - -A INPUT -s 127.0.0.0/8 -j ACCEPT
+          - -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          - -A INPUT -m set --match-set trusted_hosts src -j ACCEPT
+          - -A INPUT -m set --match-set trusted_networks src -j ACCEPT
+          - -A INPUT -p tcp -m tcp --dport 19022 -m set --match-set Blacklist src -m comment --comment ansible-ssh-blacklist -j DROP
+          - -A INPUT -p tcp -m tcp --dport 19022 -j ACCEPT
+
+    - name: Reject superseded broad and host-forwarding permits
+      ansible.builtin.shell: |
+        set -o pipefail
+        ! iptables -C FORWARD -m set --match-set trusted_hosts src -j ACCEPT 2>/dev/null
+        ! iptables -S INPUT | grep -Eq -- '-s (10\.250\.0\.0/16|10\.255\.0\.0/16) .* -j ACCEPT'
+        ! iptables -S FORWARD | grep -Eq -- '-s (10\.250\.0\.0/16|10\.255\.0\.0/16) .* -j ACCEPT'
+        ! ipset list tunnel_networks >/dev/null 2>&1
+        ! iptables -S INPUT | grep -F -- '--match-set allowed_hosts src'
+        ! iptables -S INPUT | grep -F -- '-p tcp -m multiport --dports 56685 -j ACCEPT'
+        ! iptables -S INPUT | grep -F -- '-p icmp -m icmp --icmp-type 8 -j DROP'
+        ! iptables -S INPUT | grep -Eq -- '--dports (80,443,3000,5222,5269,5280,5443|80,443,1953,3000,5222,5269,5280,5443)'
+        ! iptables -S INPUT | grep -Eq -- '-p udp .*--dport {{ wireguard_listen_port | default(56685) }} .* -j ACCEPT$'
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Reject per-host accepts already covered by trusted ipsets
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import ipaddress
+        import shlex
+        import subprocess
+
+        networks = [ipaddress.ip_network(value) for value in {{ trusted_networks | to_json }}]
+        hosts = {ipaddress.ip_interface(value).ip for value in {{ trusted_hosts | to_json }}}
+        for line in subprocess.check_output(['iptables', '-S', 'INPUT'], text=True).splitlines():
+            args = shlex.split(line)
+            if not args or args[0:2] != ['-A', 'INPUT'] or '-s' not in args or '-j' not in args:
+                continue
+            source = ipaddress.ip_network(args[args.index('-s') + 1], strict=False)
+            if (args[args.index('-j') + 1] == 'ACCEPT' and source.prefixlen == 32 and
+                    (source.network_address in hosts or
+                     any(source.network_address in network for network in networks))):
+                raise SystemExit('redundant trusted /32 rule: ' + line)
+        PY
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+- name: Verify SSH protection and exercise its ipset action
+  hosts: vds1:vds2:vds3:vds5:vds6:vds8:k16_k112_server
+  become: true
+  gather_facts: false
+  vars:
+    trusted_access_test_ban_ip: 192.0.2.123
+    trusted_access_ssh_port: "{{ 22 if inventory_hostname in ['vds3', 'k16_k112_server'] else 19022 }}"
+  tasks:
+    - name: Read fail2ban subnet aggregation policy
+      ansible.builtin.command: fail2ban-client get sshd-subnet {{ item }}
+      loop: [maxretry, findtime]
+      register: trusted_access_subnet_policy
+      changed_when: false
+
+    - name: Read the expected SSH blacklist position
+      ansible.builtin.shell: >-
+        iptables -S INPUT | sed -n
+        '{{ "6p" if inventory_hostname in trusted_firewall_linux_hosts else "2p" }}'
+      register: trusted_access_blacklist_rule
+      changed_when: false
+
+    - name: Require the SSH listener and subnet jail
+      ansible.builtin.shell: |
+        systemctl is-active --quiet fail2ban
+        fail2ban-client status sshd-subnet >/dev/null
+        ! fail2ban-client status sshd >/dev/null 2>&1
+        ss -H -lnt | awk '$4 ~ /:{{ trusted_access_ssh_port }}$/ { found=1 } END { exit !found }'
+      changed_when: false
+
+    - name: Require the configured SSH thresholds
+      ansible.builtin.assert:
+        that:
+          - trusted_access_subnet_policy.results[0].stdout | int == 1
+          - trusted_access_subnet_policy.results[1].stdout | int == 600
+          - "'ansible-ssh-blacklist' in trusted_access_blacklist_rule.stdout"
+
+    - name: Require a prefix-capable blacklist
+      ansible.builtin.shell: "ipset list Blacklist | grep -F 'Type: hash:net'"
+      changed_when: false
+
+    - name: Exercise and clean up distributed subnet aggregation
+      block:
+        - name: Submit three distinct documentation addresses
+          ansible.builtin.command: /usr/local/sbin/ssh-subnet-aggregate add {{ item }}
+          loop:
+            - 198.51.100.1
+            - 198.51.100.2
+            - 198.51.100.3
+          changed_when: false
+
+        - name: Require the resulting documentation prefix ban
+          ansible.builtin.command: ipset test Blacklist 198.51.100.200
+          changed_when: false
+      always:
+        - name: Remove the documentation prefix and aggregation state
+          ansible.builtin.command: /usr/local/sbin/ssh-subnet-aggregate forget 198.51.100.1
+          changed_when: false
+          failed_when: false
+
+- name: Verify every published SSH endpoint from the controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    trusted_access_published_ssh:
+      - {name: vds1, host: 45.141.102.72, port: 19022}
+      - {name: vds2, host: 38.247.137.237, port: 19022}
+      - {name: vds3, host: 86.110.170.70, port: 19022}
+      - {name: vds5, host: 217.144.189.206, port: 19022}
+      - {name: vds6, host: 195.245.239.82, port: 19022}
+      - {name: vds8, host: 194.113.106.136, port: 19022}
+      - {name: k16_k112_server, host: 86.110.170.70, port: 19020}
+  tasks:
+    - name: Require the public SSH TCP listeners
+      ansible.builtin.wait_for:
+        host: '{{ item.host }}'
+        port: '{{ item.port }}'
+        connect_timeout: 3
+        timeout: 15
+        state: started
+      loop: '{{ trusted_access_published_ssh }}'
+      loop_control:
+        label: '{{ item.name }} {{ item.host }}:{{ item.port }}'

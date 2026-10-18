@@ -3,9 +3,14 @@ iptables_trusted_hosts_enabled: true
 iptables_trusted_hosts_ipset_name: trusted_hosts
 iptables_trusted_hosts_chains:
   - INPUT
+iptables_trusted_networks_ipset_name: trusted_networks
+iptables_trusted_networks_chains:
+  - INPUT
   - FORWARD
+iptables_firewall_enabled: '{{ inventory_hostname in (trusted_firewall_linux_hosts | default([])) }}'
 iptables_trusted_hosts_inventory_dir: "{{ inventory_dir | default(playbook_dir ~ '/inventory') }}"
-iptables_ipset_restore_file: /etc/iptables/ipsets
+iptables_ipset_legacy_restore_file: /etc/iptables/ipsets
+iptables_ipset_restore_file: /etc/iptables/ipsets-ansible-trusted
 iptables_ipset_restore_service: ipset-persistent-restore.service
 
 iptables_input_ssh_port: 19022

@@ -5,10 +5,10 @@
     "10.250.2.{{ peer[3:] }}": "{{ hostvars[peer].awg_public_key.stdout | trim }}"{{ "," if not loop.last or (inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts) else "" }}
 {% endfor %}
 {% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}
-    "10.250.1.7": "{{ normalized_chr_public_keys[inventory_hostname] }}"
+    "10.250.6.7": "{{ normalized_chr_public_keys[inventory_hostname] }}"
 {% endif %}
   },
-  "fixed": {{ ({'10.250.1.7': ['224.0.0.5/32']} if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts else {})
+  "fixed": {{ ({'10.250.6.7': ['224.0.0.5/32']} if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts else {})
       | combine((amneziawg_connected_leaf_owners | default({})).get(inventory_hostname, {}), recursive=true, list_merge='append_rp') | to_json }},
   "source_aliases": {{ amneziawg_source_aliases | default({
       '10.255.0.1/32': ['10.250.1.1/32', '10.250.2.1/32'],

@@ -13,7 +13,7 @@
     internal_network_verify_source_addresses:
       - auto
       - "10.255.0.{{ inventory_hostname | regex_replace('^vds', '') }}"
-      - "10.250.1.{{ inventory_hostname | regex_replace('^vds', '') }}"
+      - "10.250.6.{{ inventory_hostname | regex_replace('^vds', '') }}"
       - "10.250.2.{{ inventory_hostname | regex_replace('^vds', '') }}"
     internal_network_verify_target_addresses:
       - {name: k16_lan_gateway, ip: 10.9.0.1}
@@ -24,7 +24,7 @@
       - {name: vds2_loopback, ip: 10.255.0.2}
       - {name: vds6_loopback, ip: 10.255.0.6}
       - {name: k16_sstp_endpoint, ip: 10.250.0.112}
-      - {name: chr_wireguard_endpoint, ip: 10.250.1.7}
+      - {name: chr_wireguard_endpoint, ip: 10.250.6.7}
       - {name: vds5_mesh_endpoint, ip: 10.250.2.5}
       - {name: k16_l2tp_endpoint, ip: 10.250.3.112}
       - {name: k16_gre_router, ip: 10.250.4.1}

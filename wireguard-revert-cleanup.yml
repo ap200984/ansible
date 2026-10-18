@@ -72,7 +72,7 @@
       - -o
       - ControlPath=none
       - -o
-      - 'ProxyCommand=ssh -p19022 -i {{ router_ssh_key | expanduser }} -oBatchMode=yes -oControlMaster=no -oControlPath=none -W %h:%p ansible@38.247.137.237'
+      - 'ProxyCommand=ssh -p19022 -i {{ router_ssh_key | expanduser }} -oBatchMode=yes -oControlMaster=no -oControlPath=none -W %h:%p ansible@194.113.106.136'
       - ansible@62.60.216.73
   tasks:
     - name: Stop the three obsolete proxy processes

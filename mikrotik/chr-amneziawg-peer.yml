@@ -74,7 +74,7 @@
       retries: 30
       delay: 3
     - name: Verify the direct transport with source and destination pinned
-      ansible.builtin.command: 'ping -I wg0 -c 5 -W 3 10.250.1.7'
+      ansible.builtin.command: 'ping -I wg0 -c 5 -W 3 10.250.6.7'
       delegate_to: '{{ chr_awg_peer }}'
       vars:
         ansible_connection: ssh
@@ -82,7 +82,7 @@
       changed_when: false
     - name: Verify CHR to the Linux direct transport
       ansible.builtin.command:
-        argv: '{{ chr_awg_ssh + ["/ping 10.250.1." + (chr_awg_suffix | string) + " interface=" + chr_awg_peer + "_interface src-address=10.250.1.7 count=5"] }}'
+        argv: '{{ chr_awg_ssh + ["/ping 10.250.1." + (chr_awg_suffix | string) + " interface=" + chr_awg_peer + "_interface src-address=10.250.6.7 count=5"] }}'
       register: chr_awg_ping
       changed_when: false
       failed_when: chr_awg_ping.rc != 0 or 'received=5' not in chr_awg_ping.stdout

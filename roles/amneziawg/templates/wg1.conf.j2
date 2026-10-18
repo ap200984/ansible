@@ -10,7 +10,7 @@ Table = off
 PostUp = ip route replace 10.250.2.{{ peer[3:] }}/32 dev %i src 10.250.2.{{ inventory_hostname[3:] }}
 {% endfor %}
 {% if inventory_hostname in (linux_wg_normalized_hosts | default([])) and inventory_hostname in chr_native_awg_hosts %}
-PostUp = ip route replace 10.250.1.7/32 dev %i src 10.250.1.{{ inventory_hostname[3:] }}
+PostUp = ip route replace 10.250.6.7/32 dev %i src 10.250.1.{{ inventory_hostname[3:] }}
 {% endif %}
 Jc = 4
 Jmin = 40
@@ -34,6 +34,6 @@ PersistentKeepalive = 0
 [Peer]
 # CHR endpoint is learned from its existing container, which remains unchanged.
 PublicKey = {{ normalized_chr_public_keys[inventory_hostname] }}
-AllowedIPs = 10.250.1.7/32, 10.255.0.7/32, 224.0.0.5/32
+AllowedIPs = 10.250.6.7/32, 10.255.0.7/32, 224.0.0.5/32
 PersistentKeepalive = 0
 {% endif %}

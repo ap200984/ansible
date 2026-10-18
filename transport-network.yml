@@ -1,0 +1,72 @@
+---
+- name: Renumber RouterOS transport endpoints before their Linux peers
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/all/main.yml
+  vars:
+    transport_routers:
+      - {identity: vds7_CHR, vars_file: mikrotik/host_vars/vds7_CHR.yml}
+      - {identity: K16_112, vars_file: mikrotik/host_vars/K16_112.yml}
+      - {identity: Misha, vars_file: mikrotik/host_vars/Misha.yml}
+  tasks:
+    - name: Renumber each existing RouterOS transport
+      ansible.builtin.include_tasks: mikrotik/transport-renumber-router.yml
+      loop: '{{ transport_routers }}'
+      loop_control:
+        loop_var: transport_router
+        label: '{{ transport_router.identity }}'
+
+- name: Renumber the dedicated CHR and site AWG interfaces
+  hosts: vds1:vds8
+  serial: 1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Replace the CHR transport prefix in the native interface
+      ansible.builtin.replace:
+        path: /etc/amnezia/amneziawg/wg2.conf
+        regexp: '10\.250\.1\.(7|{{ inventory_hostname[3:] }})'
+        replace: '10.250.6.\1'
+        backup: true
+      register: chr_transport_config
+      no_log: true
+    - name: Replace the K16 and Misha AWG transport prefix
+      ansible.builtin.replace:
+        path: '/etc/amnezia/amneziawg/{{ item }}.conf'
+        regexp: '10\.255\.2\.'
+        replace: '10.250.6.'
+        backup: true
+      loop: [wg3, wg4]
+      register: site_transport_config
+      no_log: true
+    - name: Restart changed dedicated interfaces
+      ansible.builtin.systemd_service:
+        name: 'awg-quick@{{ item.item | default("wg2") }}'
+        state: restarted
+      loop: >-
+        {{ ([{'item': 'wg2', 'changed': true}] if chr_transport_config.changed else []) +
+           (site_transport_config.results | selectattr('changed') | list) }}
+
+- name: Renumber plain WireGuard links to vds7_CHR
+  hosts: vds2:vds5:vds6
+  serial: 1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Replace both endpoints of the dedicated CHR link
+      ansible.builtin.replace:
+        path: /etc/wireguard/wg0.conf
+        regexp: '10\.250\.1\.(7|{{ inventory_hostname[3:] }})'
+        replace: '10.250.6.\1'
+        backup: true
+      register: chr_plain_config
+      no_log: true
+    - name: Restart the changed CHR link
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg0
+        state: restarted
+      when: chr_plain_config.changed
+
+- ansible.builtin.import_playbook: transport-routing-repair.yml

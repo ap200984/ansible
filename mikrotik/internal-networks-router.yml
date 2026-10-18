@@ -33,30 +33,46 @@
   ansible.builtin.set_fact:
     mikrotik_internal_records:
       - path: /ip firewall filter
-        selector: {comment: Ansible internal networks input}
+        selector: {comment: Ansible trusted networks input}
         create: true
         values:
-          comment: Ansible internal networks input
+          comment: Ansible trusted networks input
           chain: input
           action: accept
           src-address-list: '{{ mikrotik_internal_list }}'
-          dst-address-list: '{{ mikrotik_internal_list }}'
           disabled: 'no'
       - path: /ip firewall filter
-        selector: {comment: Ansible internal networks forward}
+        selector: {comment: Ansible trusted networks forward}
         create: true
         values:
-          comment: Ansible internal networks forward
+          comment: Ansible trusted networks forward
           chain: forward
           action: accept
           src-address-list: '{{ mikrotik_internal_list }}'
-          dst-address-list: '{{ mikrotik_internal_list }}'
           disabled: 'no'
-      - path: /ip firewall nat
-        selector: {comment: Ansible internal networks no NAT}
+      - path: /ip firewall filter
+        selector: {comment: Ansible trusted hosts input}
         create: true
         values:
-          comment: Ansible internal networks no NAT
+          comment: Ansible trusted hosts input
+          chain: input
+          action: accept
+          src-address-list: '{{ mikrotik_trusted_hosts_list }}'
+          disabled: 'no'
+      - path: /ip firewall filter
+        selector: {comment: Ansible trusted hosts forward}
+        create: true
+        values:
+          comment: Ansible trusted hosts forward
+          chain: forward
+          action: accept
+          src-address-list: '{{ mikrotik_trusted_hosts_list }}'
+          disabled: 'no'
+      - path: /ip firewall nat
+        selector: {comment: Ansible trusted networks no NAT}
+        create: true
+        values:
+          comment: Ansible trusted networks no NAT
           chain: srcnat
           action: accept
           src-address-list: '{{ mikrotik_internal_list }}'
@@ -97,6 +113,7 @@
     known_hosts_file: '{{ router_known_hosts_file | default(playbook_dir + "/known_hosts") }}'
     proxy_command: '{{ router_proxy_command | default(mikrotik_internal_connection.router_proxy_command | default("none")) }}'
     records: '{{ mikrotik_internal_records }}'
+  when: internal_networks_manage_gre | default(true) | bool
 
 - name: Reconcile interior prefixes, rule order and single-peer permissions
   ansible.builtin.command:
@@ -110,3 +127,10 @@
     'ANSIBLE_INTERNAL_READY' not in mikrotik_internal_policy.stdout or
     'syntax error' in mikrotik_internal_policy.stdout or
     'failure:' in mikrotik_internal_policy.stdout
+
+- name: Report planned RouterOS policy corrections in check mode
+  ansible.builtin.debug:
+    var: mikrotik_internal_policy.stdout_lines
+  when:
+    - ansible_check_mode
+    - mikrotik_internal_policy is changed

@@ -1,0 +1,7 @@
+---
+- name: Protect every published Linux SSH service from password guessing
+  hosts: vds1:vds2:vds3:vds5:vds6:vds8:k16_k112_server
+  become: true
+  gather_facts: false
+  roles:
+    - ssh_bruteforce

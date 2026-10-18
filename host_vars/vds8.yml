@@ -34,7 +34,7 @@ wireguard_peers:
     source_address: 10.250.1.8
     allowed_ips:
       - 10.250.1.64/32
-      - 10.10.0.0/16
+      - '{{ ekipazh_lan_network }}'
   - name: mikrotik-k16-k21
     public_key: l96oFyJcZem8MXw6CsGTLRHJuV9lmXz4IZ6KN1bWMwQ=
     source_address: 10.250.1.8
@@ -75,7 +75,7 @@ ospf_routing_services:
 
 # K16 now uses a dedicated native AWG interface with container framing on RouterOS.
 k16_amneziawg_enabled: true
-ospf_direct_neighbors: [10.250.1.64, 10.250.1.21, 10.250.1.7]
+ospf_direct_neighbors: [10.250.1.64, 10.250.1.21, 10.250.6.7]
 
 # Misha is behind CGNAT; its dedicated authenticated AWG port accepts roaming endpoints.
 misha_amneziawg_enabled: true

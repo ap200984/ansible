@@ -47,7 +47,7 @@ unavailable vds1 is currently healthy. Re-run `chr-amneziawg-verify.yml` on all
 five after its public connectivity recovers.
 
 CHR-to-vds8 was independently verified with 5/5 loopback pings after failover;
-CHR FIB uses `10.250.1.5%vds5_interface`. All four remaining VDS and all four
+CHR FIB uses `10.250.6.5%vds5_interface`. All four remaining VDS and all four
 SSTP OSPF neighbors are Full. vds1's neighbor was withdrawn as expected.
 
 ## Transport-only implementation
@@ -81,4 +81,4 @@ on the very link under test. RouterOS scripts are sent as one scoped line;
 7.24 container state is read from JSON `print as-value` boolean flags.
 
 If vds1 is unavailable, use vds2 (SSH 19022) as the jump host instead:
-`ssh -p 19022 -i ~/.ssh/priv/ansible -o BatchMode=yes -W %h:%p ansible@38.247.137.237`.
+`ssh -p 19022 -i ~/.ssh/priv/ansible -o BatchMode=yes -W %h:%p ansible@194.113.106.136`.

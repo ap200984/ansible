@@ -1,4 +1,18 @@
 ---
+- name: Install trusted INPUT normalization helper
+  ansible.builtin.template:
+    src: trusted-rule-cleanup.py.j2
+    dest: /usr/local/sbin/trusted-rule-cleanup
+    owner: root
+    group: root
+    mode: '0755'
+- name: Persist trusted INPUT normalization after firewall helpers
+  ansible.builtin.template:
+    src: trusted-rule-cleanup.service.j2
+    dest: /etc/systemd/system/trusted-rule-cleanup.service
+    owner: root
+    group: root
+    mode: '0644'
 - ansible.builtin.template:
     src: '{{ playbook_dir }}/roles/ospf/templates/firewall.sh.j2'
     dest: /usr/local/sbin/ospf-firewall
@@ -9,6 +23,12 @@
     mode: '0644'
 - ansible.builtin.systemd_service:
     name: ospf-firewall
+    daemon_reload: true
+    enabled: true
+    state: restarted
+- name: Normalize the trusted INPUT block and remove legacy rules now and at boot
+  ansible.builtin.systemd_service:
+    name: trusted-rule-cleanup
     daemon_reload: true
     enabled: true
     state: restarted

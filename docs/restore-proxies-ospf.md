@@ -116,7 +116,7 @@ routers (zero changes). The 11 existing MikroTik regression tests pass, as do
 both recovery playbooks' syntax checks and certificate-chain verification.
 
 The K16 ↔ vds1/vds8 links were subsequently migrated to AmneziaWG on
-`10.255.2.0/24`. Their current encrypted identities and `awg-quick@wg3` units
+`10.250.6.0/24`. Their current encrypted identities and `awg-quick@wg3` units
 are included in recovery. See [the K16 migration](k16-amneziawg.md).
 
 Misha also uses two USB-backed ARM proxy containers to vds1/vds8 native `wg4`.

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+ipset create {{ ssh_bruteforce_ipset }} hash:net family inet timeout {{ ssh_bruteforce_bantime }} -exist
+for managed_port in 22 19022; do
+    while iptables -C INPUT -p tcp --dport "$managed_port" -m set --match-set {{ ssh_bruteforce_ipset }} src -m comment --comment ansible-ssh-blacklist -j DROP 2>/dev/null; do
+        iptables -D INPUT -p tcp --dport "$managed_port" -m set --match-set {{ ssh_bruteforce_ipset }} src -m comment --comment ansible-ssh-blacklist -j DROP
+    done
+done
+iptables -I INPUT 1 -p tcp --dport {{ ssh_bruteforce_port }} -m set --match-set {{ ssh_bruteforce_ipset }} src -m comment --comment ansible-ssh-blacklist -j DROP
+if [ -x /usr/local/sbin/trusted-rule-cleanup ]; then
+    /usr/local/sbin/trusted-rule-cleanup
+fi

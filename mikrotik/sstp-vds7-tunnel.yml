@@ -15,11 +15,15 @@
       - '20022'
       - -o
       - BatchMode=yes
+      - -o
+      - ConnectTimeout=15
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
       - ansible@62.60.216.73
       - >-
         :local ids [/ppp secret find where name="{{ tunnel.user }}"];
         :if ([:len $ids] != 1) do={:error "Expected one PPP account"};
-        /ppp secret set $ids local-address=10.251.0.7
+        /ppp secret set $ids local-address={{ sstp_vds7_server_address }}
         remote-address={{ tunnel.address }} service=sstp disabled=no
         password="{{ sstp_vds7_password }}"
   no_log: true
@@ -36,6 +40,14 @@
       - "{{ router_port | string }}"
       - -o
       - BatchMode=yes
+      - -o
+      - ConnectTimeout=15
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ playbook_dir }}/known_hosts'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
       - "{{ router_user }}@{{ router_host }}"
       - >-
         :local ids [/interface sstp-client find where name="sstp-vds7"];
@@ -57,13 +69,21 @@
       - "{{ router_port | string }}"
       - -o
       - BatchMode=yes
+      - -o
+      - ConnectTimeout=15
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ playbook_dir }}/known_hosts'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
       - "{{ router_user }}@{{ router_host }}"
       - >-
         :local a [/ip address find where interface="sstp-vds7"];
         :if ([:len $a] != 1) do={:error "SSTP address not ready"};
         :if ([/ip address get $a address] != "{{ tunnel.address }}/32") do={:error "Unexpected client address"};
-        :if ([/ip address get $a network] != "10.251.0.7") do={:error "Unexpected server address"};
-        :put "VERIFIED {{ tunnel.identity }} {{ tunnel.address }}/32 peer=10.251.0.7"
+        :if ([/ip address get $a network] != "{{ sstp_vds7_server_address }}") do={:error "Unexpected server address"};
+        :put "VERIFIED {{ tunnel.identity }} {{ tunnel.address }}/32 peer={{ sstp_vds7_server_address }}"
   register: tunnel_check
   until: "'VERIFIED' in tunnel_check.stdout"
   retries: 12

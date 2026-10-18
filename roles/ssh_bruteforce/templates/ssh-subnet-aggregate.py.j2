@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+import argparse
+import fcntl
+import ipaddress
+import json
+import os
+import subprocess
+import time
+
+STATE = '/var/lib/fail2ban/ssh-subnet-aggregate.json'
+LOCK = '/run/lock/ssh-subnet-aggregate.lock'
+IPSET = '{{ ssh_bruteforce_ipset }}'
+WINDOW = {{ ssh_bruteforce_findtime }}
+THRESHOLD = {{ ssh_bruteforce_subnet_unique_ips }}
+PREFIX = {{ ssh_bruteforce_subnet_prefix }}
+BANTIME = {{ ssh_bruteforce_bantime }}
+
+
+def load_state():
+    try:
+        with open(STATE, encoding='utf-8') as stream:
+            return json.load(stream)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_state(state):
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    temporary = STATE + '.tmp'
+    with open(temporary, 'w', encoding='utf-8') as stream:
+        json.dump(state, stream, sort_keys=True)
+    os.replace(temporary, STATE)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('command', choices=['add', 'forget'])
+parser.add_argument('address')
+args = parser.parse_args()
+address = ipaddress.ip_address(args.address)
+if address.version != 4:
+    raise SystemExit(0)
+network = str(ipaddress.ip_network(f'{address}/{PREFIX}', strict=False))
+now = int(time.time())
+
+with open(LOCK, 'w', encoding='utf-8') as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    state = load_state()
+    if args.command == 'forget':
+        state.pop(network, None)
+        subprocess.run(['ipset', 'del', IPSET, network, '-exist'], check=True)
+        save_state(state)
+        raise SystemExit(0)
+    recent = {ip: timestamp for ip, timestamp in state.get(network, {}).items()
+              if now - int(timestamp) <= WINDOW}
+    recent[str(address)] = now
+    state[network] = recent
+    if len(recent) >= THRESHOLD:
+        subprocess.run(['ipset', 'add', IPSET, network, 'timeout', str(BANTIME), '-exist'],
+                       check=True)
+    save_state(state)

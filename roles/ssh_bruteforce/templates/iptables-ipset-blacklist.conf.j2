@@ -1,0 +1,6 @@
+[Definition]
+actionstart = ipset create {{ ssh_bruteforce_ipset }} hash:net family inet timeout <bantime> -exist
+actionstop = true
+actioncheck = ipset list {{ ssh_bruteforce_ipset }} >/dev/null 2>&1
+actionban = ipset add {{ ssh_bruteforce_ipset }} <ip> timeout <bantime> -exist
+actionunban = ipset del {{ ssh_bruteforce_ipset }} <ip> -exist

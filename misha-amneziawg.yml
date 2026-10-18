@@ -64,8 +64,8 @@
       ansible.builtin.shell: |
         iptables -C INPUT -s 0.0.0.0/0 -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT 2>/dev/null ||
         iptables -I INPUT 1 -s 0.0.0.0/0 -p udp --dport 56709 -m comment --comment misha-awg -j ACCEPT
-        iptables -C INPUT -i wg4 -s 10.255.2.24/32 -j ACCEPT 2>/dev/null ||
-        iptables -I INPUT 1 -i wg4 -s 10.255.2.24/32 -j ACCEPT
+        iptables -C INPUT -i wg4 -s 10.250.6.24/32 -j ACCEPT 2>/dev/null ||
+        iptables -I INPUT 1 -i wg4 -s 10.250.6.24/32 -j ACCEPT
       changed_when: false
     - name: Start the native interface
       ansible.builtin.systemd_service:
@@ -108,7 +108,7 @@
               - -c
               - interface wg4
               - -c
-              - 'ip ospf area 0.0.0.0 10.255.2.{{ misha_awg_number }}'
+              - 'ip ospf area 0.0.0.0 10.250.6.{{ misha_awg_number }}'
               - -c
               - ip ospf network point-to-point
               - -c
@@ -148,7 +148,7 @@
           ansible.builtin.command: vtysh -c 'show bfd peers json'
           register: misha_bfd
           changed_when: false
-          until: misha_bfd.stdout | from_json | selectattr('peer', 'equalto', '10.255.2.24') | selectattr('status', 'equalto', 'up') | list | length == 1
+          until: misha_bfd.stdout | from_json | selectattr('peer', 'equalto', '10.250.6.24') | selectattr('status', 'equalto', 'up') | list | length == 1
           retries: 12
           delay: 5
         - name: Verify routed Misha loopback from the VDS loopback

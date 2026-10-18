@@ -1,13 +1,13 @@
 # Misha AmneziaWG links
 
 Misha ↔ vds1 and Misha ↔ vds8 use container-backed AmneziaWG, with transport
-10.255.2.0/24. Loopbacks remain 10.255.0.N/32 and the existing inter-VDS mesh
+10.250.6.0/24. Loopbacks remain 10.255.0.N/32 and the existing inter-VDS mesh
 remains 10.250.2.0/24.
 
 | Link | Router interface/address | Native VDS interface/address | OSPF cost |
 | --- | --- | --- | --- |
-| Misha ↔ vds1 | wg_vds1, 10.255.2.24/32, peer network 10.255.2.1 | wg4, 10.255.2.1/24 | 1000 |
-| Misha ↔ vds8 | wg_vds8, 10.255.2.24/32, peer network 10.255.2.8 | wg4, 10.255.2.8/24 | 30000 |
+| Misha ↔ vds1 | wg_vds1, 10.250.6.24/32, peer network 10.250.6.1 | wg4, 10.250.6.1/24 | 1000 |
+| Misha ↔ vds8 | wg_vds8, 10.250.6.24/32, peer network 10.250.6.8 | wg4, 10.250.6.8/24 | 30000 |
 
 Misha is a hAP ac² with 32-bit ARM, RouterOS 7.24.5 and the container package
 and device-mode permission enabled. Its USB disk `usb1` holds the image and

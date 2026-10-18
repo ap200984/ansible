@@ -1,0 +1,21 @@
+---
+- name: Verify vds7 SSTP addressing and removal of the old prefix
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all/main.yml
+  vars:
+    tunnels:
+      - {identity: 3Ekipazhnyi64, user: 3Ekipazhnyi64, address: 10.250.0.64}
+      - {identity: k16_21, user: k16_k21, address: 10.250.0.21}
+      - {identity: K16_112, user: k16_k112, address: 10.250.0.112}
+      - {identity: Misha, user: Misha, address: 10.250.0.24}
+    verify_routers: [vds7_CHR, 3Ekipazhnyi64, k16_21, K16_112, Misha]
+  tasks:
+    - name: Verify each affected router
+      ansible.builtin.include_tasks: sstp-vds7-verify-router.yml
+      loop: '{{ verify_routers }}'
+      loop_control:
+        loop_var: verify_identity
+        label: '{{ verify_identity }}'

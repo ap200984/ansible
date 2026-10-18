@@ -7,7 +7,7 @@ ospf_bfd_enabled: true
 ospf_sstp_cost: 60000
 
 k16_amneziawg_enabled: true
-k16_amneziawg_address: 10.255.2.112
+k16_amneziawg_address: 10.250.6.112
 k16_amneziawg_containers: [k16-awg-vds1, k16-awg-vds8]
 
 google_gre_enabled: true

@@ -27,23 +27,23 @@ ospf_routers:
   wg_links:
   - interface: vds2_interface
     peer: wg_to_vds2
-    remote: 10.250.1.2
+    remote: 10.250.6.2
     cost: 1000
   - interface: vds5_interface
     peer: wg_to_vds5
-    remote: 10.250.1.5
+    remote: 10.250.6.5
     cost: '{{ ospf_wireguard_costs.vds5 }}'
   - interface: vds6_interface
     peer: wg_to_vds6
-    remote: 10.250.1.6
+    remote: 10.250.6.6
     cost: 1000
   - interface: vds1_interface
     peer: wg_to_vds1
-    remote: 10.250.1.1
+    remote: 10.250.6.1
     cost: 1000
   - interface: vds8_interface
     peer: wg_to_vds8
-    remote: 10.250.1.8
+    remote: 10.250.6.8
     cost: 30000
   trusted_lists:
   - Trusted
@@ -69,12 +69,12 @@ ospf_routers:
   wg_links:
   - interface: wg_vds1
     peer: wg_to_vds1
-    remote: '{{ "10.255.2.1" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool else "10.250.1.1" }}'
+    remote: '{{ "10.250.6.1" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool else "10.250.1.1" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool }}'
     cost: 1000
   - interface: wg_vds8
     peer: wg_to_vds8
-    remote: '{{ "10.255.2.8" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool else "10.250.1.8" }}'
+    remote: '{{ "10.250.6.8" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool else "10.250.1.8" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool }}'
     cost: 30000
   trusted_lists:
@@ -144,19 +144,18 @@ ospf_routers:
   wg_links:
   - interface: wg_vds1
     peer: wg_to_vds1
-    remote: '{{ "10.255.2.1" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool else "10.250.1.1" }}'
+    remote: '{{ "10.250.6.1" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool else "10.250.1.1" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool }}'
     cost: 1000
   - interface: wg_vds8
     peer: wg_to_vds8
-    remote: '{{ "10.255.2.8" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool else "10.250.1.8" }}'
+    remote: '{{ "10.250.6.8" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool else "10.250.1.8" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool }}'
     cost: 30000
   trusted_lists:
   - Trusted
 ospf_routed_networks:
 - 10.250.0.0/16
-- 10.251.0.0/24
 - 10.255.0.0/16
 - 10.9.0.0/16
 - 10.10.0.0/16

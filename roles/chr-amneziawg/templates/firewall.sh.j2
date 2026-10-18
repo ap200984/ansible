@@ -1,7 +1,13 @@
 #!/bin/sh
 set -eu
-iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT 2>/dev/null ||
-  iptables -I INPUT 1 -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT
+if ipset test trusted_hosts {{ chr_awg_public_endpoint }} >/dev/null 2>&1; then
+  while iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT 2>/dev/null; do
+    iptables -D INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT
+  done
+else
+  iptables -C INPUT -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT 2>/dev/null ||
+    iptables -I INPUT 1 -s {{ chr_awg_public_endpoint }}/32 -p udp --dport {{ chr_awg_port }} -m comment --comment chr-awg-proxy -j ACCEPT
+fi
 # Only loopback WireGuard frames pass between the native tunnel and the proxy.
 iptables -C INPUT -i lo -p udp --dport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-loopback -j ACCEPT 2>/dev/null ||
   iptables -I INPUT 1 -i lo -p udp --dport {{ chr_awg_wg_port.stdout }} -m comment --comment chr-awg-loopback -j ACCEPT

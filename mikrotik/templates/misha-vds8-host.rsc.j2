@@ -10,7 +10,7 @@
  {'path':'/ip firewall mangle','comment':'Misha host VDS8 MSS','values':'chain=forward out-interface=wg_vds8 connection-mark=misha_vds8 protocol=tcp tcp-flags=syn action=change-mss new-mss=clamp-to-pmtu passthrough=yes disabled=no'},
  {'path':'/ip firewall filter','comment':'Misha host VDS8 outbound','values':'chain=forward src-address=192.168.0.190/32 out-interface=wg_vds8 action=accept disabled=no'},
  {'path':'/ip firewall filter','comment':'Misha host VDS8 return','values':'chain=forward dst-address=192.168.0.190/32 in-interface=wg_vds8 connection-state=established,related action=accept disabled=no'},
- {'path':'/ip firewall nat','comment':'Misha host VDS8 source NAT','values':'chain=srcnat src-address=192.168.0.190/32 out-interface=wg_vds8 action=src-nat to-addresses=10.255.2.24 disabled=no'}
+ {'path':'/ip firewall nat','comment':'Misha host VDS8 source NAT','values':'chain=srcnat src-address=192.168.0.190/32 out-interface=wg_vds8 action=src-nat to-addresses=10.250.6.24 disabled=no'}
 ] %}
 {% for record in records %}
 :local h{{ loop.index }} [{{ record.path }} find where comment="{{ record.comment }}"];

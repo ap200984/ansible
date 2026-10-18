@@ -7,8 +7,11 @@
     - ../group_vars/all/main.yml
     - ../vars/google-gre.yml
   vars:
-    mikrotik_internal_prefixes: '{{ internal_routed_networks | default(tunnel_networks + ["10.251.0.0/24", "10.11.0.0/16"]) | unique | list }}'
-    mikrotik_internal_list: internal_routed_networks
+    mikrotik_internal_prefixes: '{{ trusted_networks | unique | list }}'
+    mikrotik_internal_hosts: >-
+      {{ trusted_hosts | map('regex_replace', '/32$', '') | unique | list }}
+    mikrotik_internal_list: trusted_networks
+    mikrotik_trusted_hosts_list: trusted_hosts
   tasks:
     - name: Discover all managed router connection settings
       ansible.builtin.set_fact:
@@ -19,6 +22,7 @@
         that:
           - mikrotik_internal_variable_files | length > 0
           - mikrotik_internal_prefixes | length > 0
+          - mikrotik_internal_hosts | length > 0
 
     - name: Configure each managed router
       ansible.builtin.include_tasks: internal-networks-router.yml
@@ -27,5 +31,5 @@
         loop_var: mikrotik_internal_variable_file
         label: '{{ mikrotik_internal_variable_file | basename | splitext | first }}'
       when: >-
-        internal_networks_routers is not defined or
-        (mikrotik_internal_variable_file | basename | splitext | first) in internal_networks_routers
+        (mikrotik_internal_variable_file | basename | splitext | first) in
+        (internal_networks_routers | default(trusted_firewall_mikrotik_hosts))

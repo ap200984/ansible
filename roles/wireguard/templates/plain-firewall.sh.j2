@@ -1,8 +1,14 @@
 #!/bin/sh
 set -eu
 permit() {
-  iptables -C INPUT -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT 2>/dev/null ||
-    iptables -I INPUT 1 -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT
+  if ipset test trusted_hosts "$1" >/dev/null 2>&1; then
+    while iptables -C INPUT -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT 2>/dev/null; do
+      iptables -D INPUT -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT
+    done
+  else
+    iptables -C INPUT -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT 2>/dev/null ||
+      iptables -I INPUT 1 -s "$1/32" -p udp --dport "$2" -m comment --comment plain-wg-transport -j ACCEPT
+  fi
 }
 permit 62.60.216.73 {{ chr_awg_original_ports[inventory_hostname] }}
 {% if inventory_hostname == 'vds5' %}

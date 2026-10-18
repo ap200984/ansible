@@ -11,12 +11,12 @@ def prepare(original, number):
     key = re.search(r'(?m)^PrivateKey\s*=\s*(\S+)', original).group(1)
     return f'''# Managed Misha AmneziaWG transport; OSPF owns destinations.
 [Interface]
-Address = 10.255.2.{number}/24
+Address = 10.250.6.{number}/24
 PrivateKey = {key}
 ListenPort = 56709
 MTU = 1340
 Table = off
-PostUp = ip route replace 10.255.2.24/32 dev %i src 10.255.2.{number}
+PostUp = ip route replace 10.250.6.24/32 dev %i src 10.250.6.{number}
 Jc = 4
 Jmin = 40
 Jmax = 80

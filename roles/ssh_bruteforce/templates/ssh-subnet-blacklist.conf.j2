@@ -1,0 +1,6 @@
+[Definition]
+actionstart = ipset create {{ ssh_bruteforce_ipset }} hash:net family inet timeout {{ ssh_bruteforce_bantime }} -exist
+actionstop = true
+actioncheck = ipset list {{ ssh_bruteforce_ipset }} >/dev/null 2>&1
+actionban = /usr/local/sbin/ssh-subnet-aggregate add <ip>
+actionunban = true

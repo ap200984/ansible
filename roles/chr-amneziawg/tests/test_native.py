@@ -21,7 +21,7 @@ class NativeMigrationTests(unittest.TestCase):
         self.assertIn('PublicKey = SITE', plain)
         self.assertIn('10.250.1.21/32', plain)
         self.assertIn('PrivateKey = PRIVATE', awg)
-        self.assertIn('Address = 10.250.1.8/24', awg)
+        self.assertIn('Address = 10.250.6.8/24', awg)
         self.assertIn('224.0.0.5/32', awg)
         self.assertIn('Table = off', awg)
         self.assertNotIn('Endpoint =', awg)
@@ -43,7 +43,7 @@ class NativeMigrationTests(unittest.TestCase):
         template = ROOT.parents[1] / 'mikrotik/templates/chr-native-cutover.rsc.j2'
         rendered = Environment().from_string(template.read_text()).render(
             inventory_hostname='vds8', native_chr_allowed='10.250.1.0/24')
-        self.assertIn('gateway=10.250.1.8%vds8_interface', rendered)
+        self.assertIn('gateway=10.250.6.8%vds8_interface', rendered)
         self.assertIn('224.0.0.5/32', rendered)
         self.assertIn('type=ptp', rendered)
         self.assertNotIn('nat', rendered)

@@ -14,7 +14,7 @@ cannot take precedence. The former host-specific SSTP mangle rule is disabled.
 Forward and return accepts precede FastTrack, and TCP SYN MSS is clamped to the
 tunnel MTU.
 
-Misha source-NATs this host to `10.255.2.24` on `wg_vds8`, which is already
+Misha source-NATs this host to `10.250.6.24` on `wg_vds8`, which is already
 permitted by VDS8's authenticated Misha peer. The router peer permits all IPv4
 destinations. VDS8 forwards tunnel traffic and established replies, then
 masquerades public destinations on its WAN `net0`. Its private-network NAT

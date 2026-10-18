@@ -9,8 +9,9 @@ before existing configurable rules in their chains and adds required prefixes to
 WireGuard interfaces. Existing addresses and peer permissions are preserved;
 interfaces with multiple peers retain their explicit destination ownership.
 
-Prefixes come from `internal_routed_networks`, defaulting to shared
-`tunnel_networks` plus the existing SSTP and `10.11.0.0/16` ranges. The four
+Prefixes come from the canonical `trusted_networks` list in
+`group_vars/all/main.yml`, including the exact `/24` tunnel, loopback and site
+networks plus the K16 `/23`. The four
 routers with `gre-vds6` receive a separate passive OSPF point-to-multipoint
 template that advertises their own GRE endpoint `/32`. A direct peer `/32`
 route pinned to `gre-vds6` keeps the opposite endpoint on the GRE interface
@@ -92,14 +93,13 @@ Native Linux AWG rollout and backup notes:
 `chr-amneziawg-native.yml` replaces Linux C-proxy services with the official
 AmneziaWG kernel module on a dedicated `wg2`. CHR retains its five C-proxy
 containers, which connect directly to native AWG UDP 56707 on Linux. Existing
-keys, `10.250.1.N/24` addresses and OSPF costs are preserved. Linux `wg0`
+keys and OSPF costs are preserved; transport addresses are `10.250.6.N/24`. Linux `wg0`
 retains ordinary site peers; the independent native `wg1` mesh is unchanged.
 The CHR peer exists only on `wg2`, with keepalive disabled and `Table = off`.
 Each dedicated CHR link uses point-to-point OSPF, multicast `224.0.0.5/32`,
 MTU 1340 and hello/dead 60/240 seconds. A CHR transport host route pins
-each `10.250.1.N/32` to its own VDS interface. The preserved Linux source
-address is also present on wg0; interface-bound OSPF and explicit bootstrap
-routes separate the ordinary site and native CHR transports.
+each `10.250.6.N/32` to its own VDS interface. Interface-bound OSPF and
+explicit `/32` bootstrap routes separate the ordinary site and native CHR transports.
 
 Run with all five VDS inventories. Each serial cutover verifies native
 handshake, OSPF and routed LAN access before removing Linux proxy files.
@@ -117,14 +117,13 @@ the current containers, peer endpoints, BFD and SSTP backup costs.
 without source NAT and WAN-only host/router masquerading. See the drawing's
 NAT notes for preserved container rules and the LAN hairpin change.
 
-Shared prefixes are defined in `group_vars/all/main.yml`: the K16 main and
-Kubernetes LANs (`10.9.0.0/24`, `10.9.1.0/24`), SSTP (`10.250.0.0/24`),
-WireGuard (`10.250.1.0/24`), AmneziaWG (`10.250.2.0/24`), L2TP (`10.250.3.0/24`) and loopbacks
-(`10.255.0.0/24`). `tunnel-networks.yml` at the repository root deploys the
-Linux `tunnel_networks` ipset, the MikroTik `tunnels_networks` address list,
-WireGuard permissions and OSPF. Include every VDS inventory and localhost.
-Linux firewall permits are restored before network/firewall startup; the
-iptables role also persists the shared ipset alongside `trusted_hosts`.
+Shared prefixes are defined in `group_vars/all/main.yml`: loopbacks
+(`10.255.0.0/24`), SSTP (`10.250.0.0/24`), WireGuard (`10.250.1.0/24`),
+AmneziaWG (`10.250.2.0/24`), L2TP (`10.250.3.0/24`), GRE
+(`10.250.4.0/24`), K16 (`10.9.0.0/23`), 3Ekipazhnyi64 (`10.10.0.0/24`)
+and k16_21 (`10.11.0.0/24`). `trusted-access.yml` deploys the exact Linux
+ipsets, MikroTik address lists, WireGuard permissions and scoped firewall
+rules. Linux restores the managed ipsets before firewall startup.
 
 FRR participates on vds1, vds2, vds5, vds6 and vds8. Each uses
 `10.250.1.<VDS number>/24` and a passive `10.255.0.<VDS number>/32` loopback.
@@ -172,10 +171,10 @@ LANs are excluded. Only K16_112 originates `10.9.0.0/16`, and only
 and exact external export filters. More-specific local LAN routes take
 precedence over the discard routes.
 
-Both `10.250.0.0/16` and `10.255.0.0/16` are trusted in existing MikroTik
-lists and allowed in input/forward chains. NAT exceptions preserve addresses
-between the configured tunnel, loopback and LAN networks. The old LAN static
-routes become distance-250 fallbacks only after OSPF advertisements exist.
+The exact trusted prefixes are allowed through the MikroTik input and forward
+chains. NAT exceptions preserve addresses between the configured tunnel,
+loopback and LAN networks. The old LAN static routes become distance-250
+fallbacks only after OSPF advertisements exist.
 
 ```sh
 ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-playbook -i localhost, mikrotik/ospf.yml
@@ -251,7 +250,7 @@ For an initial migration from the old `10.9.255.*` addresses, add
 
 The four main SSTP clients connect to `62.60.216.73` using the common
 `sstp_vds7_password` encrypted variable in `vault/common.yml`. vds7 uses
-`10.251.0.7/32` on each tunnel. Client addresses are `10.250.0.64/32`
+`10.250.0.7/32` on each tunnel. Client addresses are `10.250.0.64/32`
 (`3Ekipazhnyi64`), `10.250.0.21/32` (`k16_k21` on `k16_21`),
 `10.250.0.112/32` (`k16_k112` on `K16_112`), and `10.250.0.24/32` (`Misha`).
 
@@ -362,7 +361,7 @@ ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ansible-vault encrypt mikrotik/routers/Log
 The playbook loads either plaintext or Vault-encrypted secrets and uses
 `no_log: true`. Do not use `--diff` or print the sensitive export.
 
-WireGuard router addresses are consolidated in `10.250.1.0/24`: Linux vds1/vds2/vds5/vds6/vds8 use `.1/.2/.5/.6/.8`, vds7 uses `.7`, and MikroTik clients use `.21/.24/.64/.112`. All active OSPF WireGuard interfaces use `/24`, including vds2/vds5/vds6. Run `wireguard-network.yml` with all five Linux inventories and localhost to migrate the existing links. The obsolete vds5 wg0 mesh and K16 legacy WireGuard interfaces are retired; the phone VPN is disabled and its old range removed. PPP address ranges remain separate.
+The dedicated links to vds7_CHR use `10.250.6.0/24`: Linux vds1/vds2/vds5/vds6/vds8 use `.1/.2/.5/.6/.8`, and vds7 uses `.7` on point-to-point interfaces. Site WireGuard clients remain in `10.250.1.0/24`. Run `transport-network.yml` to reconcile the CHR, K16 and Misha transports together. The obsolete vds5 wg0 mesh and K16 legacy WireGuard interfaces are retired; the phone VPN is disabled and its old range removed. PPP address ranges remain separate.
 
 
 Recovery for HTTPS proxies and OSPF is documented in
@@ -370,18 +369,18 @@ Recovery for HTTPS proxies and OSPF is documented in
 redacted `.rsc` exports of the five main routers reflect the live configuration
 on 2026-10-11; sensitive exports and credentials stay in their encrypted vaults.
 `ospf-bfd.yml` restores the two site BFD routing tables and UDP/3784 output
-rules. CHR point-to-point interfaces use local `10.250.1.7/32` with each
+rules. CHR point-to-point interfaces use local `10.250.6.7/32` with each
 remote peer as `network`; site point-to-multipoint interfaces retain `/24`.
 Linux templates enable `ip ospf bfd` on every active tunnel and `ospf.yml`
 enables `bfdd`. Loopbacks remain passive. No custom BFD timer profiles are set.
 
 K16_112 ↔ vds1/vds8 now use ARM64 container-backed AmneziaWG and native
-Linux `wg3`, with transport subnet `10.255.2.0/24`. See
+Linux `wg3`, with transport subnet `10.250.6.0/24`. See
 [the K16 migration](../docs/k16-amneziawg.md) for addresses, costs, images and
 recovery details. Ordinary K16 hub client playbooks skip these migrated links.
 
 Misha’s two links to vds1/vds8 also use AmneziaWG: ARM containers on `usb1`,
-transport `10.255.2.24`, native VDS `wg4`/UDP 56709. See
+transport `10.250.6.24`, native VDS `wg4`/UDP 56709. See
 [Misha deployment and recovery](../docs/misha-amneziawg.md).
 
 Four site routers use GRE to VDS6 for Google IPv4 traffic via `google_ips_table`.

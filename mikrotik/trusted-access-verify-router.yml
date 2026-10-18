@@ -1,0 +1,57 @@
+---
+- name: Load RouterOS connection settings
+  ansible.builtin.include_vars:
+    file: 'host_vars/{{ trusted_verify_identity }}.yml'
+    name: trusted_verify_connection
+- name: Read canonical and obsolete policy counts
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ trusted_verify_connection.router_ssh_key | expanduser }}'
+      - -p
+      - '{{ trusted_verify_connection.router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ trusted_verify_connection.router_user }}@{{ trusted_verify_connection.router_host }}'
+      - >-
+        :put ("NETWORKS=" . [:len [/ip firewall address-list find where list="trusted_networks"]]);
+        :put ("HOSTS=" . [:len [/ip firewall address-list find where list="trusted_hosts"]]);
+        :put ("RULES=" . [:len [/ip firewall filter find where
+        comment="Ansible trusted networks input" or comment="Ansible trusted networks forward" or
+        comment="Ansible trusted hosts input" or comment="Ansible trusted hosts forward"]]);
+        :put ("OLD_OSPF_ENTRIES=" . [:len [/ip firewall address-list find where list="ospf-routed-networks"]]);
+        :put ("OLD_OSPF_RULES=" . [:len [/ip firewall filter find where src-address-list="ospf-routed-networks" or dst-address-list="ospf-routed-networks"]]);
+        :put ("OLD_TRUSTED_ENTRIES=" . [:len [/ip firewall address-list find where list="Trusted"]]);
+        :put ("OLD_TRUSTED_RULES=" . [:len [/ip firewall filter find where src-address-list="Trusted" or dst-address-list="Trusted"]]);
+        {% if trusted_verify_identity == 'K16_112' %}
+        :local oldMgmt 0;
+        {% for prefix in ['10.1.0.0/16', '10.19.0.0/16', '10.20.0.0/16', '10.0.255.0/24', '10.9.2.0/24', '10.9.10.0/24', '10.9.200.0/24', '10.9.255.0/29', '10.10.50.0/24', '10.10.100.0/24', '10.11.100.0/24', '10.20.255.0/24', '10.251.0.0/24'] %}
+        :set oldMgmt ($oldMgmt + [:len [/ip firewall address-list find where list="MGMT Networks" and address="{{ prefix }}"]]);
+        {% endfor %}
+        :put ("OLD_MGMT=" . $oldMgmt);
+        {% endif %}
+  register: trusted_verify_state
+  changed_when: false
+- name: Require the exact managed policy and completed cleanup
+  ansible.builtin.assert:
+    that:
+      - "('NETWORKS=' ~ (trusted_networks | length)) in trusted_verify_state.stdout"
+      - "('HOSTS=' ~ (trusted_hosts | length)) in trusted_verify_state.stdout"
+      - "'RULES=4' in trusted_verify_state.stdout"
+      - "'OLD_OSPF_ENTRIES=0' in trusted_verify_state.stdout"
+      - "'OLD_OSPF_RULES=0' in trusted_verify_state.stdout"
+      - >-
+        trusted_verify_identity not in ['vds7_CHR', '3Ekipazhnyi64', 'k16_21', 'Misha'] or
+        ('OLD_TRUSTED_ENTRIES=0' in trusted_verify_state.stdout and
+         'OLD_TRUSTED_RULES=0' in trusted_verify_state.stdout)
+      - trusted_verify_identity != 'K16_112' or 'OLD_MGMT=0' in trusted_verify_state.stdout
+    fail_msg: '{{ trusted_verify_identity }} policy mismatch: {{ trusted_verify_state.stdout_lines }}'

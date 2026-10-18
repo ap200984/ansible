@@ -1,0 +1,164 @@
+---
+- name: Skip SSH protection outside the explicit edge list
+  ansible.builtin.meta: end_role
+  when: not ssh_bruteforce_enabled | bool
+
+- name: Install fail2ban and ipset
+  ansible.builtin.apt:
+    name: [fail2ban, ipset]
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+
+- name: Install the blacklist set migration helper
+  ansible.builtin.template:
+    src: migrate-blacklist-to-net.py.j2
+    dest: /usr/local/sbin/migrate-blacklist-to-net
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Migrate the blacklist to support both addresses and prefixes
+  ansible.builtin.command: /usr/local/sbin/migrate-blacklist-to-net
+  register: ssh_blacklist_migration
+  changed_when: "'CHANGED_' in ssh_blacklist_migration.stdout"
+  when: not ansible_check_mode
+
+- name: Install the persistent blacklist firewall helper
+  ansible.builtin.template:
+    src: ssh-blacklist-firewall.j2
+    dest: /usr/local/sbin/ssh-blacklist-firewall
+    owner: root
+    group: root
+    mode: '0755'
+  register: ssh_blacklist_helper
+
+- name: Install the blacklist firewall service
+  ansible.builtin.template:
+    src: ssh-blacklist-firewall.service.j2
+    dest: /etc/systemd/system/ssh-blacklist-firewall.service
+    owner: root
+    group: root
+    mode: '0644'
+  register: ssh_blacklist_unit
+
+- name: Enable the blacklist firewall at boot
+  ansible.builtin.systemd_service:
+    name: ssh-blacklist-firewall
+    daemon_reload: true
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+
+- name: Put the blacklist before SSH and trust permits
+  ansible.builtin.command: /usr/local/sbin/ssh-blacklist-firewall
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Remove the superseded per-address fail2ban action
+  ansible.builtin.file:
+    dest: /etc/fail2ban/action.d/iptables-ipset-blacklist.conf
+    state: absent
+  notify: Restart fail2ban
+
+- name: Install the SSH subnet aggregation helper
+  ansible.builtin.template:
+    src: ssh-subnet-aggregate.py.j2
+    dest: /usr/local/sbin/ssh-subnet-aggregate
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart fail2ban
+
+- name: Install the fail2ban subnet aggregation action
+  ansible.builtin.template:
+    src: ssh-subnet-blacklist.conf.j2
+    dest: /etc/fail2ban/action.d/ssh-subnet-blacklist.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fail2ban
+
+- name: Check for a legacy fail2ban override
+  ansible.builtin.stat:
+    path: /etc/fail2ban/jail.local
+  register: ssh_bruteforce_legacy_jail
+
+- name: Read the legacy fail2ban override
+  ansible.builtin.slurp:
+    path: /etc/fail2ban/jail.local
+  register: ssh_bruteforce_legacy_jail_content
+  when: ssh_bruteforce_legacy_jail.stat.exists
+
+- name: Repair a legacy override without an INI section
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+    content: |-
+      [DEFAULT]
+      {{ ssh_bruteforce_legacy_jail_content.content | b64decode }}
+  when:
+    - ssh_bruteforce_legacy_jail.stat.exists
+    - (ssh_bruteforce_legacy_jail_content.content | b64decode | regex_search('(?s)^\\s*(?:[#;][^\\n]*\\n\\s*)*\\[')) is none
+  notify: Restart fail2ban
+
+- name: Configure the SSH jail
+  ansible.builtin.template:
+    src: sshd.local.j2
+    dest: /etc/fail2ban/jail.d/sshd.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fail2ban
+
+- name: Retain fail2ban state for longer than the SSH ban
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/fail2ban.local
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Definition]
+      dbpurgeage = {{ ssh_bruteforce_bantime + 86400 }}
+  notify: Restart fail2ban
+
+- name: Validate fail2ban configuration
+  ansible.builtin.command: fail2ban-client -t
+  changed_when: false
+
+- name: Apply changed fail2ban configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Remove legacy per-address bans while preserving subnet bans
+  ansible.builtin.shell: |
+    set -eu
+    ipset save {{ ssh_bruteforce_ipset }} | awk '$1 == "add" && $3 !~ /\// { print $3 }' | while read -r address; do
+      ipset del {{ ssh_bruteforce_ipset }} "$address" -exist
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Enable and start fail2ban
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    enabled: true
+    state: started
+
+- name: Restore the canonical INPUT order after fail2ban reconciliation
+  ansible.builtin.command: /usr/local/sbin/trusted-rule-cleanup
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - inventory_hostname in (trusted_firewall_linux_hosts | default([]))
+
+- name: Save the active IPv4 rules when persistence is installed
+  ansible.builtin.shell: |
+    if [ -d /etc/iptables ]; then
+      iptables-save > /etc/iptables/rules.v4
+    fi
+  changed_when: false
+  when: not ansible_check_mode
