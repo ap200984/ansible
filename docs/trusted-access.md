@@ -40,10 +40,12 @@ remain intact. Machines without a public edge policy do not receive the
 general trusted firewall. `vds3` and `k16_k112_server` receive only the SSH
 blacklist rule because their SSH services are published through K16_112 NAT.
 
-The `ssh_bruteforce` role protects SSH with fail2ban. Failed attempts from three
-distinct addresses in one `/24` within ten minutes trigger a two-week prefix
-entry in the `Blacklist` ipset. The DROP rule is the
-first INPUT rule and is restored at boot. The local protected port is `19022`
+The `ssh_bruteforce` role protects SSH with fail2ban. Three failed password
+attempts from any addresses in one `/24` within ten minutes trigger a two-week
+prefix entry in the `Blacklist` ipset. The DROP rule follows the four managed
+accept rules on public VDS hosts; on NAT targets it is first. This order is
+restored at boot. Established connections and trusted sources are accepted
+before the blacklist on the public VDS hosts. The local protected port is `19022`
 on the public VDS hosts and `22` on NAT targets `vds3` and
 `k16_k112_server`. The fail2ban database retention exceeds the ban duration.
 
@@ -62,5 +64,16 @@ ansible-playbook -i inventory trusted-access-verify.yml \
 ```
 
 The verifier asserts exact ipset membership and firewall scope. It also checks
-the active SSH listener and fail2ban thresholds, then briefly bans and unbans
-the documentation address `192.0.2.123` to exercise the real ipset action.
+the active SSH listener and fail2ban thresholds, then submits three failures
+from one documentation address and removes the resulting test prefix.
+
+The counter runs through Fail2ban’s `ignorecommand` for every matched password
+failure, so repeated attempts from the same IP count. The first two events
+are deferred; the third triggers the subnet action. Actual prefixes remain
+in `Blacklist` for 14 days. Existing prefix bans survive policy updates.
+
+For an end-to-end test on a managed host, run
+`roles/ssh_bruteforce/tests/verify_live.py` as root (or through the Ansible
+`script` module). It emits synthetic SSH failures for documentation-only
+addresses, verifies both repeated-IP and mixed-IP thresholds, and removes
+the test bans and counters.

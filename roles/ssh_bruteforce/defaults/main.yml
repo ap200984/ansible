@@ -6,4 +6,4 @@ ssh_bruteforce_bantime: 1209600
 ssh_bruteforce_findtime: 600
 ssh_bruteforce_subnet_enabled: true
 ssh_bruteforce_subnet_prefix: 24
-ssh_bruteforce_subnet_unique_ips: 3
+ssh_bruteforce_subnet_maxretry: 3

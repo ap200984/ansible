@@ -7,11 +7,11 @@ import os
 import subprocess
 import time
 
-STATE = '/var/lib/fail2ban/ssh-subnet-aggregate.json'
+STATE = '/var/lib/fail2ban/ssh-subnet-attempts.json'
 LOCK = '/run/lock/ssh-subnet-aggregate.lock'
 IPSET = '{{ ssh_bruteforce_ipset }}'
 WINDOW = {{ ssh_bruteforce_findtime }}
-THRESHOLD = {{ ssh_bruteforce_subnet_unique_ips }}
+THRESHOLD = {{ ssh_bruteforce_subnet_maxretry }}
 PREFIX = {{ ssh_bruteforce_subnet_prefix }}
 BANTIME = {{ ssh_bruteforce_bantime }}
 
@@ -33,7 +33,7 @@ def save_state(state):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('command', choices=['add', 'forget'])
+parser.add_argument('command', choices=['add', 'check', 'ban', 'forget'])
 parser.add_argument('address')
 args = parser.parse_args()
 address = ipaddress.ip_address(args.address)
@@ -50,11 +50,19 @@ with open(LOCK, 'w', encoding='utf-8') as lock:
         subprocess.run(['ipset', 'del', IPSET, network, '-exist'], check=True)
         save_state(state)
         raise SystemExit(0)
-    recent = {ip: timestamp for ip, timestamp in state.get(network, {}).items()
-              if now - int(timestamp) <= WINDOW}
-    recent[str(address)] = now
-    state[network] = recent
-    if len(recent) >= THRESHOLD:
+    # Bound storage and expire inactive prefixes, including after a restart.
+    state = {net: [stamp for stamp in stamps if now - int(stamp) <= WINDOW]
+             for net, stamps in state.items()}
+    state = {net: stamps for net, stamps in state.items() if stamps}
+    recent = state.get(network, [])
+    if args.command != 'ban':
+        recent = (recent + [now])[-THRESHOLD:]
+        state[network] = recent
+    if args.command == 'ban' or (args.command == 'add' and len(recent) >= THRESHOLD):
         subprocess.run(['ipset', 'add', IPSET, network, 'timeout', str(BANTIME), '-exist'],
                        check=True)
     save_state(state)
+
+    if args.command == 'check':
+        # ignorecommand exit 0 defers the event; exit 1 lets Fail2ban ban it.
+        raise SystemExit(1 if len(recent) >= THRESHOLD else 0)

@@ -3,6 +3,12 @@
   ansible.builtin.meta: end_role
   when: not ssh_bruteforce_enabled | bool
 
+- name: Read the running subnet counter policy before migration
+  ansible.builtin.command: fail2ban-client get sshd-subnet ignorecommand
+  register: ssh_bruteforce_previous_counter
+  changed_when: false
+  failed_when: false
+
 - name: Install fail2ban and ipset
   ansible.builtin.apt:
     name: [fail2ban, ipset]
@@ -50,7 +56,19 @@
     state: started
   when: not ansible_check_mode
 
-- name: Put the blacklist before SSH and trust permits
+- name: Update the canonical trusted firewall order
+  ansible.builtin.template:
+    src: '{{ role_path }}/../iptables/templates/trusted-rule-cleanup.py.j2'
+    dest: /usr/local/sbin/trusted-rule-cleanup
+    owner: root
+    group: root
+    mode: '0755'
+  vars:
+    iptables_input_ssh_port: '{{ ssh_bruteforce_port }}'
+    iptables_input_wireguard_port: '{{ wireguard_listen_port | default(56685) }}'
+  when: inventory_hostname in (trusted_firewall_linux_hosts | default([]))
+
+- name: Apply the SSH blacklist and canonical firewall order
   ansible.builtin.command: /usr/local/sbin/ssh-blacklist-firewall
   changed_when: false
   when: not ansible_check_mode
@@ -104,6 +122,20 @@
     - (ssh_bruteforce_legacy_jail_content.content | b64decode | regex_search('(?s)^\\s*(?:[#;][^\\n]*\\n\\s*)*\\[')) is none
   notify: Restart fail2ban
 
+- name: Install the password failure filter
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/filter.d/ssh-password.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [INCLUDES]
+      before = sshd.conf
+      [Definition]
+      failregex = ^Failed password for (?:invalid user )?.+ from <HOST> port \d+ ssh2\s*$
+      ignoreregex =
+  notify: Restart fail2ban
+
 - name: Configure the SSH jail
   ansible.builtin.template:
     src: sshd.local.j2
@@ -126,6 +158,14 @@
 
 - name: Validate fail2ban configuration
   ansible.builtin.command: fail2ban-client -t
+  changed_when: false
+
+- name: Clear legacy tracking tickets without removing existing prefix bans
+  ansible.builtin.command: fail2ban-client set sshd-subnet unbanip --all
+  when:
+    - not ansible_check_mode
+    - ssh_bruteforce_previous_counter.rc | default(1) == 0
+    - "'ssh-subnet-aggregate check' not in ssh_bruteforce_previous_counter.stdout"
   changed_when: false
 
 - name: Apply changed fail2ban configuration

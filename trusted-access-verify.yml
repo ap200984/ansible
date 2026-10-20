@@ -103,7 +103,7 @@
   tasks:
     - name: Read fail2ban subnet aggregation policy
       ansible.builtin.command: fail2ban-client get sshd-subnet {{ item }}
-      loop: [maxretry, findtime]
+      loop: [maxretry, findtime, bantime, ignorecommand]
       register: trusted_access_subnet_policy
       changed_when: false
 
@@ -127,20 +127,22 @@
         that:
           - trusted_access_subnet_policy.results[0].stdout | int == 1
           - trusted_access_subnet_policy.results[1].stdout | int == 600
+          - trusted_access_subnet_policy.results[2].stdout | int == 1209600
+          - "'ssh-subnet-aggregate check' in trusted_access_subnet_policy.results[3].stdout"
           - "'ansible-ssh-blacklist' in trusted_access_blacklist_rule.stdout"
 
     - name: Require a prefix-capable blacklist
       ansible.builtin.shell: "ipset list Blacklist | grep -F 'Type: hash:net'"
       changed_when: false
 
-    - name: Exercise and clean up distributed subnet aggregation
+    - name: Exercise and clean up repeated subnet failures
       block:
-        - name: Submit three distinct documentation addresses
+        - name: Submit three failures from one documentation address
           ansible.builtin.command: /usr/local/sbin/ssh-subnet-aggregate add {{ item }}
           loop:
             - 198.51.100.1
-            - 198.51.100.2
-            - 198.51.100.3
+            - 198.51.100.1
+            - 198.51.100.1
           changed_when: false
 
         - name: Require the resulting documentation prefix ban

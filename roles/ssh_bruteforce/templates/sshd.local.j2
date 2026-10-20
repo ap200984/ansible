@@ -4,13 +4,17 @@ enabled = false
 {% if ssh_bruteforce_subnet_enabled | bool %}
 [sshd-subnet]
 enabled = true
-filter = sshd
+filter = ssh-password
 backend = systemd
 mode = normal
 port = {{ ssh_bruteforce_port }}
 maxretry = 1
 findtime = {{ ssh_bruteforce_findtime }}
-bantime = {{ ssh_bruteforce_findtime }}
+bantime = {{ ssh_bruteforce_bantime }}
 usedns = no
+# Count every password failure before Fail2ban suppresses repeat ban actions.
+ignorecommand = /usr/local/sbin/ssh-subnet-aggregate check <ip>
+ignorecache =
+journalmatch = _SYSTEMD_UNIT=ssh.service + _SYSTEMD_UNIT=sshd.service + _COMM=sshd + _COMM=sshd-session
 action = ssh-subnet-blacklist[name=sshd-subnet]
 {% endif %}
