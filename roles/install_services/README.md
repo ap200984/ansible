@@ -1,11 +1,11 @@
 # Container service installation
 
-`install_services.yaml` is the single entry point for Docker services:
+`02_deploy_services.yaml` is the single entry point for Docker services:
 
 ```shell
-ansible-playbook -i inventory/vds5 install_services.yaml
-ansible-playbook -i inventory/vds6 install_services.yaml --tags services
-ansible-playbook -i inventory/vds6 install_services.yaml \
+ansible-playbook -i inventory/vds5 02_deploy_services.yaml
+ansible-playbook -i inventory/vds6 02_deploy_services.yaml --tags services
+ansible-playbook -i inventory/vds6 02_deploy_services.yaml \
   -e socks5_proxy_password=''
 ```
 
@@ -57,12 +57,84 @@ After a successful renewal, Certbot touches
 read-only certificate volume and reloads itself within one minute. This does
 not require host cron, the Docker socket, or privileged container access.
 
-The Zabbix proxy uses the unmodified official image. Checks that must execute
-on the Docker host are exposed through Zabbix Agent 2 user parameters instead
-of being mounted into the proxy container.
-Its hexadecimal PSK is read from the Vault variable `zabbix_proxy_psk`; the
-role writes the bind-mounted PSK file and recreates the container when it
-changes.
+The Zabbix proxy uses a custom image built from the official Ubuntu 7.4 SQLite
+proxy image. The Dockerfile and Deye Modbus TCP external check live in
+`files/zabbix_proxy/`. Python is installed inside the image; the check uses only
+the standard library. The image keeps the upstream entrypoint and runs as the
+Zabbix user (UID 1997).
+
+`prepare_zabbix_proxy.yaml` builds the image on each selected Docker host before
+starting its proxy. It stages only the Dockerfile and script in a temporary
+directory, then removes that directory even if the build fails. Each run checks
+for base-image updates and uses Docker's build cache; a changed image recreates
+the proxy. The locally built image is never pulled from a registry. Override
+`zabbix_proxy_base_image`, `zabbix_proxy_image`, or `zabbix_proxy_build_pull`
+in inventory if needed. Build operations are skipped in Ansible check mode.
+
+The proxy's hexadecimal PSK is read from the Vault variable `zabbix_proxy_psk`;
+the role writes the bind-mounted PSK file and recreates the container when it
+changes. Secrets are never part of the image build context.
+
+Deploy the proxy image and migrate the three existing proxy hosts with:
+
+```shell
+ansible-playbook -i inventory/vds1 -i inventory/vds8 \
+  -i inventory/k16_k112_server 02_deploy_services.yaml --tags zabbix_proxy
+```
+
+After the proxy starts, the role removes the old host-side `deya_solar.py`,
+`deya_solar.conf` UserParameter, and `AllowKey=deye.inverter.get[*]`. A running
+Zabbix Agent 2 is restarted only when its configuration changes. The agent role
+also performs this cleanup on subsequent runs. Shared host Python packages are
+left installed; no Deye dependencies are installed on hosts anymore.
+
+Configure each inverter host in Zabbix to be monitored by the appropriate
+proxy, then change its master item to:
+
+- Type: **External check**
+- Key: `deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]`
+- Type of information: **Text**
+- Update interval: `1m` (one read feeds all dependent items)
+- Timeout: `15s` in the item's flexible timeout settings
+
+Set `{$DEYE.HOST}` to the inverter's Modbus TCP address reachable from the proxy
+container, `{$DEYE.PORT}` to `502`, and `{$DEYE.UNIT}` to `1` unless the device
+uses different values. This check targets the SUN-8K-SG01LP1-EU / SG01LP1
+single-phase register map from the reference script. It sends only Modbus FC03
+reads in three blocks. It requires a Modbus TCP endpoint; a Solarman logger's
+TCP 8899 endpoint and serial-number argument are not interchangeable.
+
+The JSON has `timestamp`, `source`, `unit_id`, `metrics`, and `units` fields.
+Update dependent-item JSONPath preprocessing to the new metric names, for
+example:
+
+| Measurement | JSONPath |
+| --- | --- |
+| Battery charge | `$.metrics.SOC` |
+| Battery voltage | `$.metrics.BatteryVoltage` |
+| Battery power | `$.metrics.BatteryPower` |
+| PV power | `$.metrics.TotalDCInputPower` |
+| Daily PV generation | `$.metrics.PVDailyPowerGenerationActive` |
+| Grid power | `$.metrics.TotalGridPower` |
+| Load power | `$.metrics.TotalConsumptionPower` |
+| Battery temperature | `$.metrics['Temperature- Battery']` |
+
+The former agent item `deye.inverter.get[...]` and its grouped JSONPaths
+(`$.battery.*`, `$.pv.*`, etc.) must be updated in Zabbix when deploying this
+migration. These playbooks manage containers and host cleanup; they do not
+change Zabbix server items or templates. See the
+[Zabbix external-check documentation](https://www.zabbix.com/documentation/7.4/en/manual/config/items/itemtypes/external)
+for item configuration.
+
+Inspect a reading inside the running image:
+
+```shell
+docker exec zabbix-proxy /usr/lib/zabbix/externalscripts/deye_modbus_metrics.py \
+  10.10.0.196 502 1 --pretty
+```
+
+Named arguments (`--host`, `--port`, `--unit`, `--timeout`), `--raw`, and
+`--from-dump FILE` are also available for troubleshooting and offline replay.
 
 Ejabberd accounts are configured with the Vault-backed `ejabberd_users` list.
 Each list item maps one username to its password:

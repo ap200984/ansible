@@ -1,0 +1,20 @@
+---
+- name: Remove legacy Deye monitoring from the Docker host
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../zabbix_agent/tasks/remove_deye_monitoring.yaml"
+
+- name: Reload Zabbix Agent after removing legacy Deye configuration
+  when: >-
+    zabbix_agent_deye_legacy_userparameter.changed or
+    zabbix_agent_deye_legacy_allowkey.changed
+  block:
+    - name: Find the existing Zabbix Agent service
+      ansible.builtin.service_facts:
+
+    - name: Restart the running Zabbix Agent after Deye migration
+      ansible.builtin.service:
+        name: zabbix-agent2
+        state: restarted
+      when: >-
+        ansible_facts.services.get('zabbix-agent2.service',
+          ansible_facts.services.get('zabbix-agent2', {})).get('state') == 'running'

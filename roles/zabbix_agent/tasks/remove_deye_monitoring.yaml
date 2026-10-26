@@ -1,0 +1,28 @@
+---
+- name: Remove legacy Deye monitoring scripts from the host
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: >-
+    {{ ['/usr/local/lib/zabbix/externalscripts/deya_solar.py',
+        (zabbix_agent_external_scripts_dir | default('/usr/local/lib/zabbix/externalscripts'))
+        ~ '/deya_solar.py'] | unique }}
+
+- name: Remove legacy Deye monitoring user parameter
+  ansible.builtin.file:
+    path: /etc/zabbix/zabbix_agent2.d/deya_solar.conf
+    state: absent
+  register: zabbix_agent_deye_legacy_userparameter
+
+- name: Check for an existing Zabbix Agent 2 configuration
+  ansible.builtin.stat:
+    path: /etc/zabbix/zabbix_agent2.conf
+  register: zabbix_agent_deye_legacy_config
+
+- name: Remove legacy Deye AllowKey from existing Zabbix Agent configuration
+  ansible.builtin.lineinfile:
+    path: /etc/zabbix/zabbix_agent2.conf
+    regexp: '^\s*AllowKey\s*=\s*deye\.inverter\.get\[\*\]\s*$'
+    state: absent
+  when: zabbix_agent_deye_legacy_config.stat.exists
+  register: zabbix_agent_deye_legacy_allowkey

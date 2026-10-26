@@ -11,7 +11,6 @@ zabbix_proxy_hostname: vds1
 zabbix_proxy_server_host: 217.144.189.206
 zabbix_proxy_server_port: 10051
 zabbix_proxy_tls_psk_identity: vds1
-zabbix_agent_deya_solar_enabled: true
 auditbeat_elastic_apt_repo_enabled: false
 
 wireguard_ospf: true

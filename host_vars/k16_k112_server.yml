@@ -24,7 +24,6 @@ zabbix_proxy_hostname: k16_k112
 zabbix_proxy_server_host: 217.144.189.206
 zabbix_proxy_server_port: 10051
 zabbix_proxy_tls_psk_identity: k16_k112
-zabbix_agent_deya_solar_enabled: true
 
 domain: k112.space
 

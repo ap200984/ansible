@@ -198,65 +198,20 @@
     - "zabbix_agent:docker"
     - "zabbix_agent:config"
 
-- name: Install Deye monitoring Python dependencies
-  ansible.builtin.apt:
-    name:
-      - python3-pip
-    state: present
-    update_cache: true
-  when: zabbix_agent_deya_solar_enabled | bool
+- name: Remove legacy Deye monitoring from the Zabbix Agent host
+  ansible.builtin.import_tasks: remove_deye_monitoring.yaml
   tags:
     - zabbix_agent
     - "zabbix_agent:deya_solar"
     - "zabbix_agent:config"
 
-- name: Install pysolarmanv5 on the Zabbix Agent host
-  ansible.builtin.pip:
-    name: pysolarmanv5
-    executable: pip3
-    extra_args: --break-system-packages
-  when: zabbix_agent_deya_solar_enabled | bool
-  tags:
-    - zabbix_agent
-    - "zabbix_agent:deya_solar"
-    - "zabbix_agent:config"
-
-- name: Create Zabbix Agent external scripts directory
-  ansible.builtin.file:
-    path: "{{ zabbix_agent_external_scripts_dir }}"
-    state: directory
-    owner: root
-    group: zabbix
-    mode: "0755"
-  when: zabbix_agent_deya_solar_enabled | bool
-  tags:
-    - zabbix_agent
-    - "zabbix_agent:deya_solar"
-    - "zabbix_agent:config"
-
-- name: Install Deye monitoring script on the Zabbix Agent host
-  ansible.builtin.copy:
-    src: deya_solar.py
-    dest: "{{ zabbix_agent_external_scripts_dir }}/deya_solar.py"
-    owner: root
-    group: zabbix
-    mode: "0755"
-  when: zabbix_agent_deya_solar_enabled | bool
-  tags:
-    - zabbix_agent
-    - "zabbix_agent:deya_solar"
-    - "zabbix_agent:config"
-
-- name: Configure Deye monitoring user parameter
-  ansible.builtin.copy:
-    dest: /etc/zabbix/zabbix_agent2.d/deya_solar.conf
-    owner: root
-    group: root
-    mode: "0644"
-    content: >
-      UserParameter=deye.inverter.get[*],{{ zabbix_agent_external_scripts_dir
-      }}/deya_solar.py --ip "$1" --serial "$2" --port "$3" --slave-id "$4"
-  when: zabbix_agent_deya_solar_enabled | bool
+- name: Restart Zabbix Agent after removing legacy Deye configuration
+  ansible.builtin.debug:
+    msg: Legacy Deye monitoring configuration was removed.
+  changed_when: true
+  when: >-
+    zabbix_agent_deye_legacy_userparameter.changed or
+    zabbix_agent_deye_legacy_allowkey.changed
   notify: Restart zabbix-agent2
   tags:
     - zabbix_agent
@@ -297,7 +252,6 @@
       Include=/etc/zabbix/zabbix_agent2.d/*.conf
       PluginSocket=/run/zabbix/agent.plugin.sock
       ControlSocket=/run/zabbix/agent.sock
-      AllowKey=deye.inverter.get[*]
       AllowKey=system.run[*]
       Include=/etc/zabbix/zabbix_agent2.d/plugins.d/*.conf
   notify: Restart zabbix-agent2

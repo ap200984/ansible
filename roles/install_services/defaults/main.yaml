@@ -5,6 +5,9 @@ ejabberd_users: []
 
 zabbix_proxy_psk_dir: /opt/zabbix-proxy/enc
 zabbix_proxy_psk_file: "{{ zabbix_proxy_psk_dir }}/zbxprx.psk"
+zabbix_proxy_base_image: zabbix/zabbix-proxy-sqlite3:ubuntu-7.4-latest
+zabbix_proxy_image: local/zabbix-proxy-deye:ubuntu-7.4
+zabbix_proxy_build_pull: true
 
 owncloud_data_dir: /owncloud
 owncloud_users:
@@ -331,7 +334,8 @@ service_catalog:
 
   zabbix_proxy:
     name: zabbix-proxy
-    image: zabbix/zabbix-proxy-sqlite3:ubuntu-7.4-latest
+    image: "{{ zabbix_proxy_image }}"
+    pull: false
     ports:
       - 10051:10051/tcp
     volumes:
@@ -339,6 +343,7 @@ service_catalog:
     env:
       ZBX_PROXYMODE: "0"
       ZBX_DEBUGLEVEL: "3"
+      ZBX_EXTERNALSCRIPTS: /usr/lib/zabbix/externalscripts
       ZBX_TLSPSKFILE: /var/lib/zabbix/enc/zbxprx.psk
       ZBX_TLSPSKIDENTITY: "{{ zabbix_proxy_tls_psk_identity | string }}"
       ZBX_HOSTNAME: "{{ zabbix_proxy_hostname | string }}"
@@ -348,6 +353,7 @@ service_catalog:
       ZBX_SERVER_HOST: "{{ zabbix_proxy_server_host | string }}"
       ZBX_SERVER_PORT: "{{ zabbix_proxy_server_port | string }}"
     prepare: zabbix_proxy
+    post: zabbix_proxy
 
   gitlab:
     name: gitlab
