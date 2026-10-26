@@ -1,0 +1,2454 @@
+# Zabbix 7.4: preserve existing cloud metrics and add direct Modbus TCP polling.
+zabbix_export:
+  version: '7.4'
+  template_groups:
+  - uuid: 7df96b18c230490a9a0a9e2307226338
+    name: Templates
+  templates:
+  - uuid: 34408a93158b41fab58f8cc5fe1e55a1
+    template: t_Deye_API_invertor
+    name: t_Deye_API_invertor
+    groups:
+    - name: Templates
+    items:
+    - uuid: ac7894aa543a42f3a00e7d7995e78d0b
+      name: 'Deye Cloud: Raw inverter data'
+      type: HTTP_AGENT
+      key: deye.cloud.raw
+      value_type: TEXT
+      timeout: 45s
+      url: '{$DEYE.PROXY.API.URL}/device/latest'
+      post_type: JSON
+      posts: '{"api_url":"{$DEYE.API.URL}","app_id":"{$DEYE.APP.ID}","app_secret":"{$DEYE.APP.SECRET}","deviceList":["{$DEYE.DEVICE.SN}"]}'
+      headers:
+      - name: Content-Type
+        value: application/json
+      request_method: POST
+      verify_host: 'YES'
+    - uuid: da0f469adb194c30bdb5d805689a8fd7
+      name: 'Deye: ACCurrentRUA'
+      type: DEPENDENT
+      key: deye.metric[ACCurrentRUA]
+      value_type: FLOAT
+      units: A
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="ACCurrentRUA")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: cb1bf64f7d0e4cc1b8691ee5f65034d8
+      name: 'Deye: ACOutputFrequencyR'
+      type: DEPENDENT
+      key: deye.metric[ACOutputFrequencyR]
+      value_type: FLOAT
+      units: Hz
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="ACOutputFrequencyR")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 1464987931c342b5a1ecddb188eef7d3
+      name: 'Deye: AC Temperature'
+      type: DEPENDENT
+      key: deye.metric[AC Temperature]
+      value_type: FLOAT
+      units: °C
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="AC Temperature")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 1c52c06c34f549f8b85c744977f85814
+      name: 'Deye: ACVoltageRUA'
+      type: DEPENDENT
+      key: deye.metric[ACVoltageRUA]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="ACVoltageRUA")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: e7159881ed044cb49925d6c5bb43e700
+      name: 'Deye: BatteryCurrent'
+      type: DEPENDENT
+      key: deye.metric[BatteryCurrent]
+      value_type: FLOAT
+      units: A
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="BatteryCurrent")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: b213cf4dcf174f8b9908b160ad15c920
+      name: Battery Power
+      type: DEPENDENT
+      key: deye.metric[BatteryPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="BatteryPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 61f35521b4c84f16861bf4f12e0a0c5d
+      name: 'Deye: BatteryRatedCapacity'
+      type: DEPENDENT
+      key: deye.metric[BatteryRatedCapacity]
+      units: Ah
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="BatteryRatedCapacity")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 8d0b5d0ea1cb4454b1e8471458d8053a
+      name: 'Deye: BatteryVoltage'
+      type: DEPENDENT
+      key: deye.metric[BatteryVoltage]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="BatteryVoltage")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 1c168d48ba544c5aaf1a9bd298b94108
+      name: 'Deye: CumulativeConsumption'
+      type: DEPENDENT
+      key: deye.metric[CumulativeConsumption]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="CumulativeConsumption")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 3e3502667b204a5da088206c3f1a0bc3
+      name: 'Deye: CumulativeEnergyPurchased'
+      type: DEPENDENT
+      key: deye.metric[CumulativeEnergyPurchased]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="CumulativeEnergyPurchased")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 33c5395c8bd545c7b1faa993d0d77b40
+      name: 'Deye: CumulativeGridFeedIn'
+      type: DEPENDENT
+      key: deye.metric[CumulativeGridFeedIn]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="CumulativeGridFeedIn")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 27da96fb041245afa583f3ef3be275f6
+      name: 'Deye: DailyActiveProduction'
+      type: DEPENDENT
+      key: deye.metric[DailyActiveProduction]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyActiveProduction")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 016690a8c2884847b25e512c875b5681
+      name: 'Deye: DailyChargingEnergy'
+      type: DEPENDENT
+      key: deye.metric[DailyChargingEnergy]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyChargingEnergy")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: a3fd3f6d057246ce9a0d2af963501a18
+      name: 'Deye: DailyConsumption'
+      type: DEPENDENT
+      key: deye.metric[DailyConsumption]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyConsumption")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 26bf8c7b44964ba8b59590e3f9ed81a8
+      name: 'Deye: DailyDischargingEnergy'
+      type: DEPENDENT
+      key: deye.metric[DailyDischargingEnergy]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyDischargingEnergy")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: af0e543b511c44008ef8ff5cd2db5334
+      name: 'Deye: DailyEnergyPurchased'
+      type: DEPENDENT
+      key: deye.metric[DailyEnergyPurchased]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyEnergyPurchased")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: bc149520641b40489514ca6782f160fd
+      name: 'Deye: DailyGridFeedIn'
+      type: DEPENDENT
+      key: deye.metric[DailyGridFeedIn]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyGridFeedIn")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 59270e6cf7794d9191fe2dd72a81ab48
+      name: 'Deye: DailyProductionGenerator'
+      type: DEPENDENT
+      key: deye.metric[DailyProductionGenerator]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DailyProductionGenerator")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: d4ae924504e0439cb3481833944fe8a8
+      name: 'Deye: DCCurrentPV1'
+      type: DEPENDENT
+      key: deye.metric[DCCurrentPV1]
+      value_type: FLOAT
+      units: A
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCCurrentPV1")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 2c82b4161119415b83cecadc26df49ef
+      name: 'Deye: DCCurrentPV2'
+      type: DEPENDENT
+      key: deye.metric[DCCurrentPV2]
+      value_type: FLOAT
+      units: A
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCCurrentPV2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 3803d0856c2c487e8ebc073ac0857060
+      name: 'Deye: DCCurrentPV3'
+      type: DEPENDENT
+      key: deye.metric[DCCurrentPV3]
+      value_type: FLOAT
+      units: A
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCCurrentPV3")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 0290d88c7bf24e7d95dcc9a83432a3ca
+      name: 'Deye: DCPowerPV1'
+      type: DEPENDENT
+      key: deye.metric[DCPowerPV1]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCPowerPV1")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: e8eb6882c18b4aefbdbfe21b54e5b4f7
+      name: 'Deye: DCPowerPV2'
+      type: DEPENDENT
+      key: deye.metric[DCPowerPV2]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCPowerPV2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 5783d2d7717343a8ab8e8031d7ac7634
+      name: 'Deye: DCPowerPV3'
+      type: DEPENDENT
+      key: deye.metric[DCPowerPV3]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCPowerPV3")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 7381cfe5d6124636867d48446d4eef2e
+      name: 'Deye: DC Temperature'
+      type: DEPENDENT
+      key: deye.metric[DC Temperature]
+      value_type: FLOAT
+      units: °C
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DC Temperature")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 7f67080920e843918e7c567c7cdc0af2
+      name: 'Deye: DCVoltagePV1'
+      type: DEPENDENT
+      key: deye.metric[DCVoltagePV1]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCVoltagePV1")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 1807eaabdb5d4168830ff0e89f9b0695
+      name: 'Deye: DCVoltagePV2'
+      type: DEPENDENT
+      key: deye.metric[DCVoltagePV2]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCVoltagePV2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 622149b71d1e4f46b79fd63ac6da18f1
+      name: 'Deye: DCVoltagePV3'
+      type: DEPENDENT
+      key: deye.metric[DCVoltagePV3]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="DCVoltagePV3")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 2f88b52b55294d918260e9e03b6a9613
+      name: 'Deye: ExternalCTPowerL1L2'
+      type: DEPENDENT
+      key: deye.metric[ExternalCTPowerL1L2]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="ExternalCTPowerL1L2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: ecf04e0c224f49668a88e7d798a6ba18
+      name: 'Deye: GenDailyRunTime'
+      type: DEPENDENT
+      key: deye.metric[GenDailyRunTime]
+      value_type: FLOAT
+      units: h
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GenDailyRunTime")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 33ea3aa5e7c44e6f8ac2e2db5302137a
+      name: 'Deye: GeneratorFrequency'
+      type: DEPENDENT
+      key: deye.metric[GeneratorFrequency]
+      value_type: FLOAT
+      units: Hz
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GeneratorFrequency")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 5de8b12bcf5f41208c68a0b543ae698b
+      name: 'Deye: GenVoltage'
+      type: DEPENDENT
+      key: deye.metric[GenVoltage]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GenVoltage")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 5195571c21e9476fa5126f2db30d46a1
+      name: 'Deye: GridCurrentL1L2'
+      type: DEPENDENT
+      key: deye.metric[GridCurrentL1L2]
+      value_type: FLOAT
+      units: A
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GridCurrentL1L2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 2eb6e79fbb544196aa6d86548e1e17be
+      name: 'Deye: GridFrequency'
+      type: DEPENDENT
+      key: deye.metric[GridFrequency]
+      value_type: FLOAT
+      units: Hz
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GridFrequency")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 8718081757ad47e8921d756577b41072
+      name: 'Deye: GridTotalReactivePower'
+      type: DEPENDENT
+      key: deye.metric[GridTotalReactivePower]
+      value_type: FLOAT
+      units: Var
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GridTotalReactivePower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: a0b43a9deadf4aa08dfeeb2d9fce6196
+      name: 'Deye: GridVoltageL1L2'
+      type: DEPENDENT
+      key: deye.metric[GridVoltageL1L2]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="GridVoltageL1L2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: eaf68f2d69d146458a0af3584d6be905
+      name: 'Deye: HMI'
+      type: DEPENDENT
+      key: deye.metric[HMI]
+      value_type: CHAR
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="HMI")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 61a3e3060c9f45b382100679440e036a
+      name: 'Deye: InverterOutputPowerL1L2'
+      type: DEPENDENT
+      key: deye.metric[InverterOutputPowerL1L2]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="InverterOutputPowerL1L2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: ee05cd62f87f4393a2024cdfd70cc069
+      name: 'Deye: InverterTotalReactivePower'
+      type: DEPENDENT
+      key: deye.metric[InverterTotalReactivePower]
+      value_type: FLOAT
+      units: Var
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="InverterTotalReactivePower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: b326a4b54d7243288eb46be63361d386
+      name: 'Deye: LithiumBatteryVersionNumber'
+      type: DEPENDENT
+      key: deye.metric[LithiumBatteryVersionNumber]
+      value_type: CHAR
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="LithiumBatteryVersionNumber")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: f72ee22d09b14453a85f7c003298b9f4
+      name: 'Deye: LoadVoltageL1L2'
+      type: DEPENDENT
+      key: deye.metric[LoadVoltageL1L2]
+      value_type: FLOAT
+      units: V
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="LoadVoltageL1L2")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 2fbd70b3fa7543aaa52b244c36f890e8
+      name: 'Deye: MAIN'
+      type: DEPENDENT
+      key: deye.metric[MAIN]
+      value_type: CHAR
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="MAIN")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 16f1a628403b419baaa5ce3f92cccb61
+      name: 'Deye: PowerFactor'
+      type: DEPENDENT
+      key: deye.metric[PowerFactor]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="PowerFactor")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 35ceca7b01264c379a93f3e585b86475
+      name: 'Deye: ProtocolVersion'
+      type: DEPENDENT
+      key: deye.metric[ProtocolVersion]
+      value_type: CHAR
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="ProtocolVersion")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 0ec9e0928082454b8ec73cc611fb0a9c
+      name: 'Deye: PVCumulativePowerGenerationActive'
+      type: DEPENDENT
+      key: deye.metric[PVCumulativePowerGenerationActive]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="PVCumulativePowerGenerationActive")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: b3c44747d4034a20900b307990192a49
+      name: 'Deye: PVDailyPowerGenerationActive'
+      type: DEPENDENT
+      key: deye.metric[PVDailyPowerGenerationActive]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="PVDailyPowerGenerationActive")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: c5ff373f05104dd2ace92f418ec1d4bc
+      name: 'Deye: RatedPower'
+      type: DEPENDENT
+      key: deye.metric[RatedPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="RatedPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: eef85df344214271a15a14e11348bfc9
+      name: 'Deye: SOC'
+      type: DEPENDENT
+      key: deye.metric[SOC]
+      units: '%'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="SOC")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 64720515f662497c9b77af229ef15d64
+      name: 'Deye: SOC empty'
+      type: DEPENDENT
+      key: deye.metric[SOC_empty]
+      value_type: FLOAT
+      units: '%'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="SOC")].value.first()
+      - type: JAVASCRIPT
+        parameters:
+        - return Math.max(0, 100 - Number(value));
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 805ac51edd6e455da8b64feeea441ae9
+      name: 'Deye: Temperature- Battery'
+      type: DEPENDENT
+      key: deye.metric[Temperature- Battery]
+      value_type: FLOAT
+      units: °C
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="Temperature- Battery")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: ba910f8237054df8b6dbc9835eea35c3
+      name: 'Deye: TotalActiveProduction'
+      type: DEPENDENT
+      key: deye.metric[TotalActiveProduction]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalActiveProduction")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: fe27f60b837e4062859b1f282cdcee92
+      name: 'Deye: TotalChargeEnergy'
+      type: DEPENDENT
+      key: deye.metric[TotalChargeEnergy]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalChargeEnergy")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 37476b776dfd48d2a95fa946dd31c283
+      name: 'Deye: TotalConsumptionPower'
+      type: DEPENDENT
+      key: deye.metric[TotalConsumptionPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalConsumptionPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: d5aa21efb2e04873b28144a3d026ca50
+      name: Solar Power
+      type: DEPENDENT
+      key: deye.metric[TotalDCInputPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalDCInputPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 0a0b890c9f4c4885bae616e0da6a16d9
+      name: 'Deye: TotalDischargeEnergy'
+      type: DEPENDENT
+      key: deye.metric[TotalDischargeEnergy]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalDischargeEnergy")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: c5bac182f6f34e80906e97e2e5e0ceb6
+      name: 'Deye: TotalGenPower'
+      type: DEPENDENT
+      key: deye.metric[TotalGenPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalGenPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 65a118a7118248a190c4b7f026b40528
+      name: Grid Power
+      type: DEPENDENT
+      key: deye.metric[TotalGridPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalGridPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: fbe78410fe7c4ff08dd3cdd7c6421dc0
+      name: 'Deye: TotalProductionGenerator'
+      type: DEPENDENT
+      key: deye.metric[TotalProductionGenerator]
+      value_type: FLOAT
+      units: kWh
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="TotalProductionGenerator")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 8f06ade560c943cfa8b487059c1306dc
+      name: 'Deye: UPSLoadPower'
+      type: DEPENDENT
+      key: deye.metric[UPSLoadPower]
+      value_type: FLOAT
+      units: W
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.deviceDataList[0].dataList[?(@.key=="UPSLoadPower")].value.first()
+      master_item:
+        key: deye.cloud.raw
+    - uuid: 1b03df8f1fb3492d9f6ed97f852be224
+      name: 'Deye Direct: Raw inverter data'
+      type: EXTERNAL
+      key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      delay: 15s
+      history: 1d
+      value_type: TEXT
+      timeout: 15s
+      description: Read-only Modbus TCP external check for the SG01LP1 low-voltage single-phase family. All direct metrics
+        are dependent items from the same poll.
+    - uuid: 6f922dfd805c4172949981f80504964f
+      name: 'Deye Direct: RatedPower'
+      type: DEPENDENT
+      key: deye.direct.metric[RatedPower]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["RatedPower"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 735f035921ec44388cf71013e79b34fc
+      name: 'Deye Direct: InverterRunState'
+      type: DEPENDENT
+      key: deye.direct.metric[InverterRunState]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["InverterRunState"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+    - uuid: 699b4dc2c12045c188b21487af405292
+      name: 'Deye Direct: DailyChargingEnergy'
+      type: DEPENDENT
+      key: deye.direct.metric[DailyChargingEnergy]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DailyChargingEnergy"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 6dc9f5930aeb4c0194fb6fdd8279a429
+      name: 'Deye Direct: DailyDischargingEnergy'
+      type: DEPENDENT
+      key: deye.direct.metric[DailyDischargingEnergy]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DailyDischargingEnergy"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 2b448591ea7d4ff78e484b9118812910
+      name: 'Deye Direct: TotalChargeEnergy'
+      type: DEPENDENT
+      key: deye.direct.metric[TotalChargeEnergy]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["TotalChargeEnergy"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: d9edcc2f1b8c4fa4be023719fb56ded1
+      name: 'Deye Direct: TotalDischargeEnergy'
+      type: DEPENDENT
+      key: deye.direct.metric[TotalDischargeEnergy]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["TotalDischargeEnergy"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 7067798cc28448b294ac737bf7cda432
+      name: 'Deye Direct: DailyEnergyPurchased'
+      type: DEPENDENT
+      key: deye.direct.metric[DailyEnergyPurchased]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DailyEnergyPurchased"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 4ceb38e126b8430c8498d52453e08931
+      name: 'Deye Direct: DailyGridFeedIn'
+      type: DEPENDENT
+      key: deye.direct.metric[DailyGridFeedIn]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DailyGridFeedIn"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: fa965df7731b4b89a38a358cef5c76d4
+      name: 'Deye Direct: CumulativeEnergyPurchased'
+      type: DEPENDENT
+      key: deye.direct.metric[CumulativeEnergyPurchased]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["CumulativeEnergyPurchased"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 552286830a864c6fbe46be3c44bee8a2
+      name: 'Deye Direct: GridFrequency'
+      type: DEPENDENT
+      key: deye.direct.metric[GridFrequency]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["GridFrequency"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: Hz
+    - uuid: b2881c2f748a435eb397a7607ef4d739
+      name: 'Deye Direct: CumulativeGridFeedIn'
+      type: DEPENDENT
+      key: deye.direct.metric[CumulativeGridFeedIn]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["CumulativeGridFeedIn"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 8ca6ebb8541e4bf998b69039d72d6187
+      name: 'Deye Direct: DailyConsumption'
+      type: DEPENDENT
+      key: deye.direct.metric[DailyConsumption]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DailyConsumption"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 5c01b18a3f9a4ac596102fa2989d99fc
+      name: 'Deye Direct: CumulativeConsumption'
+      type: DEPENDENT
+      key: deye.direct.metric[CumulativeConsumption]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["CumulativeConsumption"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: c52b5ee6e9be456ca598421014abafff
+      name: 'Deye Direct: DC Temperature'
+      type: DEPENDENT
+      key: deye.direct.metric[DC Temperature]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DC Temperature"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: °C
+    - uuid: 9401673ad010492db68e52105b781465
+      name: 'Deye Direct: AC Temperature'
+      type: DEPENDENT
+      key: deye.direct.metric[AC Temperature]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["AC Temperature"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: °C
+    - uuid: 7cf208f10f2f4355ab9cc1cc67662d06
+      name: 'Deye Direct: PVCumulativePowerGenerationActive'
+      type: DEPENDENT
+      key: deye.direct.metric[PVCumulativePowerGenerationActive]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["PVCumulativePowerGenerationActive"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 95718d23dc4f49619a9b076f42cddf10
+      name: 'Deye Direct: PVDailyPowerGenerationActive'
+      type: DEPENDENT
+      key: deye.direct.metric[PVDailyPowerGenerationActive]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["PVDailyPowerGenerationActive"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: f5dd2d36462a4c04b301543013fc1b1b
+      name: 'Deye Direct: DCVoltagePV1'
+      type: DEPENDENT
+      key: deye.direct.metric[DCVoltagePV1]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DCVoltagePV1"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: V
+    - uuid: da07975b426e46be941508af5dc0199d
+      name: 'Deye Direct: DCCurrentPV1'
+      type: DEPENDENT
+      key: deye.direct.metric[DCCurrentPV1]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DCCurrentPV1"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: A
+    - uuid: 5d151374444d426b8d62727bb30f40d1
+      name: 'Deye Direct: DCVoltagePV2'
+      type: DEPENDENT
+      key: deye.direct.metric[DCVoltagePV2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DCVoltagePV2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: V
+    - uuid: 5fadc54f9df64c22ba9d40c4617e71cc
+      name: 'Deye Direct: DCCurrentPV2'
+      type: DEPENDENT
+      key: deye.direct.metric[DCCurrentPV2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DCCurrentPV2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: A
+    - uuid: c8e12fc7be7a4151856e8eca3ac41723
+      name: 'Deye Direct: GridVoltageL1L2'
+      type: DEPENDENT
+      key: deye.direct.metric[GridVoltageL1L2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["GridVoltageL1L2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: V
+    - uuid: f4d99d62fef24b6b89601ffbca354f3e
+      name: 'Deye Direct: GridCurrentL1L2'
+      type: DEPENDENT
+      key: deye.direct.metric[GridCurrentL1L2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["GridCurrentL1L2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: A
+    - uuid: 3dc4d457f48a4edb8ccbb2d3b109ea6e
+      name: 'Deye Direct: TotalGridPower'
+      type: DEPENDENT
+      key: deye.direct.metric[TotalGridPower]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["TotalGridPower"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: e344915ef53c4666aeecdb06d1f6fc28
+      name: 'Deye Direct: ExternalCTPowerL1L2'
+      type: DEPENDENT
+      key: deye.direct.metric[ExternalCTPowerL1L2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["ExternalCTPowerL1L2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: b83be9dbc07841c59006a4fff392bb24
+      name: 'Deye Direct: InverterOutputPowerL1L2'
+      type: DEPENDENT
+      key: deye.direct.metric[InverterOutputPowerL1L2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["InverterOutputPowerL1L2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 0d3e1321142a403eaafe470fcb3acbe0
+      name: 'Deye Direct: TotalConsumptionPower'
+      type: DEPENDENT
+      key: deye.direct.metric[TotalConsumptionPower]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["TotalConsumptionPower"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 48c43989f1784b019696a0517908e229
+      name: 'Deye Direct: Temperature- Battery'
+      type: DEPENDENT
+      key: deye.direct.metric[Temperature- Battery]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["Temperature- Battery"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: °C
+    - uuid: ce6d4f3b9a7b4c58aa96cf745ba59fcb
+      name: 'Deye Direct: BatteryVoltage'
+      type: DEPENDENT
+      key: deye.direct.metric[BatteryVoltage]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["BatteryVoltage"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: V
+    - uuid: b6af80ff33d044b0bf752df31d804cd3
+      name: 'Deye Direct: SOC'
+      type: DEPENDENT
+      key: deye.direct.metric[SOC]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["SOC"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: '%'
+    - uuid: cfb46072ca494968b126707cf8377173
+      name: 'Deye Direct: DCPowerPV1'
+      type: DEPENDENT
+      key: deye.direct.metric[DCPowerPV1]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DCPowerPV1"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: cd4c58b2771c4cd3b6ad922bb2802da1
+      name: 'Deye Direct: DCPowerPV2'
+      type: DEPENDENT
+      key: deye.direct.metric[DCPowerPV2]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DCPowerPV2"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 333b10ebcc544f19bdbf3696d4ed4f14
+      name: 'Deye Direct: BatteryPower'
+      type: DEPENDENT
+      key: deye.direct.metric[BatteryPower]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["BatteryPower"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 29a07ca555c94952801b322cba0b6af5
+      name: 'Deye Direct: BatteryCurrent'
+      type: DEPENDENT
+      key: deye.direct.metric[BatteryCurrent]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["BatteryCurrent"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: A
+    - uuid: 6a7110898a9146ea8ec6a5f02f75a385
+      name: 'Deye Direct: ACOutputFrequencyR'
+      type: DEPENDENT
+      key: deye.direct.metric[ACOutputFrequencyR]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["ACOutputFrequencyR"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: Hz
+    - uuid: b9c488547b3d4f2e98611c26914003d8
+      name: 'Deye Direct: GridRelayStatus'
+      type: DEPENDENT
+      key: deye.direct.metric[GridRelayStatus]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["GridRelayStatus"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+    - uuid: 651d678c96924e90a74c5f04a12d75eb
+      name: 'Deye Direct: TotalDCInputPower'
+      type: DEPENDENT
+      key: deye.direct.metric[TotalDCInputPower]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["TotalDCInputPower"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 0a8f0d37dc16497ab965b09408cbef9d
+      name: 'Deye Direct: DailyActiveProduction'
+      type: DEPENDENT
+      key: deye.direct.metric[DailyActiveProduction]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["DailyActiveProduction"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: f39a8475e6384a7ca56fb6baa034a98a
+      name: 'Deye Direct: TotalActiveProduction'
+      type: DEPENDENT
+      key: deye.direct.metric[TotalActiveProduction]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["TotalActiveProduction"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: kWh
+    - uuid: 5383c120d563413f80623a90bde46e82
+      name: 'Deye Direct: UPSLoadPower'
+      type: DEPENDENT
+      key: deye.direct.metric[UPSLoadPower]
+      value_type: FLOAT
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["UPSLoadPower"]
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+      units: W
+    - uuid: 3eb7832c4cf54395a1c97731b6f38462
+      name: 'Deye Direct: SOC empty'
+      type: DEPENDENT
+      key: deye.direct.metric[SOC_empty]
+      value_type: FLOAT
+      units: '%'
+      description: 'Uncharged battery capacity for the state-of-charge pie: max(0, 100 - SOC).'
+      preprocessing:
+      - type: JSONPATH
+        parameters:
+        - $.metrics["SOC"]
+      - type: JAVASCRIPT
+        parameters:
+        - return Math.max(0, 100 - Number(value));
+      master_item:
+        key: deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]
+    macros:
+    - macro: '{$DEYE.API.URL}'
+      value: https://eu1-developer.deyecloud.com/v1.0
+    - macro: '{$DEYE.DEVICE.SN}'
+      value: '2607300889'
+    - macro: '{$DEYE.TOKEN}'
+      value: ''
+      type: SECRET_TEXT
+      description: Unused compatibility macro. The proxy helper obtains and refreshes access tokens automatically.
+    - macro: '{$DEYE.PROXY.API.URL}'
+      value: http://127.0.0.1:8766
+      description: Deye API helper inside the monitoring proxy container; access tokens stay in the helper.
+    - macro: '{$DEYE.APP.ID}'
+      value: ''
+      description: Optional Deye AppID override. Empty uses the proxy Vault configuration.
+    - macro: '{$DEYE.APP.SECRET}'
+      type: SECRET_TEXT
+      value: ''
+      description: Optional Deye AppSecret override. Empty uses the proxy Vault configuration.
+    - macro: '{$DEYE.HOST}'
+      value: 10.10.0.196
+      description: Inverter address reachable from this host's monitoring proxy using direct Modbus TCP.
+    - macro: '{$DEYE.PORT}'
+      value: '502'
+      description: Direct Modbus TCP port (not the Solarman logger protocol port).
+    - macro: '{$DEYE.UNIT}'
+      value: '1'
+      description: Direct Modbus TCP unit identifier.
+    dashboards:
+    - uuid: 7c0b55b37a3740baab770aea47e5408f
+      name: Deye Cloud — metrics by dimension
+      auto_start: 'NO'
+      pages:
+      - name: Power (W)
+        widgets:
+        - type: svggraph
+          name: PV production
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: DCPowerPV1'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: DCPowerPV2'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: DCPowerPV3'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: ds.3.color
+            value: E6A23C
+          - type: STRING
+            name: ds.3.items.0
+            value: Solar Power
+          - type: INTEGER
+            name: ds.3.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '4'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: RC62C
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Battery and inverter
+          y: '7'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: Battery Power
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: InverterOutputPowerL1L2'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: TotalGenPower'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '3'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: RAFFC
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Grid and load
+          x: '36'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: Grid Power
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: TotalConsumptionPower'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: UPSLoadPower'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: ds.3.color
+            value: E6A23C
+          - type: STRING
+            name: ds.3.items.0
+            value: 'Deye: ExternalCTPowerL1L2'
+          - type: INTEGER
+            name: ds.3.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '4'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: RD1F1
+          - type: INTEGER
+            name: righty
+            value: '0'
+      - name: Energy (kWh)
+        widgets:
+        - type: svggraph
+          name: Daily energy
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: PVDailyPowerGenerationActive'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: DailyActiveProduction'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: DailyConsumption'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: ds.3.color
+            value: E6A23C
+          - type: STRING
+            name: ds.3.items.0
+            value: 'Deye: DailyEnergyPurchased'
+          - type: INTEGER
+            name: ds.3.width
+            value: '2'
+          - type: STRING
+            name: ds.4.color
+            value: 836CC5
+          - type: STRING
+            name: ds.4.items.0
+            value: 'Deye: DailyGridFeedIn'
+          - type: INTEGER
+            name: ds.4.width
+            value: '2'
+          - type: STRING
+            name: ds.5.color
+            value: 18A0A6
+          - type: STRING
+            name: ds.5.items.0
+            value: 'Deye: DailyChargingEnergy'
+          - type: INTEGER
+            name: ds.5.width
+            value: '2'
+          - type: STRING
+            name: ds.6.color
+            value: C65C9E
+          - type: STRING
+            name: ds.6.items.0
+            value: 'Deye: DailyDischargingEnergy'
+          - type: INTEGER
+            name: ds.6.width
+            value: '2'
+          - type: STRING
+            name: ds.7.color
+            value: 8796A5
+          - type: STRING
+            name: ds.7.items.0
+            value: 'Deye: DailyProductionGenerator'
+          - type: INTEGER
+            name: ds.7.width
+            value: '2'
+          - type: STRING
+            name: reference
+            value: R2200
+        - type: svggraph
+          name: Lifetime energy
+          x: '36'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: PVCumulativePowerGenerationActive'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: TotalActiveProduction'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: CumulativeConsumption'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: ds.3.color
+            value: E6A23C
+          - type: STRING
+            name: ds.3.items.0
+            value: 'Deye: CumulativeEnergyPurchased'
+          - type: INTEGER
+            name: ds.3.width
+            value: '2'
+          - type: STRING
+            name: ds.4.color
+            value: 836CC5
+          - type: STRING
+            name: ds.4.items.0
+            value: 'Deye: CumulativeGridFeedIn'
+          - type: INTEGER
+            name: ds.4.width
+            value: '2'
+          - type: STRING
+            name: ds.5.color
+            value: 18A0A6
+          - type: STRING
+            name: ds.5.items.0
+            value: 'Deye: TotalChargeEnergy'
+          - type: INTEGER
+            name: ds.5.width
+            value: '2'
+          - type: STRING
+            name: ds.6.color
+            value: C65C9E
+          - type: STRING
+            name: ds.6.items.0
+            value: 'Deye: TotalDischargeEnergy'
+          - type: INTEGER
+            name: ds.6.width
+            value: '2'
+          - type: STRING
+            name: ds.7.color
+            value: 8796A5
+          - type: STRING
+            name: ds.7.items.0
+            value: 'Deye: TotalProductionGenerator'
+          - type: INTEGER
+            name: ds.7.width
+            value: '2'
+          - type: STRING
+            name: reference
+            value: RB93D
+      - name: Voltage (V)
+        widgets:
+        - type: svggraph
+          name: PV voltages
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: DCVoltagePV1'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: DCVoltagePV2'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: DCVoltagePV3'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '3'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R1C8B
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Battery voltage
+          y: '7'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: BatteryVoltage'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R4BD8
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: AC and generator voltages
+          x: '36'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: ACVoltageRUA'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: GridVoltageL1L2'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: LoadVoltageL1L2'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: ds.3.color
+            value: E6A23C
+          - type: STRING
+            name: ds.3.items.0
+            value: 'Deye: GenVoltage'
+          - type: INTEGER
+            name: ds.3.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '4'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R8749
+          - type: INTEGER
+            name: righty
+            value: '0'
+      - name: Current (A)
+        widgets:
+        - type: svggraph
+          name: PV currents
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: DCCurrentPV1'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: DCCurrentPV2'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: DCCurrentPV3'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '3'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R7896
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Battery current
+          y: '7'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: BatteryCurrent'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R0431
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: AC and grid currents
+          x: '36'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: ACCurrentRUA'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: GridCurrentL1L2'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '2'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: REF7C
+          - type: INTEGER
+            name: righty
+            value: '0'
+      - name: Temperature (°C)
+        widgets:
+        - type: svggraph
+          name: Battery and inverter temperatures
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: Temperature- Battery'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: DC Temperature'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: AC Temperature'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '3'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: RF694
+          - type: INTEGER
+            name: righty
+            value: '0'
+      - name: Frequency (Hz)
+        widgets:
+        - type: svggraph
+          name: Grid, AC and generator frequency
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: GridFrequency'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: ACOutputFrequencyR'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: ds.2.color
+            value: 35B98B
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye: GeneratorFrequency'
+          - type: INTEGER
+            name: ds.2.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '3'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R3ECF
+          - type: INTEGER
+            name: righty
+            value: '0'
+      - name: Battery and capacity
+        widgets:
+        - type: svggraph
+          name: Battery state of charge (%)
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: SOC'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R6E04
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Battery rated capacity (Ah)
+          x: '36'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: BatteryRatedCapacity'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: RCDA3
+          - type: INTEGER
+            name: righty
+            value: '0'
+      - name: Reactive and other
+        widgets:
+        - type: svggraph
+          name: Reactive power (Var)
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: InverterTotalReactivePower'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: ds.1.color
+            value: E05858
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye: GridTotalReactivePower'
+          - type: INTEGER
+            name: ds.1.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '2'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R64D9
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Generator daily runtime (h)
+          y: '7'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: GenDailyRunTime'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R749E
+          - type: INTEGER
+            name: righty
+            value: '0'
+        - type: svggraph
+          name: Power factor
+          x: '36'
+          width: '36'
+          height: '7'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 29A3E2
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye: PowerFactor'
+          - type: INTEGER
+            name: ds.0.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: R6A65
+          - type: INTEGER
+            name: righty
+            value: '0'
+    - uuid: c3f1053b52e2487897318ab462f4d9b3
+      name: Direct overview
+      pages:
+      - name: Overview
+        widgets:
+        - type: svggraph
+          name: 'Power sources: Solar, Battery, Grid (W)'
+          width: '54'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: FFFF00
+          - type: INTEGER
+            name: ds.0.fill
+            value: '5'
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: TotalDCInputPower'
+          - type: INTEGER
+            name: ds.0.stacked
+            value: '1'
+          - type: STRING
+            name: ds.1.color
+            value: 0080FF
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: BatteryPower'
+          - type: STRING
+            name: ds.2.color
+            value: FF0000
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye Direct: TotalGridPower'
+          - type: STRING
+            name: ds.3.color
+            value: FFCA28
+          - type: INTEGER
+            name: ds.3.fill
+            value: '0'
+          - type: STRING
+            name: ds.3.items.0
+            value: 'Deye Direct: TotalConsumptionPower'
+          - type: INTEGER
+            name: ds.3.missingdatafunc
+            value: '1'
+          - type: INTEGER
+            name: ds.3.transparency
+            value: '0'
+          - type: INTEGER
+            name: ds.3.width
+            value: '2'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '10'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: SBETZ
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Voltages (V)
+          y: '8'
+          width: '27'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 42A5F5
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: DCVoltagePV1'
+          - type: STRING
+            name: ds.1.color
+            value: 66BB6A
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: BatteryVoltage'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '2'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYEV
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Temperatures (°C)
+          y: '16'
+          width: '36'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 42A5F5
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: Temperature- Battery'
+          - type: STRING
+            name: ds.1.color
+            value: EF5350
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: DC Temperature'
+          - type: STRING
+            name: ds.2.color
+            value: FF9800
+          - type: STRING
+            name: ds.2.items.0
+            value: 'Deye Direct: AC Temperature'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '3'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYET
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Energy production (kWh)
+          y: '24'
+          width: '54'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 66BB6A
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: PVDailyPowerGenerationActive'
+          - type: STRING
+            name: ds.1.color
+            value: 26A69A
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: PVCumulativePowerGenerationActive'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '2'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYEE
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Currents (A)
+          x: '27'
+          y: '8'
+          width: '27'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: FFD54F
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: DCCurrentPV1'
+          - type: STRING
+            name: ds.1.color
+            value: AB47BC
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: BatteryCurrent'
+          - type: INTEGER
+            name: legend_lines
+            value: '2'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYEC
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Frequencies (Hz)
+          x: '36'
+          y: '16'
+          width: '36'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 42A5F5
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: GridFrequency'
+          - type: STRING
+            name: ds.1.color
+            value: 66BB6A
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: ACOutputFrequencyR'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines
+            value: '2'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYEF
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: piechart
+          name: Battery state of charge
+          x: '54'
+          width: '18'
+          height: '8'
+          fields:
+          - type: INTEGER
+            name: ds.0.color_palette
+            value: '10'
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: SOC'
+          - type: INTEGER
+            name: ds.1.color_palette
+            value: '0'
+          - type: STRING
+            name: ds.1.items.0
+            value: 'Deye Direct: SOC empty'
+          - type: INTEGER
+            name: legend_value
+            value: '1'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Battery state of charge over time (%)
+          x: '54'
+          y: '8'
+          width: '18'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: 66BB6A
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: SOC'
+          - type: INTEGER
+            name: ds.0.missingdatafunc
+            value: '3'
+          - type: STRING
+            name: lefty_max
+            value: '110'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYSOC
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'
+        - type: svggraph
+          name: Grid voltage (V)
+          x: '54'
+          y: '24'
+          width: '18'
+          height: '8'
+          fields:
+          - type: STRING
+            name: ds.0.color
+            value: EF5350
+          - type: STRING
+            name: ds.0.items.0
+            value: 'Deye Direct: GridVoltageL1L2'
+          - type: STRING
+            name: lefty_max
+            value: '250'
+          - type: STRING
+            name: lefty_min
+            value: '0'
+          - type: INTEGER
+            name: legend_lines_mode
+            value: '1'
+          - type: INTEGER
+            name: legend_statistic
+            value: '1'
+          - type: STRING
+            name: reference
+            value: DEYER
+          - type: INTEGER
+            name: righty
+            value: '0'
+          - type: INTEGER
+            name: rf_rate
+            value: '10'

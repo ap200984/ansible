@@ -8,6 +8,8 @@ zabbix_proxy_psk_file: "{{ zabbix_proxy_psk_dir }}/zbxprx.psk"
 zabbix_proxy_base_image: zabbix/zabbix-proxy-sqlite3:ubuntu-7.4-latest
 zabbix_proxy_image: local/zabbix-proxy-deye:ubuntu-7.4
 zabbix_proxy_build_pull: true
+zabbix_proxy_deye_cloud_credentials_file: "{{ zabbix_proxy_psk_dir }}/deye-cloud.json"
+zabbix_proxy_deye_cloud_cache_volume: zabbix-proxy-deye-cloud-cache
 
 owncloud_data_dir: /owncloud
 owncloud_users:
@@ -340,10 +342,14 @@ service_catalog:
       - 10051:10051/tcp
     volumes:
       - "{{ zabbix_proxy_psk_file }}:/var/lib/zabbix/enc/zbxprx.psk:ro"
+      - "{{ zabbix_proxy_deye_cloud_credentials_file }}:/var/lib/zabbix/enc/deye-cloud.json:ro"
+      - "{{ zabbix_proxy_deye_cloud_cache_volume }}:/var/lib/zabbix/deye-cloud-cache"
     env:
       ZBX_PROXYMODE: "0"
       ZBX_DEBUGLEVEL: "3"
       ZBX_EXTERNALSCRIPTS: /usr/lib/zabbix/externalscripts
+      DEYE_CLOUD_CREDENTIALS_FILE: /var/lib/zabbix/enc/deye-cloud.json
+      DEYE_CLOUD_CACHE_DIR: /var/lib/zabbix/deye-cloud-cache
       ZBX_TLSPSKFILE: /var/lib/zabbix/enc/zbxprx.psk
       ZBX_TLSPSKIDENTITY: "{{ zabbix_proxy_tls_psk_identity | string }}"
       ZBX_HOSTNAME: "{{ zabbix_proxy_hostname | string }}"

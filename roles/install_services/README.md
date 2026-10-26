@@ -59,12 +59,12 @@ not require host cron, the Docker socket, or privileged container access.
 
 The Zabbix proxy uses a custom image built from the official Ubuntu 7.4 SQLite
 proxy image. The Dockerfile and Deye Modbus TCP external check live in
-`files/zabbix_proxy/`. Python is installed inside the image; the check uses only
-the standard library. The image keeps the upstream entrypoint and runs as the
-Zabbix user (UID 1997).
+`files/zabbix_proxy/`. Python is installed inside the image; the checks use only
+the standard library. A small supervisor starts the upstream Zabbix entrypoint
+and a local Deye Cloud helper, both as the Zabbix user (UID 1997).
 
 `prepare_zabbix_proxy.yaml` builds the image on each selected Docker host before
-starting its proxy. It stages only the Dockerfile and script in a temporary
+starting its proxy. It stages only the Dockerfile, scripts, and entrypoint in a temporary
 directory, then removes that directory even if the build fails. Each run checks
 for base-image updates and uses Docker's build cache; a changed image recreates
 the proxy. The locally built image is never pulled from a registry. Override
@@ -74,6 +74,22 @@ in inventory if needed. Build operations are skipped in Ansible check mode.
 The proxy's hexadecimal PSK is read from the Vault variable `zabbix_proxy_psk`;
 the role writes the bind-mounted PSK file and recreates the container when it
 changes. Secrets are never part of the image build context.
+
+The four Deye Cloud variables `deye_cloud_login`, `deye_cloud_password`,
+`deye_cloud_app_id`, and `deye_cloud_app_secret` are encrypted in
+`group_vars/all/deye_cloud.yml`. Ansible installs a UID-1997-readable, mode-0400
+JSON file and mounts it read-only at `/var/lib/zabbix/enc/deye-cloud.json`.
+Changing credentials recreates the proxy to refresh the mounted file.
+
+The local cloud helper listens only on `127.0.0.1:8766` inside the proxy container;
+that port is not published on the host. The cloud HTTP master item passes its
+API URL, device serial, and optional application macro overrides to this helper.
+The helper obtains a token with the Vault-backed account credentials, hashes
+the password with SHA-256 as required by Deye, and returns the unchanged
+`/device/latest` response to the existing dependent items. It caches tokens in
+the private `zabbix-proxy-deye-cloud-cache` Docker volume and renews them on the
+first cloud poll after 24 hours, before earlier expiration, or after an
+authentication rejection. No cloud account credentials are baked into the image.
 
 Deploy the proxy image and migrate the three existing proxy hosts with:
 
@@ -94,7 +110,7 @@ proxy, then change its master item to:
 - Type: **External check**
 - Key: `deye_modbus_metrics.py["{$DEYE.HOST}","{$DEYE.PORT}","{$DEYE.UNIT}"]`
 - Type of information: **Text**
-- Update interval: `1m` (one read feeds all dependent items)
+- Update interval: `15s` (one read feeds all direct dependent items)
 - Timeout: `15s` in the item's flexible timeout settings
 
 Set `{$DEYE.HOST}` to the inverter's Modbus TCP address reachable from the proxy
@@ -119,12 +135,17 @@ example:
 | Load power | `$.metrics.TotalConsumptionPower` |
 | Battery temperature | `$.metrics['Temperature- Battery']` |
 
+The updated importable template in `zabbix/templates/deye_hybrid.yaml` keeps the
+existing cloud items and adds the direct master and dependent items. It retains
+the cloud dashboard and changes the old solar overview to **Direct overview**.
 The former agent item `deye.inverter.get[...]` and its grouped JSONPaths
-(`$.battery.*`, `$.pv.*`, etc.) must be updated in Zabbix when deploying this
-migration. These playbooks manage containers and host cleanup; they do not
-change Zabbix server items or templates. See the
+(`$.battery.*`, `$.pv.*`, etc.) are superseded by these direct items. See the
 [Zabbix external-check documentation](https://www.zabbix.com/documentation/7.4/en/manual/config/items/itemtypes/external)
 for item configuration.
+
+Deploy the new proxy image before importing the template. Import through the
+Zabbix UI with **Update existing** and **Create new** enabled and **Delete missing**
+disabled. See `zabbix/README.md` for details.
 
 Inspect a reading inside the running image:
 

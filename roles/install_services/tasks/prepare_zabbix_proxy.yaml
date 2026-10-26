@@ -16,6 +16,16 @@
       Vault secret between 32 and 512 characters.
   no_log: true
 
+- name: Validate Vault-backed Deye Cloud credentials
+  ansible.builtin.assert:
+    that:
+      - deye_cloud_login | default('') | string | length > 0
+      - deye_cloud_password | default('') | string | length > 0
+      - deye_cloud_app_id | default('') | string | length > 0
+      - deye_cloud_app_secret | default('') | string | length > 0
+    fail_msg: Configure the four Deye Cloud credentials in Ansible Vault.
+  no_log: true
+
 - name: Build custom Zabbix proxy image
   when: not ansible_check_mode
   block:
@@ -36,6 +46,8 @@
       loop:
         - Dockerfile
         - deye_modbus_metrics.py
+        - deye_cloud_proxy.py
+        - proxy-entrypoint.sh
       changed_when: false
 
     - name: Build Zabbix proxy with Deye Modbus external check
@@ -86,3 +98,21 @@
   ansible.builtin.set_fact:
     service_force_recreate: true
   when: zabbix_proxy_psk_result.changed
+
+- name: Install Deye Cloud credentials from Vault
+  ansible.builtin.copy:
+    dest: "{{ zabbix_proxy_deye_cloud_credentials_file }}"
+    owner: "1997"
+    group: "1997"
+    mode: "0400"
+    content: >-
+      {{ {'login': deye_cloud_login, 'password': deye_cloud_password,
+          'app_id': deye_cloud_app_id, 'app_secret': deye_cloud_app_secret}
+         | to_nice_json }}
+  register: zabbix_proxy_deye_cloud_credentials_result
+  no_log: true
+
+- name: Recreate Zabbix proxy after Deye Cloud credential changes
+  ansible.builtin.set_fact:
+    service_force_recreate: true
+  when: zabbix_proxy_deye_cloud_credentials_result.changed
