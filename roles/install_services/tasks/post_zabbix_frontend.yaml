@@ -2,7 +2,7 @@
 - name: Increase Zabbix dashboard row limits
   community.docker.docker_container_exec:
     container: zabbix-web-nginx-pgsql
-    command:
+    argv:
       - /bin/sh
       - -c
       - |
@@ -16,4 +16,4 @@
           echo updated
         fi
   register: configured_zabbix_frontend
-  changed_when: "'updated' in configured_zabbix_frontend.stdout"
+  changed_when: "'updated' in (configured_zabbix_frontend.stdout | default(''))"

@@ -320,6 +320,7 @@ service_catalog:
       POSTGRES_PASSWORD: "{{ zabbix_postgres_password | string }}"
       POSTGRES_DB: zabbix
       ZBX_ENABLE_SNMP_TRAPS: "true"
+      ZBX_VALUECACHESIZE: "16M"
 
   zabbix_frontend:
     name: zabbix-web-nginx-pgsql
