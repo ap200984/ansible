@@ -1,0 +1,248 @@
+---
+- name: Build AmneziaWG-Go ARM64 and configure a local Docker Hub mirror
+  hosts: amnezia_arm64
+  become: true
+  gather_facts: true
+
+  vars:
+    amnezia_repo: https://github.com/amnezia-vpn/amneziawg-go.git
+    amnezia_ref: master
+    amnezia_src: /opt/amneziawg-go
+    amnezia_local_image: amneziawg-go:arm64
+    amnezia_registry_image: localhost:5000/amneziavpn/amneziawg-go:latest
+    amnezia_registry_name: amnezia-registry
+    amnezia_mirror_url: http://127.0.0.1:5000
+    docker_daemon_config: /etc/docker/daemon.json
+
+  pre_tasks:
+    - name: Require an ARM64 Debian server
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['architecture'] in ['aarch64', 'arm64']
+          - ansible_facts['distribution'] == 'Debian'
+        fail_msg: This playbook is intended for Debian ARM64.
+
+    - name: Install Git and basic dependencies
+      ansible.builtin.apt:
+        name:
+          - git
+          - curl
+          - python3
+        state: present
+        update_cache: true
+
+    - name: Check Docker CLI and Buildx
+      ansible.builtin.command: docker buildx version
+      changed_when: false
+
+    - name: Ensure Docker daemon is running
+      ansible.builtin.systemd_service:
+        name: docker
+        state: started
+        enabled: true
+
+  tasks:
+    - name: Clone or update AmneziaWG-Go source
+      ansible.builtin.git:
+        repo: "{{ amnezia_repo }}"
+        dest: "{{ amnezia_src }}"
+        version: "{{ amnezia_ref }}"
+        update: true
+      register: amnezia_checkout
+
+    - name: Inspect local ARM64 image
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - "{{ amnezia_local_image }}"
+          - --format
+          - "{{ '{{.Os}}/{{.Architecture}}' }}"
+      register: amnezia_image_before
+      changed_when: false
+      failed_when: false
+
+    - name: Build native ARM64 AmneziaWG-Go image
+      ansible.builtin.command:
+        argv:
+          - docker
+          - buildx
+          - build
+          - --platform
+          - linux/arm64
+          - --load
+          - --tag
+          - "{{ amnezia_local_image }}"
+          - "{{ amnezia_src }}"
+      when: >-
+        amnezia_checkout.changed or
+        amnezia_image_before.rc != 0 or
+        amnezia_image_before.stdout != 'linux/arm64'
+      register: amnezia_build
+
+    - name: Inspect existing registry container
+      ansible.builtin.command:
+        argv:
+          - docker
+          - container
+          - inspect
+          - "{{ amnezia_registry_name }}"
+          - --format
+          - "{{ '{{.State.Running}} {{.HostConfig.PortBindings}}' }}"
+      register: amnezia_registry_existing
+      changed_when: false
+      failed_when: false
+
+    - name: Prevent accidental takeover of an existing registry container
+      ansible.builtin.assert:
+        that:
+          - amnezia_registry_existing.rc != 0 or "'127.0.0.1' in amnezia_registry_existing.stdout"
+        fail_msg: >-
+          An existing amnezia-registry container is not bound to loopback.
+          Inspect it manually before continuing.
+
+    - name: Start loopback-only local registry
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - -d
+          - --name
+          - "{{ amnezia_registry_name }}"
+          - --restart
+          - unless-stopped
+          - -p
+          - 127.0.0.1:5000:5000
+          - registry:2
+      when: amnezia_registry_existing.rc != 0
+      register: amnezia_registry_created
+
+    - name: Start registry if it already exists but is stopped
+      ansible.builtin.command:
+        argv: [docker, start, "{{ amnezia_registry_name }}"]
+      when:
+        - amnezia_registry_existing.rc == 0
+        - not amnezia_registry_existing.stdout.startswith('true ')
+
+    - name: Check that registry is reachable locally
+      ansible.builtin.uri:
+        url: "{{ amnezia_mirror_url }}/v2/"
+        method: GET
+        status_code: 200
+      register: amnezia_registry_health
+      retries: 10
+      delay: 2
+      until: amnezia_registry_health.status == 200
+
+    - name: Inspect image currently published in local registry
+      ansible.builtin.uri:
+        url: "{{ amnezia_mirror_url }}/v2/amneziavpn/amneziawg-go/manifests/latest"
+        method: GET
+        headers:
+          Accept: application/vnd.oci.image.manifest.v1+json
+        status_code: [200, 404]
+      register: amnezia_registry_manifest
+      changed_when: false
+
+    - name: Tag ARM64 image with the registry destination
+      ansible.builtin.command:
+        argv: [docker, tag, "{{ amnezia_local_image }}", "{{ amnezia_registry_image }}"]
+      when: >-
+        (amnezia_build is changed) or
+        (amnezia_registry_created is changed) or
+        amnezia_registry_manifest.status == 404
+
+    - name: Push ARM64 image to local registry
+      ansible.builtin.command:
+        argv: [docker, push, "{{ amnezia_registry_image }}"]
+      when: >-
+        (amnezia_build is changed) or
+        (amnezia_registry_created is changed) or
+        amnezia_registry_manifest.status == 404
+
+    - name: Check for existing Docker daemon configuration
+      ansible.builtin.stat:
+        path: "{{ docker_daemon_config }}"
+      register: amnezia_daemon_stat
+
+    - name: Read existing Docker daemon configuration
+      ansible.builtin.slurp:
+        src: "{{ docker_daemon_config }}"
+      register: amnezia_daemon_contents
+      when: amnezia_daemon_stat.stat.exists
+
+    - name: Preserve existing Docker daemon settings
+      ansible.builtin.set_fact:
+        amnezia_daemon_settings: >-
+          {{ (amnezia_daemon_contents.content | b64decode | from_json)
+             if amnezia_daemon_stat.stat.exists else {} }}
+
+    - name: Ensure Docker configuration directory exists
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Set registry mirror without discarding other daemon settings
+      ansible.builtin.copy:
+        dest: "{{ docker_daemon_config }}"
+        content: >-
+          {{ amnezia_daemon_settings | combine({'registry-mirrors': [amnezia_mirror_url]}) | to_nice_json }}
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+        validate: /usr/bin/dockerd --validate --config-file=%s
+      notify: Restart Docker
+
+    - name: Apply Docker configuration before verification
+      ansible.builtin.meta: flush_handlers
+
+    - name: Wait for local registry after Docker restart
+      ansible.builtin.uri:
+        url: "{{ amnezia_mirror_url }}/v2/"
+        method: GET
+        status_code: 200
+      register: amnezia_registry_after_restart
+      retries: 15
+      delay: 2
+      until: amnezia_registry_after_restart.status == 200
+
+    - name: Confirm Docker daemon recognizes the registry mirror
+      ansible.builtin.command:
+        argv: [docker, info, --format, "{{ '{{json .RegistryConfig.Mirrors}}' }}"]
+      register: amnezia_mirror_info
+      changed_when: false
+      failed_when: amnezia_mirror_url not in amnezia_mirror_info.stdout
+
+    - name: Pull official tag through local mirror (ARM64)
+      ansible.builtin.command:
+        argv:
+          - docker
+          - pull
+          - --platform
+          - linux/arm64
+          - amneziavpn/amneziawg-go:latest
+      changed_when: false
+
+    - name: Check pulled image architecture
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - amneziavpn/amneziawg-go:latest
+          - --format
+          - "{{ '{{.Os}}/{{.Architecture}}' }}"
+      register: amnezia_verified_arch
+      changed_when: false
+      failed_when: amnezia_verified_arch.stdout != 'linux/arm64'
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        state: restarted
