@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+{% for link in backup_links %}
+iptables -C INPUT -s {{ link.endpoint.split(':')[0] }}/32 -p udp --dport {{ link.port }} -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -s {{ link.endpoint.split(':')[0] }}/32 -p udp --dport {{ link.port }} -j ACCEPT
+{% endfor %}
+{% for chain in ['INPUT', 'FORWARD'] %}
+{% for prefix in trusted_networks %}
+iptables -C {{ chain }} -s {{ prefix }} -j ACCEPT 2>/dev/null || iptables -I {{ chain }} 1 -s {{ prefix }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+iptables -t nat -C POSTROUTING -s 10.0.0.0/8 -d 10.0.0.0/8 -j ACCEPT 2>/dev/null || iptables -t nat -I POSTROUTING 1 -s 10.0.0.0/8 -d 10.0.0.0/8 -j ACCEPT

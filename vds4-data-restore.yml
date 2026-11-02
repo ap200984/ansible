@@ -1,0 +1,187 @@
+---
+- name: Restore the GitLab snapshot onto the vds4 standby
+  hosts: vds4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tags: [gitlab_data]
+  vars:
+    backup_stage: /var/backups/vds4-replication
+  tasks:
+    - name: Require an intentional restore onto the standby
+      ansible.builtin.assert:
+        that: vds4_restore_acknowledged | default(false) | bool
+        fail_msg: 'A restore replaces standby application data. Set vds4_restore_acknowledged=true after reviewing the snapshot.'
+    - name: Check whether GitLab was already restored
+      ansible.builtin.stat:
+        path: '{{ backup_stage }}/GITLAB_RESTORED'
+      register: previous_gitlab_restore
+    - name: Protect the existing GitLab replica
+      ansible.builtin.assert:
+        that: not previous_gitlab_restore.stat.exists
+        fail_msg: 'GitLab was already restored. Review its data before another restore.'
+    - name: Verify the completed GitLab snapshot files
+      ansible.builtin.shell: sha256sum -c <(awk '$2 ~ /^gitlab-/ {print}' SHA256SUMS)
+      args:
+        chdir: '{{ backup_stage }}'
+        executable: /bin/bash
+      changed_when: false
+    - name: Stop standby GitLab application writers
+      ansible.builtin.command: 'docker exec gitlab gitlab-ctl stop {{ item }}'
+      loop: [puma]
+    - name: Confirm standby background jobs are disabled
+      ansible.builtin.command: docker exec gitlab test ! -e /opt/gitlab/service/sidekiq
+      changed_when: false
+    - name: Install the source GitLab encryption secrets
+      ansible.builtin.copy:
+        src: '{{ backup_stage }}/gitlab-secrets.json'
+        dest: /gitlab/config/gitlab-secrets.json
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0600'
+      no_log: true
+    - name: Apply the restored GitLab encryption configuration
+      ansible.builtin.command: docker exec gitlab gitlab-ctl reconfigure
+      async: 1800
+      poll: 10
+    - name: Read GitLab backup identity
+      ansible.builtin.slurp:
+        src: '{{ backup_stage }}/gitlab-backup-id'
+      register: restored_gitlab_id
+    - name: Put the GitLab archive at its restore path
+      ansible.builtin.copy:
+        src: '{{ backup_stage }}/gitlab-backup.tar'
+        dest: '/gitlab/data/backups/{{ restored_gitlab_id.content | b64decode | trim }}_gitlab_backup.tar'
+        remote_src: true
+        owner: '998'
+        group: '998'
+        mode: '0600'
+    - name: Stop Puma again after reconfiguration
+      ansible.builtin.command: docker exec gitlab gitlab-ctl stop puma
+    - name: Restore the GitLab database and repositories
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - --env
+          - GITLAB_ASSUME_YES=1
+          - gitlab
+          - gitlab-backup
+          - restore
+          - 'BACKUP={{ restored_gitlab_id.content | b64decode | trim }}'
+          - force=yes
+      async: 3600
+      poll: 10
+    - name: Start the restored GitLab web application
+      ansible.builtin.command: docker exec gitlab gitlab-ctl start puma
+    - name: Verify restored GitLab encryption secrets
+      ansible.builtin.command: docker exec gitlab gitlab-rake gitlab:doctor:secrets
+      async: 900
+      poll: 10
+    - name: Record the completed GitLab restore
+      ansible.builtin.copy:
+        dest: '{{ backup_stage }}/GITLAB_RESTORED'
+        content: '{{ restored_gitlab_id.content | b64decode }}'
+        mode: '0600'
+
+- name: Restore Jenkins and ownCloud snapshots onto the vds4 standby
+  hosts: vds4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tags: [files_data]
+  vars:
+    backup_stage: /var/backups/vds4-replication
+  tasks:
+    - name: Require an intentional restore onto the standby
+      ansible.builtin.assert:
+        that: vds4_restore_acknowledged | default(false) | bool
+        fail_msg: 'A restore replaces standby application data. Set vds4_restore_acknowledged=true after reviewing the snapshot.'
+    - name: Check that a previous restored standby will not be overwritten
+      ansible.builtin.stat:
+        path: '{{ backup_stage }}/pristine-jenkins'
+      register: previous_standby_restore
+    - name: Protect previously restored standby data
+      ansible.builtin.assert:
+        that: not previous_standby_restore.stat.exists
+        fail_msg: 'This standby has already been restored. Review and preserve its data before another restore.'
+    - name: Verify every transferred snapshot
+      ansible.builtin.command: sha256sum -c SHA256SUMS
+      args:
+        chdir: '{{ backup_stage }}'
+      changed_when: false
+    - name: Stop standby file writers and CI runners
+      ansible.builtin.command: 'docker stop --time 60 {{ item }}'
+      loop: [owncloud, jenkins, gitlab-runner]
+    - name: Preserve the initial empty application volumes
+      ansible.builtin.shell: |
+        set -eu
+        test ! -d /var/backups/vds4-replication/pristine-jenkins
+        mv /opt/jenkins /var/backups/vds4-replication/pristine-jenkins
+        mv /owncloud /var/backups/vds4-replication/pristine-owncloud
+        mv /gitlab/gitlab-runner /var/backups/vds4-replication/pristine-runner
+    - name: Restore Jenkins and ownCloud files with their original owners
+      ansible.builtin.command: 'tar --numeric-owner -xpf {{ backup_stage }}/{{ item }} -C /'
+      loop: [jenkins-runner.tar, owncloud.tar]
+    - name: Install the consistent SQLite snapshot
+      ansible.builtin.shell: |
+        set -eu
+        python3 - <<'PY'
+        import pathlib, re, shutil, sqlite3
+        targets = list(pathlib.Path('/owncloud').rglob('owncloud.db'))
+        assert len(targets) == 1
+        target = targets[0]
+        shutil.copyfile('/var/backups/vds4-replication/owncloud.sqlite3', target)
+        for suffix in ['-wal', '-shm']:
+            pathlib.Path(str(target) + suffix).unlink(missing_ok=True)
+        db = sqlite3.connect(f'file:{target}?mode=ro', uri=True)
+        assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
+        db.close()
+        config = pathlib.Path('/owncloud/config/config.php')
+        config.write_text(re.sub(r"('maintenance'\s*=>\s*)true", r'\1false', config.read_text()))
+        PY
+    - name: Configure restored Jenkins for builds on its backup domain
+      ansible.builtin.shell: |
+        set -eu
+        python3 - <<'PY'
+        import pathlib, xml.etree.ElementTree as ET
+        home = pathlib.Path('/opt/jenkins')
+        location = home / 'jenkins.model.JenkinsLocationConfiguration.xml'
+        if location.exists():
+            tree = ET.parse(location)
+            url = tree.getroot().find('jenkinsUrl')
+            if url is not None:
+                url.text = 'https://jenkins.vds04.space/'
+            tree.write(location, encoding='UTF-8', xml_declaration=True)
+        (home / 'init.groovy.d/vds4-standby.groovy').unlink(missing_ok=True)
+        runner = pathlib.Path('/gitlab/gitlab-runner/config.toml')
+        if runner.exists():
+            runner.write_text(runner.read_text().replace('gitlab.vds06.space', 'gitlab.vds04.space'))
+        PY
+      no_log: true
+    - name: Start restored applications with matching images and stable networking
+      ansible.builtin.include_role:
+        name: install_services
+      vars:
+        service_containers: [owncloud, jenkins]
+    - name: Leave standby ownCloud maintenance mode
+      ansible.builtin.command: docker exec -u www-data owncloud occ maintenance:mode --off
+      register: restored_owncloud
+      until: restored_owncloud.rc == 0
+      retries: 40
+      delay: 5
+    - name: Set ownCloud links to the backup domain
+      ansible.builtin.command: 'docker exec -u www-data owncloud occ config:system:set overwrite.cli.url --value=https://owncloud.vds04.space'
+    - name: Verify ownCloud is ready
+      ansible.builtin.command: docker exec -u www-data owncloud occ status
+      changed_when: false
+    - name: Read the GitLab snapshot identity for the completion record
+      ansible.builtin.slurp:
+        src: '{{ backup_stage }}/gitlab-backup-id'
+      register: restored_gitlab_id
+    - name: Record completed restore
+      ansible.builtin.copy:
+        dest: '{{ backup_stage }}/RESTORED'
+        content: 'Restored VDS6 application snapshots; GitLab workers remain idle. GitLab backup {{ restored_gitlab_id.content | b64decode | trim }}.\n'
+        mode: '0600'

@@ -8,6 +8,8 @@ Internal tunnel/LAN routing: [policy, repair and verification](docs/internal-net
 
 Trusted networks and SSH protection: [deployment and verification](docs/trusted-access.md).
 
+VDS4 standby for VDS6: [services, tunnels, snapshots and restore](docs/vds4-backup.md).
+
 Public RouterOS exposure: [vds7_CHR and K16_112 audit](docs/edge-exposure.md).
 
 # add new key on main machine (if not exist):

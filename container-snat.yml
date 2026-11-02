@@ -1,6 +1,6 @@
 ---
 - name: Apply and persist container source NAT overrides
-  hosts: vds6
+  hosts: vds4:vds6
   become: true
   gather_facts: false
   tasks:

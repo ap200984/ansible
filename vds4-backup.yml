@@ -1,0 +1,92 @@
+---
+- name: Prepare independent backup tunnel identities
+  hosts: vds4:vds5
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Install tunnel and routing packages
+      ansible.builtin.apt:
+        name: [wireguard-tools, frr, iptables-persistent, ipset]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+    - name: Create private configuration directory
+      ansible.builtin.file:
+        path: /etc/wireguard
+        state: directory
+        mode: '0700'
+    - name: Generate a dedicated identity without exporting its private key
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        wg genkey > /etc/wireguard/vds4-backup.key
+      args:
+        creates: /etc/wireguard/vds4-backup.key
+    - name: Read the public identity
+      ansible.builtin.shell: wg pubkey < /etc/wireguard/vds4-backup.key
+      register: backup_public_key
+      changed_when: false
+
+- name: Add the backup endpoint on vds7
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/all/main.yml
+  vars:
+    backup_router_ssh:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ lookup("env", "HOME") }}/.ssh/priv/ansible'
+      - -p
+      - '20022'
+      - -o
+      - BatchMode=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - UserKnownHostsFile=/tmp/ansible-known-hosts
+      - -o
+      - 'ProxyCommand=ssh -F /dev/null -i {{ lookup("env", "HOME") }}/.ssh/priv/ansible -p19022 -oBatchMode=yes -oStrictHostKeyChecking=yes -oUserKnownHostsFile=/tmp/ansible-known-hosts -W %h:%p ansible@194.113.106.136'
+      - ansible@62.60.216.73
+  tasks:
+    - name: Reconcile only the new RouterOS backup link
+      ansible.builtin.command:
+        argv: '{{ backup_router_ssh + [lookup("template", "roles/vds4_backup/templates/router.rsc.j2").splitlines() | join(" ")] }}'
+      register: backup_router_result
+      changed_when: "'BACKUP_CHANGED' in backup_router_result.stdout"
+      failed_when: backup_router_result.rc != 0 or 'BACKUP_PUBLIC_KEY=' not in backup_router_result.stdout
+    - name: Retain the router public key
+      ansible.builtin.set_fact:
+        backup_router_public_key: '{{ backup_router_result.stdout | regex_search("BACKUP_PUBLIC_KEY=([A-Za-z0-9+/=]+)", "\1") | first }}'
+
+- name: Roll out vds5 then vds4 backup routing
+  hosts: vds5:vds4
+  order: inventory
+  serial: 1
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+    - vds4_backup
+
+- name: Verify backup routing
+  hosts: vds4
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for both direct OSPF neighbors
+      ansible.builtin.command: vtysh -c 'show ip ospf neighbor'
+      register: backup_ospf
+      changed_when: false
+      until: backup_ospf.stdout is search('10\.255\.0\.5\s+\S+\s+Full/') and backup_ospf.stdout is search('10\.255\.0\.7\s+\S+\s+Full/')
+      retries: 50
+      delay: 5
+    - name: Verify routed loopbacks and LANs
+      ansible.builtin.command:
+        argv: [ping, -I, '10.255.0.4', -c, '3', -W, '3', '{{ item }}']
+      loop: [10.255.0.5, 10.255.0.7, 10.255.0.6, 10.9.0.1, 10.9.1.1]
+      changed_when: false

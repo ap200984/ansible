@@ -1,0 +1,81 @@
+---
+- name: Create consistent application snapshots on vds6
+  hosts: vds6
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    backup_stage: /var/backups/vds4-replication
+  tasks:
+    - name: Create private snapshot directory
+      ansible.builtin.file:
+        path: '{{ backup_stage }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Create GitLab database and repository backup online
+      ansible.builtin.command: docker exec gitlab gitlab-backup create
+      async: 3600
+      poll: 10
+      register: gitlab_snapshot
+    - name: Stage the newest GitLab backup and encryption secrets
+      ansible.builtin.shell: |
+        set -eu
+        umask 077
+        python3 - <<'PY'
+        import pathlib, shutil
+        stage = pathlib.Path('/var/backups/vds4-replication')
+        source = max(pathlib.Path('/gitlab/data/backups').glob('*_gitlab_backup.tar'), key=lambda p: p.stat().st_mtime)
+        shutil.copyfile(source, stage / 'gitlab-backup.tar')
+        shutil.copyfile('/gitlab/config/gitlab-secrets.json', stage / 'gitlab-secrets.json')
+        (stage / 'gitlab-backup-id').write_text(source.name.removesuffix('_gitlab_backup.tar') + '\n')
+        PY
+      no_log: true
+    - name: Snapshot Jenkins with writes paused
+      block:
+        - name: Pause Jenkins briefly for its filesystem snapshot
+          ansible.builtin.command: docker pause jenkins
+        - name: Archive Jenkins home and runner configuration
+          ansible.builtin.command: tar --numeric-owner -cpf /var/backups/vds4-replication/jenkins-runner.tar -C / opt/jenkins gitlab/gitlab-runner
+      always:
+        - name: Resume the primary Jenkins instance
+          ansible.builtin.command: docker unpause jenkins
+    - name: Snapshot ownCloud with a consistent SQLite database
+      block:
+        - name: Enable primary ownCloud maintenance mode
+          ansible.builtin.command: docker exec -u www-data owncloud occ maintenance:mode --on
+        - name: Stop the primary ownCloud container cleanly
+          ansible.builtin.command: docker stop --time 60 owncloud
+        - name: Create a SQLite backup and archive the complete data volume
+          ansible.builtin.shell: |
+            set -eu
+            umask 077
+            python3 - <<'PY'
+            import pathlib, sqlite3
+            candidates = list(pathlib.Path('/owncloud').rglob('owncloud.db'))
+            assert len(candidates) == 1, 'Expected one ownCloud SQLite database'
+            source = sqlite3.connect(f'file:{candidates[0]}?mode=ro', uri=True)
+            target = sqlite3.connect('/var/backups/vds4-replication/owncloud.sqlite3')
+            source.backup(target)
+            assert target.execute('pragma integrity_check').fetchone()[0] == 'ok'
+            target.close()
+            source.close()
+            PY
+            tar --numeric-owner -cpf /var/backups/vds4-replication/owncloud.tar -C / owncloud
+      always:
+        - name: Start the primary ownCloud container again
+          ansible.builtin.command: docker start owncloud
+        - name: Leave primary ownCloud maintenance mode
+          ansible.builtin.command: docker exec -u www-data owncloud occ maintenance:mode --off
+          register: owncloud_resume
+          until: owncloud_resume.rc == 0
+          retries: 30
+          delay: 5
+    - name: Record checksums and restrict snapshot permissions
+      ansible.builtin.shell: |
+        set -eu
+        cd /var/backups/vds4-replication
+        chmod 0600 *.tar *.json *.sqlite3 gitlab-backup-id
+        sha256sum gitlab-backup.tar gitlab-secrets.json gitlab-backup-id jenkins-runner.tar owncloud.tar owncloud.sqlite3 > SHA256SUMS
+        chmod 0600 SHA256SUMS

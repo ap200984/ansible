@@ -35,12 +35,13 @@ trusted_hosts:
   - 86.110.170.70/32
   - 45.141.102.72/32
   - 38.247.137.237/32
+  - 2.31.171.214/32
   - 217.144.189.206/32
   - 195.245.239.82/32
   - 62.60.216.73/32
   - 194.113.106.136/32
-trusted_firewall_linux_hosts: [vds1, vds2, vds5, vds6, vds8]
-ssh_bruteforce_linux_hosts: [vds1, vds2, vds3, vds5, vds6, vds8, k16_k112_server]
+trusted_firewall_linux_hosts: [vds1, vds2, vds4, vds5, vds6, vds8]
+ssh_bruteforce_linux_hosts: [vds1, vds2, vds3, vds4, vds5, vds6, vds8, k16_k112_server]
 trusted_firewall_mikrotik_hosts: [vds7_CHR, K16_112, 3Ekipazhnyi64, k16_21, Misha]
 internal_networks: '{{ trusted_networks }}'
 tunnel_networks: '{{ internal_networks }}'
@@ -50,6 +51,7 @@ tunnel_networks: '{{ internal_networks }}'
 amneziawg_source_aliases:
   '10.255.0.1/32': [10.250.1.1/32, 10.250.2.1/32, 10.250.6.1/32]
   '10.255.0.2/32': [10.250.1.2/32, 10.250.2.2/32, 10.250.6.2/32]
+  '10.255.0.4/32': [10.250.2.4/32, 10.250.6.4/32]
   '10.255.0.5/32': [10.250.1.5/32, 10.250.2.5/32, 10.250.6.5/32]
   '10.255.0.6/32': [10.250.1.6/32, 10.250.2.6/32, 10.250.6.6/32, 10.250.4.2/32, 10.250.4.6/32, 10.250.4.14/32, 10.250.4.18/32]
   '10.255.0.8/32': [10.250.1.8/32, 10.250.2.8/32, 10.250.6.8/32]
@@ -63,9 +65,9 @@ amneziawg_source_aliases:
 # loopback's OSPF next hop. Their physical shared-interface next hop is VDS5.
 amneziawg_connected_leaf_owners:
   vds1:
-    '10.250.2.5': [10.250.2.2/32, 10.250.2.6/32]
+    '10.250.2.5': [10.250.2.2/32, 10.250.2.4/32, 10.250.2.6/32]
   vds8:
-    '10.250.2.5': [10.250.2.2/32, 10.250.2.6/32]
+    '10.250.2.5': [10.250.2.2/32, 10.250.2.4/32, 10.250.2.6/32]
 
 # Shared-interface destinations have one owner; direct neighbor /32s take precedence.
 ospf_peer_allowed_ips:
@@ -109,8 +111,8 @@ amneziawg_host_ports: {vds1: 56702, vds5: 56702, vds8: 56702}
 normalized_chr_public_keys:
   vds1: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
   vds8: WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=
-chr_plain_wg_hosts: [vds2, vds5, vds6]
-plain_wg_mesh_leaf_hosts: [vds2, vds6]
+chr_plain_wg_hosts: [vds2, vds4, vds5, vds6]
+plain_wg_mesh_leaf_hosts: [vds2, vds4, vds6]
 chr_amneziawg_transport_enabled: false
 amneziawg_enabled: '{{ inventory_hostname in ["vds1", "vds5", "vds8"] }}'
 amneziawg_interface: wg1
@@ -121,6 +123,7 @@ amneziawg_ospf_cost: 200
 ospf_wireguard_costs:
   vds1: 1000
   vds2: 1000
+  vds4: 1000
   vds5: 1001
   vds6: 1000
   vds8: 30000
@@ -131,6 +134,7 @@ amneziawg_peers:
 amneziawg_endpoints:
   vds1: 45.141.102.72
   vds2: 38.247.137.237
+  vds4: 2.31.171.214
   vds5: 217.144.189.206
   vds6: 195.245.239.82
   vds8: 194.113.106.136

@@ -1,0 +1,14 @@
+[Interface]
+Address = {{ backup_link.address }}
+PrivateKey = {{ backup_private.content | b64decode | trim }}
+ListenPort = {{ backup_link.port }}
+MTU = 1340
+Table = off
+PostUp = ip address replace {{ ospf_router_id }}/32 dev lo
+PostUp = ip route replace {{ backup_link.remote_address }}/32 dev %i src {{ backup_link.address.split('/')[0] }}
+
+[Peer]
+PublicKey = {{ backup_link.public_key }}
+Endpoint = {{ backup_link.endpoint }}
+AllowedIPs = 10.0.0.0/8, 224.0.0.5/32
+PersistentKeepalive = 25

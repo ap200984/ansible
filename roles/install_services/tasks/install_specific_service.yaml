@@ -43,6 +43,7 @@
     pull: "{{ service_definition.pull | default(true) }}"
     networks:
       - name: "{{ service_docker_network.name }}"
+        ipv4_address: "{{ (service_container_ipv4_addresses | default({})).get(service_name, omit) }}"
     ports: "{{ service_definition.ports | default(omit) }}"
     volumes: "{{ service_definition.volumes | default(omit) }}"
     env: "{{ service_definition.env | default(omit) }}"
@@ -52,8 +53,8 @@
     memory: "{{ service_definition.memory | default(omit) }}"
     memory_swap: "{{ service_definition.memory_swap | default(omit) }}"
     recreate: "{{ service_force_recreate }}"
-    state: started
-    restart_policy: unless-stopped
+    state: "{{ 'stopped' if service_name in (service_standby_containers | default([])) else 'started' }}"
+    restart_policy: "{{ 'no' if service_name in (service_standby_containers | default([])) else 'unless-stopped' }}"
   when: not ansible_check_mode
   no_log: "{{ service_definition.no_log | default(false) }}"
 

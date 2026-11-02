@@ -1,0 +1,145 @@
+---
+- name: Keep a first-run routing and firewall checkpoint
+  ansible.builtin.shell: |
+    set -eu
+    umask 077
+    mkdir -p /var/backups/vds4-backup
+    test -f /var/backups/vds4-backup/iptables.v4 || iptables-save > /var/backups/vds4-backup/iptables.v4
+    test ! -f /etc/frr/frr.conf || cp -an /etc/frr/frr.conf /var/backups/vds4-backup/frr.conf
+  changed_when: false
+- name: Read this host's private backup identity
+  ansible.builtin.slurp:
+    src: /etc/wireguard/vds4-backup.key
+  register: backup_private
+  no_log: true
+- name: Select dedicated backup links
+  ansible.builtin.set_fact:
+    backup_links: >-
+      {{ [vds4_backup_links[0] | combine({'public_key': hostvars.localhost.backup_router_public_key}),
+          vds4_backup_links[1] | combine({'public_key': hostvars.vds5.backup_public_key.stdout})]
+         if inventory_hostname == 'vds4' else
+         [{'interface': 'wg-vds4', 'address': '10.250.2.5/24', 'port': 56714,
+           'remote_address': '10.250.2.4', 'endpoint': '2.31.171.214:56702',
+           'cost': 200, 'public_key': hostvars.vds4.backup_public_key.stdout}] }}
+- name: Persist dedicated backup interfaces
+  ansible.builtin.template:
+    src: wg.conf.j2
+    dest: '/etc/wireguard/{{ backup_link.interface }}.conf'
+    mode: '0600'
+    backup: true
+  loop: '{{ backup_links }}'
+  loop_control:
+    loop_var: backup_link
+    label: '{{ backup_link.interface }}'
+  no_log: true
+  register: backup_configs
+- name: Enable dedicated backup interfaces
+  ansible.builtin.systemd_service:
+    name: 'wg-quick@{{ item.interface }}'
+    state: started
+    enabled: true
+  loop: '{{ backup_links }}'
+- name: Apply changed peer configurations without interrupting interfaces
+  ansible.builtin.shell: 'wg syncconf {{ item.backup_link.interface }} <(wg-quick strip {{ item.backup_link.interface }})'
+  args:
+    executable: /bin/bash
+  loop: '{{ backup_configs.results }}'
+  when: item.changed
+  no_log: true
+- name: Persist forwarding
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-ospf-forwarding.conf
+    content: "net.ipv4.ip_forward=1\n"
+    mode: '0644'
+- name: Enable forwarding
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/90-ospf-forwarding.conf
+  changed_when: false
+- name: Enable routing daemons
+  ansible.builtin.lineinfile:
+    path: /etc/frr/daemons
+    regexp: '^{{ item }}='
+    line: '{{ item }}=yes'
+  loop: [ospfd, bfdd]
+  register: backup_daemons
+- name: Start routing daemons
+  ansible.builtin.systemd_service:
+    name: frr
+    enabled: true
+    state: '{{ "restarted" if backup_daemons.changed else "started" }}'
+- name: Persist and apply only the new OSPF interfaces
+  ansible.builtin.command:
+    argv:
+      - vtysh
+      - -c
+      - configure terminal
+      - -c
+      - 'interface {{ item.interface }}'
+      - -c
+      - 'ip ospf area 0.0.0.0 {{ item.address.split("/")[0] }}'
+      - -c
+      - ip ospf network point-to-point
+      - -c
+      - 'ip ospf cost {{ item.cost }}'
+      - -c
+      - ip ospf hello-interval 60
+      - -c
+      - ip ospf dead-interval 240
+      - -c
+      - ip ospf bfd
+      - -c
+      - end
+      - -c
+      - write memory
+  loop: '{{ backup_links }}'
+- name: Configure the new router's loopback advertisement
+  ansible.builtin.command:
+    argv: [vtysh, -c, configure terminal, -c, router ospf, -c, 'ospf router-id 10.255.0.4', -c, maximum-paths 1, -c, passive-interface lo, -c, exit, -c, interface lo, -c, 'ip ospf area 0.0.0.0 10.255.0.4', -c, end, -c, write memory]
+  when: inventory_hostname == 'vds4'
+- name: Stage the stable source policy for the backup router
+  ansible.builtin.template:
+    src: roles/ospf/templates/loopback-source.conf.j2
+    dest: /etc/frr/vds4-loopback-source.conf
+    owner: frr
+    group: frr
+    mode: '0640'
+    validate: /usr/bin/vtysh -C -f %s
+  when: inventory_hostname == 'vds4'
+- name: Apply and persist the backup source policy
+  ansible.builtin.command: '{{ item }}'
+  loop:
+    - vtysh -f /etc/frr/vds4-loopback-source.conf
+    - vtysh -c 'write memory'
+  when: inventory_hostname == 'vds4'
+- name: Apply backup container source NAT
+  ansible.builtin.include_tasks: roles/iptables/tasks/container-snat.yml
+  when: inventory_hostname == 'vds4'
+- name: Persist backup firewall additions
+  ansible.builtin.template:
+    src: firewall.sh.j2
+    dest: /usr/local/sbin/vds4-backup-firewall
+    mode: '0755'
+- name: Persist backup firewall startup
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vds4-backup-firewall.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=VDS4 backup tunnel permits
+      After=network-online.target netfilter-persistent.service
+      Wants=network-online.target
+      Before=frr.service
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/local/sbin/vds4-backup-firewall
+      [Install]
+      WantedBy=multi-user.target
+- name: Apply backup firewall
+  ansible.builtin.systemd_service:
+    name: vds4-backup-firewall
+    daemon_reload: true
+    enabled: true
+    state: restarted
+- name: Save persistent firewall
+  ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+  changed_when: false

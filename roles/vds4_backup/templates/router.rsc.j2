@@ -1,0 +1,9 @@
+:do {
+:if ([:len [/interface wireguard find where name="vds4_interface"]] = 0) do={ /interface wireguard add name=vds4_interface listen-port=56694 mtu=1340 comment="vds4 backup"; :put "BACKUP_CHANGED"; };
+:if ([:len [/interface wireguard peers find where interface=vds4_interface]] = 0) do={ /interface wireguard peers add interface=vds4_interface public-key="{{ hostvars.vds4.backup_public_key.stdout }}" allowed-address=10.0.0.0/8,224.0.0.5/32 endpoint-address=2.31.171.214 endpoint-port=56694 persistent-keepalive=25s comment="vds4 backup"; :put "BACKUP_CHANGED"; };
+:if ([:len [/ip address find where interface=vds4_interface]] = 0) do={ /ip address add address=10.250.6.7/32 network=10.250.6.4 interface=vds4_interface comment="vds4 backup"; :put "BACKUP_CHANGED"; };
+:if ([:len [/ip route find where comment="WireGuard vds4 transport"]] = 0) do={ /ip route add dst-address=10.250.6.4/32 gateway=10.250.6.4%vds4_interface comment="WireGuard vds4 transport"; :put "BACKUP_CHANGED"; };
+:if ([:len [/ip firewall filter find where comment="Plain WireGuard vds4 uplink"]] = 0) do={ /ip firewall filter add chain=input action=accept src-address=2.31.171.214 protocol=udp dst-port=56694 comment="Plain WireGuard vds4 uplink" place-before=0; :put "BACKUP_CHANGED"; };
+:if ([:len [/routing ospf interface-template find where comment="OSPF existing vds4_interface"]] = 0) do={ /routing ospf interface-template add area=tunnel-backbone interfaces=vds4_interface type=ptp cost=1000 hello-interval=1m dead-interval=4m use-bfd=yes comment="OSPF existing vds4_interface"; :put "BACKUP_CHANGED"; };
+:put ("BACKUP_PUBLIC_KEY=" . [/interface wireguard get [find where name=vds4_interface] public-key]);
+};

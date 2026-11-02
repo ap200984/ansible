@@ -11,6 +11,7 @@ chr_awg_port: 56707
 chr_awg_local_port: 51820
 chr_awg_mtu: 1340
 chr_awg_chr_keys:
+  vds4: z6O+VxtF4MGKB4hoKLK0jZDCv2Qn6ahTvhVHg3h9/gI=
   vds1: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
   vds2: av7eQozol6pfxpvssX76FB7Omc0Dp1anKr4JC9GpZSg=
   vds5: xC+UM4Y6WxSwIq5C7Sq5rnOatQPSj+qDNIN2SOD2gz0=
@@ -19,12 +20,14 @@ chr_awg_chr_keys:
 chr_awg_original_ports:
   vds1: 56685
   vds2: 56698
+  vds4: 56694
   vds5: 56695
   vds6: 56696
   vds8: 56699
 chr_awg_chr_ports:
   vds1: 56697
   vds2: 56698
+  vds4: 56694
   vds5: 56695
   vds6: 56696
   vds8: 56699

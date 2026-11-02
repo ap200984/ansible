@@ -46,6 +46,7 @@ ospf_tunnel_services:
 - wg-quick@wg0
 - awg-quick@wg1
 - wg-quick@wg-vds2
+- wg-quick@wg-vds4
 - wg-quick@wg-vds6
 ospf_routing_services:
 - amneziawg-routing

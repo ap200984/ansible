@@ -387,6 +387,7 @@ service_catalog:
         puma['max_threads'] = 2;
         sidekiq['concurrency'] = 5;
         prometheus_monitoring['enable'] = false;
+        {{ gitlab_extra_omnibus_config | default('') }}
 
   gitlab_runner:
     name: gitlab-runner
@@ -437,7 +438,7 @@ service_catalog:
 
   owncloud:
     name: owncloud
-    image: owncloud/server
+    image: "{{ owncloud_image | default('owncloud/server') }}"
     no_log: false
     ports:
       - 1953:8080/tcp

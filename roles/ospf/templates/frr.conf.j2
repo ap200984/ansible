@@ -30,7 +30,7 @@ interface {{ amneziawg_interface }}
 {% endif %}
 !
 {% endif %}
-{% for name in (['wg-vds2', 'wg-vds6'] if inventory_hostname == 'vds5' else ['wg1'] if inventory_hostname in (plain_wg_mesh_leaf_hosts | default([])) else []) %}
+{% for name in (['wg-vds2', 'wg-vds4', 'wg-vds6'] if inventory_hostname == 'vds5' else ['wg1'] if inventory_hostname in (plain_wg_mesh_leaf_hosts | default([])) else []) %}
 interface {{ name }}
  ip ospf area 0.0.0.0 10.250.2.{{ inventory_hostname[3:] }}
  ip ospf network point-to-point

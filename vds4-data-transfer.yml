@@ -1,0 +1,89 @@
+---
+- name: Transfer snapshots directly between the servers with a temporary restricted key
+  hosts: vds6
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Create temporary transfer identity directory
+      ansible.builtin.file:
+        path: /run/vds4-transfer
+        state: directory
+        mode: '0700'
+    - name: Generate a temporary transfer key on the source
+      ansible.builtin.command: ssh-keygen -q -t ed25519 -N '' -f /run/vds4-transfer/id_ed25519
+      args:
+        creates: /run/vds4-transfer/id_ed25519
+    - name: Read only its public key
+      ansible.builtin.slurp:
+        src: /run/vds4-transfer/id_ed25519.pub
+      register: transfer_public_key
+    - name: Prepare restricted transfer and clean it up afterward
+      block:
+        - name: Copy the controller's verified SSH host keys
+          ansible.builtin.copy:
+            src: /tmp/ansible-known-hosts
+            dest: /run/vds4-transfer/known_hosts
+            mode: '0600'
+        - name: Create the private target snapshot directory
+          ansible.builtin.file:
+            path: /var/backups/vds4-replication
+            state: directory
+            mode: '0700'
+          delegate_to: vds4
+        - name: Install a receiver limited to the snapshot filenames
+          ansible.builtin.copy:
+            dest: /usr/local/sbin/vds4-backup-receive
+            mode: '0700'
+            content: |
+              #!/bin/sh
+              set -eu
+              umask 077
+              IFS= read -r filename
+              case "$filename" in
+                gitlab-backup.tar|gitlab-secrets.json|gitlab-backup-id|jenkins-runner.tar|owncloud.tar|owncloud.sqlite3|SHA256SUMS) ;;
+                *) exit 1 ;;
+              esac
+              directory=/var/backups/vds4-replication
+              cat > "$directory/$filename.part"
+              mv "$directory/$filename.part" "$directory/$filename"
+          delegate_to: vds4
+        - name: Permit only the temporary source key and forced receiver command
+          ansible.posix.authorized_key:
+            user: ansible
+            key: '{{ transfer_public_key.content | b64decode | trim }}'
+            key_options: 'restrict,from="195.245.239.82",command="sudo /usr/local/sbin/vds4-backup-receive"'
+            state: present
+          delegate_to: vds4
+        - name: Stream each private snapshot directly over SSH
+          ansible.builtin.shell: |
+            set -euo pipefail
+            (printf '%s\n' '{{ item }}'; cat '/var/backups/vds4-replication/{{ item }}') |
+              ssh -F /dev/null -i /run/vds4-transfer/id_ed25519 -p 19022 \
+                -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes \
+                -o UserKnownHostsFile=/run/vds4-transfer/known_hosts ansible@2.31.171.214
+          args:
+            executable: /bin/bash
+          loop: [gitlab-backup.tar, gitlab-secrets.json, gitlab-backup-id, jenkins-runner.tar, owncloud.tar, owncloud.sqlite3, SHA256SUMS]
+        - name: Verify all snapshots on the target
+          ansible.builtin.command: sha256sum -c SHA256SUMS
+          args:
+            chdir: /var/backups/vds4-replication
+          delegate_to: vds4
+          changed_when: false
+      always:
+        - name: Remove the temporary authorized key
+          ansible.posix.authorized_key:
+            user: ansible
+            key: '{{ transfer_public_key.content | b64decode | trim }}'
+            state: absent
+          delegate_to: vds4
+        - name: Remove the temporary source private key
+          ansible.builtin.file:
+            path: /run/vds4-transfer
+            state: absent
+        - name: Remove the temporary receiver
+          ansible.builtin.file:
+            path: /usr/local/sbin/vds4-backup-receive
+            state: absent
+          delegate_to: vds4

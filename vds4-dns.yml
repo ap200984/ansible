@@ -1,0 +1,57 @@
+---
+- name: Point the backup domain at vds4 using the existing authorized Reg.ru endpoint
+  hosts: vds5
+  gather_facts: false
+  vars:
+    backup_domain: vds04.space
+    backup_domain_ip: 2.31.171.214
+  tasks:
+    - name: Read current DNS records
+      ansible.builtin.uri:
+        url: https://api.reg.ru/api/regru2/zone/get_resource_records
+        method: POST
+        body_format: form-urlencoded
+        body:
+          input_format: json
+          input_data: '{{ {"username": regru_login, "password": regru_passwd, "domains": [{"dname": backup_domain}], "output_content_type": "plain"} | to_json }}'
+        return_content: true
+      register: backup_zone_response
+      no_log: true
+    - name: Decode the DNS response
+      ansible.builtin.set_fact:
+        backup_zone: '{{ backup_zone_response.content | from_json }}'
+      no_log: true
+    - name: Validate access to the requested zone
+      ansible.builtin.assert:
+        that:
+          - backup_zone.result == 'success'
+          - backup_zone.answer.domains[0].result == 'success'
+        fail_msg: 'Reg.ru could not read the vds04.space zone.'
+    - name: Add the desired apex, wildcard and www addresses
+      ansible.builtin.uri:
+        url: https://api.reg.ru/api/regru2/zone/add_alias
+        method: POST
+        body_format: form-urlencoded
+        body:
+          input_format: json
+          input_data: '{{ {"username": regru_login, "password": regru_passwd, "domains": [{"dname": backup_domain}], "subdomain": item, "ipaddr": backup_domain_ip, "output_content_type": "plain"} | to_json }}'
+        return_content: true
+      loop: ['@', '*', www]
+      when: backup_zone.answer.domains[0].rrs | selectattr('rectype', 'equalto', 'A') | selectattr('subname', 'equalto', item) | selectattr('content', 'equalto', backup_domain_ip) | list | length == 0
+      register: backup_dns_added
+      failed_when: (backup_dns_added.content | from_json).result != 'success' or (backup_dns_added.content | from_json).answer.domains[0].result != 'success'
+      no_log: true
+    - name: Remove superseded addresses only for the three managed names
+      ansible.builtin.uri:
+        url: https://api.reg.ru/api/regru2/zone/remove_record
+        method: POST
+        body_format: form-urlencoded
+        body:
+          input_format: json
+          input_data: '{{ {"username": regru_login, "password": regru_passwd, "domains": [{"dname": backup_domain}], "subdomain": item.subname, "content": item.content, "record_type": "A", "output_content_type": "plain"} | to_json }}'
+        return_content: true
+      loop: '{{ backup_zone.answer.domains[0].rrs }}'
+      when: item.rectype == 'A' and item.subname in ['@', '*', 'www'] and item.content != backup_domain_ip
+      register: backup_dns_removed
+      failed_when: (backup_dns_removed.content | from_json).result != 'success' or (backup_dns_removed.content | from_json).answer.domains[0].result != 'success'
+      no_log: true
