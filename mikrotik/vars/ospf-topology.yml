@@ -19,7 +19,6 @@ ospf_routers:
   wireguard_interfaces:
   - vds2_interface
   - vds5_interface
-  - vds6_interface
   - vds1_interface
   - vds8_interface
   summary: ''
@@ -33,10 +32,6 @@ ospf_routers:
     peer: wg_to_vds5
     remote: 10.250.6.5
     cost: '{{ ospf_wireguard_costs.vds5 }}'
-  - interface: vds6_interface
-    peer: wg_to_vds6
-    remote: 10.250.6.6
-    cost: 1000
   - interface: vds1_interface
     peer: wg_to_vds1
     remote: 10.250.6.1

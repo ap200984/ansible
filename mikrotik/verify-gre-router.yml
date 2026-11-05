@@ -1,0 +1,9 @@
+- ansible.builtin.include_tasks: google-gre-transport.yml
+- name: Verify GRE, public egress and every destination policy
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/verify-gre.rsc.j2").splitlines() | join(" ")] }}'
+  register: verified_gre
+  changed_when: false
+  failed_when: verified_gre.rc != 0 or 'ALL_POLICIES' not in verified_gre.stdout
+- ansible.builtin.debug:
+    msg: '{{ verified_gre.stdout_lines | last }}'

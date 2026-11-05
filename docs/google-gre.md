@@ -1,4 +1,36 @@
-# Google IPv4 routing through VDS6
+# Service IPv4 routing through VDS4
+
+Current egress since 2026-11-05: **VDS4**, outer endpoint `10.255.0.4`,
+public IPv4 `2.31.171.214`. The four GRE transport subnets and gateways below
+are unchanged. Router interface name `gre-vds6` is retained as a stable identifier
+because addresses, firewall rules, routes and passive OSPF templates reference it;
+its remote endpoint is now VDS4. The policy table remains `google_ips_table`.
+
+Google, Telegram, ChatGPT, WhatsApp, Instagram, Meta ASN prefixes, feed hosts,
+the IP check and the former VDS6 public-IP destination policy all use VDS4.
+Domain learning, updater schedules, NAT, FastTrack exclusion and blackhole fallback
+are preserved. Misha's separate host policy through VDS8 is preserved.
+
+Restore current GRE with `google-gre.yml -i inventory/vds4 -i localhost,`.
+Supply the existing pinned SSH key and `router_proxy_command` through a live host
+such as VDS4. Validate with `verify-gre.yml -i localhost,` using the same transport.
+The VDS4 role also persists passive OSPF advertisements for its four GRE endpoint
+host routes. `service-gre.yml` restores service policies on the same four routers.
+
+`migrate-vds6-gre.yml` records the one-time cutover: prepare VDS4, switch and verify
+each router with automatic rollback, retire old GRE, then advertise new endpoints.
+It requires both server inventories and `-i localhost,`. After old services are
+removed, use the current restore playbook, rather than rerunning the migration.
+`retire-vds6.yml` verifies all four new egress paths before removing the remaining
+VDS6 transports and their VDS5/CHR peers. Its VPN removal implements the explicit
+request to dismantle old VDS6 tunnels; existing VPN clients using VDS6 stop working.
+Control archives are encrypted in ignored `.local-backups/vds6-retirement-20261105`.
+
+The following deployment history describes the previous VDS6 egress; dated
+validation results and its old public address are historical.
+
+## Previous deployment on VDS6
+
 
 Four GRE tunnels use OSPF loopbacks as their outer endpoints. VDS7_CHR and
 both LAN-only Logia routers are excluded. Tunnel addresses use 10.250.4.0/24;
@@ -198,3 +230,27 @@ encrypted restore manifests were refreshed for all four routers.
 
 K16's live SSH service uses port 20022. Its host variables and pinned host-key
 alias now match that port; its previously configured port 22 refused connections.
+
+## VDS4 cutover validation — 2026-11-05
+
+After VDS6 GRE, WG, OSPF and VPN removal, all four routers passed:
+
+- GRE peer reachability and certificate-validated `api.ipify.org` HTTPS,
+  returning `2.31.171.214`.
+- LAN and router-output routing rules for every Google/service address list.
+- Nine internal destinations per router (36 checks total): six active VDS/CHR
+  loopbacks and the K16, 3Ekipazhnyi and k16_21 LAN gateways.
+- Certificate-validated Google HTTPS, including a real K16 LAN client
+  `10.9.0.70` returning the new public IPv4 and Google HTTP 204.
+
+VDS4's GRE services and firewall are enabled at boot; passive OSPF endpoint
+advertisements are persisted. VDS6 has no active GRE/WG links, no OSPF routes,
+no active VPN containers and no routed loopback address. FRR/WG startup is
+disabled and old GRE units, tunnel configuration and firewall rules are removed.
+The VDS5 and CHR peers are deleted. VDS6 is outside the `prod` inventory group,
+active restore targets exclude it, and its obsolete routing restore manifest
+has been removed. Its public SSH remains available; the VM has not been powered off.
+
+Controller checks: 15 existing MikroTik/GRE unit tests and syntax checks for
+10 affected deployment/verification playbooks passed. Encrypted router captures
+and VDS5's routing manifest record the replacement endpoint and retired peers.

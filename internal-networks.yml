@@ -68,7 +68,7 @@
           tags: [internal_wireguard]
 
 - name: Permit the complete internal network set on the Linux hosts
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds4:vds5:vds8
   become: true
   gather_facts: false
   tags: [internal_firewall]
@@ -96,8 +96,8 @@
       changed_when: false
       when: not ansible_check_mode
 
-- name: Advertise each existing VDS6 GRE endpoint without forming GRE adjacencies
-  hosts: vds6
+- name: Advertise each existing VDS4 GRE endpoint without forming GRE adjacencies
+  hosts: vds4
   become: true
   gather_facts: false
   tags: [internal_gre]

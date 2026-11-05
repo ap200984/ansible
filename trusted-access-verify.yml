@@ -1,6 +1,6 @@
 ---
 - name: Verify trusted sets and their Linux firewall scope
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds5:vds8
   become: true
   gather_facts: false
   tasks:
@@ -94,7 +94,7 @@
       changed_when: false
 
 - name: Verify SSH protection and exercise its ipset action
-  hosts: vds1:vds2:vds3:vds5:vds6:vds8:k16_k112_server
+  hosts: vds1:vds2:vds3:vds5:vds8:k16_k112_server
   become: true
   gather_facts: false
   vars:

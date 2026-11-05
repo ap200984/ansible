@@ -1,6 +1,6 @@
 ---
 - name: Verify native Linux AWG transport and absence of C proxies
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds5:vds8
   gather_facts: false
   become: true
   tasks:

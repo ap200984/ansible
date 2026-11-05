@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1450" viewBox="0 0 1600 1450">
-<title>Current MikroTik and VDS tunnel topology — 2026-10-11</title>
-<desc>Nine ordinary WireGuard, nine AmneziaWG, four SSTP, three L2TP and four GRE links. K16, Misha and CHR each use two C containers for vds1/vds8. GRE carries Google IPv4 policy traffic to VDS6 over OSPF loopbacks. BFD is enabled on the 25 OSPF tunnels; SSTP is backup at cost 60000. vds2/vds6 use ordinary WireGuard; vds5 mixes both protocols. Upper row: vds8, vds7_CHR, vds6. Lower row: vds1, vds5, vds2. Crossings are not junctions.</desc>
+<title>Current MikroTik and VDS tunnel topology — 2026-11-05</title>
+<desc>Nine ordinary WireGuard, nine AmneziaWG, four SSTP, three L2TP and four GRE links. K16, Misha and CHR each use two C containers for vds1/vds8. GRE carries Google, ChatGPT, Telegram and Meta IPv4 policy traffic to VDS4 over OSPF loopbacks. BFD is enabled on the 25 OSPF tunnels; SSTP is backup at cost 60000. vds2/vds4 use ordinary WireGuard; VDS6 is retired; vds5 mixes both protocols. Upper row: vds8, vds7_CHR, vds4. Lower row: vds1, vds5, vds2. Crossings are not junctions.</desc>
 <defs><style>
 text{font-family:Arial,Helvetica,sans-serif;fill:#182b45} .title{font-size:30px;font-weight:bold}.heading{font-size:21px;font-weight:bold}.label{font-size:18px;font-weight:bold}.detail{font-size:15px;fill:#51647c}.small{font-size:14px;fill:#51647c}.node{fill:#fff;stroke:#acbed4;stroke-width:1.5}.panel{fill:#f4f7fb;stroke:#dce5ef}.wg{fill:none;stroke:#367bce;stroke-width:3}.awg{fill:none;stroke:#9b4dca;stroke-width:4}.sstp{fill:none;stroke:#dd892c;stroke-width:3}.l2tp{fill:none;stroke:#219675;stroke-width:3;stroke-dasharray:9 5}.gre{fill:none;stroke:#475569;stroke-width:3;stroke-dasharray:5 5}.lan{fill:none;stroke:#7e8ba0;stroke-width:2}
 </style></defs>
 <rect width="1600" height="1450" fill="#fff"/>
 <text x="45" y="53" class="title">MikroTik ↔ VDS · Current tunnel topology</text>
-<text x="45" y="83" class="detail">2026-10-11 deployment · Protocol panels repeat nodes for clarity · Retired tunnels omitted</text>
+<text x="45" y="83" class="detail">2026-11-05 · VDS4 replaces VDS6 for GRE egress · Retired VDS6 links removed</text>
 <rect x="30" y="110" width="1540" height="450" rx="18" class="panel"/>
 <text x="55" y="146" class="heading">WireGuard · 9 blue links + AmneziaWG · 9 violet links</text>
 <text x="55" y="173" class="detail">K16 + Misha + CHR: two AWG containers each to vds1/vds8 · Linux: native AWG · Other site links: ordinary WG.</text>
@@ -27,9 +27,9 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#182b45} .title{font-size:30px;
 <rect x="520" y="390" width="230" height="80" rx="10" class="node"/><text x="539" y="417" class="label">vds1 · WG + AWG</text><text x="539" y="441" class="detail">10.250.{1,2}.1 · 10.250.6.1</text><text x="539" y="461" class="small">wg0 sites · wg1–4 AWG</text>
 <rect x="520" y="220" width="230" height="80" rx="10" class="node"/><text x="539" y="247" class="label">vds8 · WG + AWG</text><text x="539" y="271" class="detail">10.250.{1,2}.8 · 10.250.6.8</text><text x="539" y="291" class="small">wg0 sites · wg1–4 AWG</text>
 <rect x="940" y="220" width="230" height="80" rx="10" class="node"/><text x="959" y="247" class="label">vds7_CHR · WG + AWG</text><text x="959" y="271" class="detail">10.250.6.7/32</text><text x="959" y="291" class="small">2 AWG containers: vds1/vds8</text>
-<rect x="1320" y="390" width="215" height="80" rx="10" class="node"/><text x="1337" y="417" class="label">vds2 · WireGuard</text><text x="1337" y="441" class="detail">10.250.{1,2}.2/24</text><text x="1337" y="461" class="small">wg0 CHR · wg1 mesh</text>
-<rect x="940" y="390" width="230" height="80" rx="10" class="node"/><text x="959" y="417" class="label">vds5 · WG + AWG</text><text x="959" y="441" class="detail">10.250.{1,2}.5/24</text><text x="959" y="461" class="small">wg0 CHR · wg1 AWG · WG leaves</text>
-<rect x="1320" y="220" width="215" height="80" rx="10" class="node"/><text x="1337" y="247" class="label">vds6 · WireGuard</text><text x="1337" y="271" class="detail">10.250.{1,2}.6/24</text><text x="1337" y="291" class="small">wg0 CHR · wg1 mesh</text></g>
+<rect x="1320" y="390" width="215" height="80" rx="10" class="node"/><text x="1337" y="417" class="label">vds2 · WireGuard</text><text x="1337" y="441" class="detail">10.250.{2,6}.2/24</text><text x="1337" y="461" class="small">wg0 CHR · wg1 mesh</text>
+<rect x="940" y="390" width="230" height="80" rx="10" class="node"/><text x="959" y="417" class="label">vds5 · WG + AWG</text><text x="959" y="441" class="detail">10.250.{2,6}.5/24</text><text x="959" y="461" class="small">wg0 CHR · wg1 AWG · WG leaves</text>
+<rect x="1320" y="220" width="215" height="80" rx="10" class="node"/><text x="1337" y="247" class="label">vds4 · WireGuard</text><text x="1337" y="271" class="detail">10.250.{2,6}.4/24</text><text x="1337" y="291" class="small">wg0 CHR · wg1 mesh</text></g>
 <text x="648" y="336" class="small">AWG</text><text x="648" y="357" class="small">1 ↔ 8</text>
 <text x="1070" y="348" class="small">CHR cost 1001</text>
 <text x="65" y="537" class="small">Mesh cost 200 · Site/CHR → vds1 cost 1000 / vds8 cost 30000 · K16 wg3:56708 · Misha wg4:56709 · MTU 1340.</text>
@@ -55,13 +55,13 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#182b45} .title{font-size:30px;
 <text x="55" y="984" class="detail">Main: 10.9.0.0/24 · Kubernetes: 10.9.1.0/24 · Gateway: K16_112</text>
 <text x="55" y="1013" class="detail">LAN-only: Logia_Kitchen 10.9.0.2 · Logia_SouthRoom 10.9.0.3 · vds3 10.9.0.120 (no WireGuard)</text>
 <rect x="30" y="1060" width="1540" height="340" rx="18" class="panel"/>
-<text x="55" y="1097" class="heading">GRE · 4 links to VDS6 · Google IPv4 via google_ips_table</text>
+<text x="55" y="1097" class="heading">GRE · 4 links to VDS4 · Google / ChatGPT / Telegram / Meta · google_ips_table</text>
 <g class="gre"><path d="M405 1144 L995 1260 M405 1204 L995 1260 M405 1264 L995 1260 M405 1324 L995 1260"/></g>
 <rect x="65" y="1120" width="340" height="48" rx="8" class="node"/><text x="80" y="1150" class="detail">K16_112 · 10.250.4.1/30</text>
 <rect x="65" y="1180" width="340" height="48" rx="8" class="node"/><text x="80" y="1210" class="detail">3Ekipazhnyi64 · 10.250.4.5/30</text>
 <rect x="65" y="1240" width="340" height="48" rx="8" class="node"/><text x="80" y="1270" class="detail">k16_21 · 10.250.4.13/30</text>
 <rect x="65" y="1300" width="340" height="48" rx="8" class="node"/><text x="80" y="1330" class="detail">Misha · 10.250.4.17/30</text>
-<rect x="995" y="1190" width="535" height="135" rx="10" class="node"/><text x="1014" y="1220" class="label">vds6 · GRE Internet egress</text><text x="1014" y="1247" class="detail">10.250.4.2 / .6 / .14 / .18 · Separate /30 links</text><text x="1014" y="1274" class="detail">GRE endpoints: 10.255.0.N ↔ 10.255.0.6</text><text x="1014" y="1301" class="small">Google prefix list refreshed daily · WAN NAT · MTU 1300</text>
+<rect x="995" y="1175" width="535" height="170" rx="10" class="node"/><text x="1014" y="1205" class="label">vds4 · GRE Internet egress</text><text x="1014" y="1233" class="detail">10.250.4.2 / .6 / .14 / .18 · Separate /30 links</text><text x="1014" y="1261" class="detail">GRE endpoints: 10.255.0.N ↔ 10.255.0.4</text><text x="1014" y="1289" class="detail">Public egress: 2.31.171.214 · WAN NAT · MTU 1300</text><text x="1014" y="1317" class="small">Router interface name retained: gre-vds6</text>
 <text x="65" y="1380" class="small">GRE carries policy traffic; OSPF stays on the existing WG/AWG/PPP underlay. 10.250.4.8/30 is reserved.</text>
-<text x="45" y="1432" class="small">Loopbacks: 10.255.0.N/32. Blue = WireGuard · Violet = AmneziaWG (K16/Misha/CHR containers) · Orange = SSTP · Dashed green = L2TP. 29 tunnels · GRE = gray dashed · BFD on 25 OSPF links.</text>
+<text x="45" y="1432" class="small">Loopbacks: 10.255.0.N/32. Blue = WireGuard · Violet = AmneziaWG (K16/Misha/CHR containers) · Orange = SSTP · Dashed green = L2TP. 29 tunnels · GRE = gray dashed · BFD on 25 OSPF links · VDS6 retired.</text>
 </svg>

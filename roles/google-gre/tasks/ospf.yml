@@ -1,0 +1,14 @@
+- name: Stage passive OSPF host advertisements for GRE endpoints
+  ansible.builtin.template:
+    src: roles/ospf/templates/passive-gre.conf.j2
+    dest: /etc/frr/google-gre-passive.conf
+    owner: frr
+    group: frr
+    mode: '0640'
+    validate: /usr/bin/vtysh -C -f %s
+- name: Apply and persist GRE host advertisements
+  ansible.builtin.command:
+    argv: '{{ item }}'
+  loop:
+    - [vtysh, -f, /etc/frr/google-gre-passive.conf]
+    - [vtysh, -c, write memory]

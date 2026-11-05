@@ -1,5 +1,11 @@
 # MikroTik configuration
 
+Since 2026-11-05 the four managed GRE interfaces terminate on VDS4 (`10.255.0.4`),
+with public egress `2.31.171.214`. Their stable name remains `gre-vds6`.
+VDS6's GRE/WG transport and CHR/VDS5 peers are retired; older topology and
+migration notes below describe historical deployments. See
+[current GRE routing and retirement](../docs/google-gre.md).
+
 ## Interior network reachability
 
 `internal-networks.yml` adds a dedicated `internal_routed_networks` address

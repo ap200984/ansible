@@ -1,6 +1,6 @@
 ---
-- name: Restore GRE egress links and forwarding on VDS6
-  hosts: vds6
+- name: Restore GRE egress links and forwarding on VDS4
+  hosts: vds4
   become: true
   gather_facts: false
   vars_files:

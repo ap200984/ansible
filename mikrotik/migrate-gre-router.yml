@@ -1,0 +1,8 @@
+- ansible.builtin.include_tasks: google-gre-transport.yml
+- name: Switch the GRE peer with automatic rollback on failed connectivity
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/migrate-gre.rsc.j2").splitlines() | join(" ")] }}'
+  register: migrated_gre
+  changed_when: "'GRE_MIGRATED' in migrated_gre.stdout"
+  failed_when: migrated_gre.rc != 0 or 'GRE_VDS4_VERIFIED' not in migrated_gre.stdout
+- ansible.builtin.include_tasks: apply-gre-policy.yml

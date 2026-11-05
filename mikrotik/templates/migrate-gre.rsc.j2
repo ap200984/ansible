@@ -1,0 +1,30 @@
+:local iface [/interface gre find where name="{{ google_gre_interface }}"];
+:if ([:len $iface] != 1) do={:error "Expected one existing GRE interface"};
+:local oldComment [/interface gre get $iface comment];
+:local oldRemote [/interface gre get $iface remote-address];
+:local rule [/ip firewall filter find where comment="Google GRE outer input"];
+:if ([:len $rule] != 1) do={:error "Expected one existing GRE input rule"};
+:local oldSource [/ip firewall filter get $rule src-address];
+:do {
+/ip firewall filter set $rule src-address={{ google_gre_server_loopback }};
+/interface gre set $iface remote-address={{ google_gre_server_loopback }} comment="GRE to VDS4 over OSPF loopbacks";
+:local peerReady false;
+:for attempt from=1 to=5 do={
+:if (!$peerReady) do={
+:if ([/ping address={{ google_gre_link.server_address }} src-address={{ google_gre_link.router_address }} interface={{ google_gre_interface }} count=3 interval=1s] = 3) do={:set peerReady true} else={:delay 2s};
+};
+};
+:if (!$peerReady) do={:error "New GRE peer unreachable"};
+:if ($oldRemote != "{{ google_gre_server_loopback }}") do={
+/ip firewall connection remove [find where connection-mark=google_gre];
+:put "GRE_MIGRATED";
+};
+:local response [/tool fetch url="https://api.ipify.org" check-certificate=yes output=user as-value];
+:if (($response->"data") != "{{ google_gre_server_public_ip }}") do={:error "Unexpected egress IP"};
+:put "GRE_VDS4_VERIFIED {{ google_gre_link.identity }} {{ google_gre_server_public_ip }}";
+} on-error={
+/interface gre set $iface remote-address=$oldRemote comment=$oldComment;
+/ip firewall filter set $rule src-address=$oldSource;
+/ip firewall connection remove [find where connection-mark=google_gre];
+:error "GRE migration verification failed; old endpoint restored";
+};

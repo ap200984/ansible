@@ -57,6 +57,26 @@
     argv: '{{ google_gre_ssh + ["/system script run get_google_ips"] }}'
   register: google_refresh
   failed_when: google_refresh.rc != 0 or 'GOOGLE_PREFIXES ' not in google_refresh.stdout
+- name: Permit the current GRE server before changing the remote endpoint
+  routeros_ssh:
+    host: '{{ router_host }}'
+    user: '{{ router_user }}'
+    port: '{{ router_port }}'
+    identity_file: '{{ router_ssh_key }}'
+    known_hosts_file: '{{ router_known_hosts_file }}'
+    proxy_command: '{{ router_proxy_command | default("none") }}'
+    records:
+    - path: /ip firewall filter
+      selector:
+        comment: Google GRE outer input
+      create: true
+      values:
+        comment: Google GRE outer input
+        chain: input
+        action: accept
+        protocol: gre
+        src-address: '{{ google_gre_server_loopback }}'
+        dst-address: 10.255.0.{{ google_gre_link.suffix }}
 - name: Create or enable GRE and its transport address
   routeros_ssh:
     host: '{{ router_host }}'
@@ -81,7 +101,7 @@
         keepalive: ''
         clamp-tcp-mss: 'yes'
         allow-fast-path: 'no'
-        comment: GRE to VDS6 over OSPF loopbacks
+        comment: GRE to VDS4 over OSPF loopbacks
     - path: /ip address
       selector:
         interface: gre-vds6
@@ -91,7 +111,7 @@
         interface: gre-vds6
         disabled: 'no'
         network: '{{ google_gre_link.subnet.split("/")[0] }}'
-        comment: GRE to VDS6
+        comment: GRE to VDS4
     - path: /ip route
       selector:
         comment: Internal GRE direct peer
@@ -122,13 +142,7 @@
   register: google_gre_probe
   changed_when: false
   failed_when: google_gre_probe.rc != 0 or 'packet-loss=0%' not in google_gre_probe.stdout
-- name: Apply GRE policy and route the Telegram update feed
-  ansible.builtin.command:
-    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines()
-      | join(" ")] }}'
-  register: google_gre_policy
-  failed_when: google_gre_policy.rc != 0 or 'GOOGLE_GRE_POLICY_READY' not in google_gre_policy.stdout
-    or 'syntax error' in google_gre_policy.stdout or 'failure:' in google_gre_policy.stdout
+- ansible.builtin.include_tasks: apply-gre-policy.yml
 - name: Configure additional service lists
   ansible.builtin.include_tasks: service-gre-router.yml
 - name: Reset only service sessions that retain their former NAT path

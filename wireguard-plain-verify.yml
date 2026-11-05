@@ -1,6 +1,6 @@
 ---
 - name: Verify the deliberately ordinary WireGuard CHR and mesh links
-  hosts: vds2:vds5:vds6
+  hosts: vds2:vds5
   become: true
   gather_facts: false
   tasks:
@@ -8,13 +8,13 @@
       ansible.builtin.shell: |
         set -eu
         test -f /etc/wireguard/plain-chr.enabled
-        {% for interface in (['wg0','wg-vds2','wg-vds6'] if inventory_hostname == 'vds5' else ['wg0','wg1']) %}
+        {% for interface in (['wg0','wg-vds2','wg-vds4'] if inventory_hostname == 'vds5' else ['wg0','wg1']) %}
         systemctl is-active wg-quick@{{ interface }}
         systemctl is-enabled wg-quick@{{ interface }}
         wg show {{ interface }} persistent-keepalive | awk '$2 != "off" && $2 != "0" {exit 1}'
         {% endfor %}
         vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.7" && $3 ~ /^Full/ && $7 ~ /^wg0:/ {ok=1} END {if (!ok) exit 1}'
-        {% for peer in ([2,6] if inventory_hostname == 'vds5' else [5]) %}
+        {% for peer in ([2,4] if inventory_hostname == 'vds5' else [5]) %}
         vtysh -c 'show ip ospf neighbor' | awk '$1 == "10.255.0.{{ peer }}" && $3 ~ /^Full/ && $7 ~ /^{{ "wg-vds" ~ peer if inventory_hostname == "vds5" else "wg1" }}:/ {ok=1} END {if (!ok) exit 1}'
         {% endfor %}
         {% if inventory_hostname != 'vds5' %}

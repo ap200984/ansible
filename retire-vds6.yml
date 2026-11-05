@@ -1,0 +1,127 @@
+---
+- ansible.builtin.import_playbook: verify-gre.yml
+
+- name: Remove the retired VDS6 routing and VPN tunnels
+  hosts: vds6
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Stop routing before removing its transport interfaces
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        state: stopped
+        enabled: false
+      loop:
+        - frr
+        - wg-quick@wg0
+        - wg-quick@wg1
+        - ospf-firewall
+        - plain-wireguard-firewall
+    - name: Remove the retired VPN containers
+      ansible.builtin.shell: |
+        set -eu
+        for container in amnezia-awg2 amnezia-xray; do
+          if docker container inspect "$container" >/dev/null 2>&1; then
+            docker rm -f "$container"
+          fi
+        done
+      register: removed_vpns
+      changed_when: removed_vpns.stdout | length > 0
+    - name: Remove retired routing configuration and startup helpers
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: absent
+      loop:
+        - /etc/wireguard/wg0.conf
+        - /etc/wireguard/wg1.conf
+        - /etc/frr/frr.conf
+        - /etc/systemd/system/ospf-firewall.service
+        - /etc/systemd/system/plain-wireguard-firewall.service
+        - /usr/local/sbin/ospf-firewall
+        - /usr/local/sbin/plain-wireguard-firewall
+        - /usr/local/sbin/google-gre-tunnel
+        - /usr/local/sbin/google-gre-firewall
+        - /etc/sysctl.d/70-google-gre.conf
+        - /opt/amnezia/amnezia-awg2
+        - /opt/amnezia/amnezia-xray
+        - /tmp/vds6-vpn-retirement
+    - name: Remove the retired loopback address
+      ansible.builtin.shell: |
+        if ip -4 address show dev lo | grep -q '10.255.0.6/32'; then
+          ip address del 10.255.0.6/32 dev lo
+        fi
+      changed_when: false
+    - name: Remove forwarding configuration from the retired router
+      ansible.builtin.file:
+        path: /etc/sysctl.d/90-ospf-forwarding.conf
+        state: absent
+    - name: Disable forwarding on the retired server
+      ansible.builtin.command: sysctl -w net.ipv4.ip_forward=0
+      changed_when: false
+    - name: Delete retired GRE and routing firewall rules
+      ansible.builtin.script:
+        cmd: roles/google-gre/files/retire-firewall.py vds6
+        executable: python3
+      register: retired_vds6_firewall
+      changed_when: "'RETIRED_FIREWALL_RULES 0' not in retired_vds6_firewall.stdout"
+    - name: Save the firewall without retired GRE rules
+      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      changed_when: false
+    - name: Reload the service inventory after retirement
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+- name: Remove the VDS5 to VDS6 mesh link
+  vars_files:
+    - mikrotik/vars/chr-amneziawg.yml
+  hosts: vds5
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Stop and disable the retired mesh interface
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg-vds6
+        state: stopped
+        enabled: false
+    - name: Remove the retired interface's OSPF configuration
+      ansible.builtin.command:
+        argv: [vtysh, -c, configure terminal, -c, no interface wg-vds6, -c, end, -c, write memory]
+    - name: Remove the retired peer configuration
+      ansible.builtin.file:
+        path: /etc/wireguard/wg-vds6.conf
+        state: absent
+    - name: Persist transport firewall without the retired peer
+      ansible.builtin.template:
+        src: roles/wireguard/templates/plain-firewall.sh.j2
+        dest: /usr/local/sbin/plain-wireguard-firewall
+        mode: '0755'
+    - name: Delete the retired VDS5 peer firewall rules
+      ansible.builtin.script:
+        cmd: roles/google-gre/files/retire-firewall.py vds5
+        executable: python3
+      register: retired_vds5_firewall
+      changed_when: "'RETIRED_FIREWALL_RULES 0' not in retired_vds5_firewall.stdout"
+    - name: Save the firewall without the retired peer
+      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      changed_when: false
+
+- name: Remove the CHR to VDS6 transport link
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - group_vars/all/main.yml
+    - mikrotik/host_vars/vds7_CHR.yml
+  tasks:
+    - ansible.builtin.include_tasks: mikrotik/google-gre-transport.yml
+      vars:
+        google_gre_link:
+          identity: vds7_CHR
+    - name: Remove the retired CHR peer and all dedicated references
+      ansible.builtin.command:
+        argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/retire-vds6-chr.rsc.j2").splitlines() | join(" ")] }}'
+      register: retired_chr
+      failed_when: retired_chr.rc != 0 or 'VDS6_CHR_REMOVED' not in retired_chr.stdout

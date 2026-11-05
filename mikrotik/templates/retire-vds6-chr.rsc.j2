@@ -1,0 +1,12 @@
+/routing ospf interface-template remove [find where interfaces="vds6_interface"];
+/routing ospf interface-template set [find where comment="OSPF existing WireGuard addresses"] interfaces=vds2_interface,vds5_interface;
+/routing ospf static-neighbor remove [find where address~"%vds6_interface"];
+/ip route remove [find where comment="WireGuard vds6 transport"];
+/ip address remove [find where interface="vds6_interface"];
+/interface list member remove [find where interface="vds6_interface"];
+/interface wireguard peers remove [find where interface="vds6_interface"];
+/interface wireguard remove [find where name="vds6_interface"];
+/ip firewall filter remove [find where comment="Plain WireGuard vds6 uplink"];
+/ip firewall address-list remove [find where list="Trusted" and address="195.245.239.82"];
+:if ([:len [/interface find where name="vds6_interface"]] != 0) do={:error "Retired interface still exists"};
+:put "VDS6_CHR_REMOVED";

@@ -40,3 +40,6 @@
 - name: Save firewall state for boot
   ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
   changed_when: false
+- name: Restore passive OSPF endpoint advertisements
+  ansible.builtin.include_tasks: roles/google-gre/tasks/ospf.yml
+  when: google_gre_manage_ospf | default(true) | bool

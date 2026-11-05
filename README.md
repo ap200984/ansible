@@ -8,7 +8,8 @@ Internal tunnel/LAN routing: [policy, repair and verification](docs/internal-net
 
 Trusted networks and SSH protection: [deployment and verification](docs/trusted-access.md).
 
-VDS4 standby for VDS6: [services, tunnels, snapshots and restore](docs/vds4-backup.md).
+GRE egress moved from VDS6 to VDS4 on 2026-11-05: [current routing and retirement](docs/google-gre.md).
+VDS4 service backup history: [snapshots and restore](docs/vds4-backup.md).
 
 Public RouterOS exposure: [vds7_CHR and K16_112 audit](docs/edge-exposure.md).
 
@@ -234,9 +235,9 @@ wait 2 minutes until files in /usb2/zabbix-proxy/* will be created
 |---|---|---|
 | `10.250.0.0/24` | SSTP | vds7 и четыре MikroTik |
 | `10.250.1.0/24` | обычный WireGuard | vds1/vds8 ↔ 3Ekipazhnyi64/k16_21 |
-| `10.250.2.0/24` | AmneziaWG mesh VDS | vds1, vds2, vds5, vds6, vds8 |
+| `10.250.2.0/24` | AmneziaWG mesh VDS | vds1, vds2, vds4, vds5, vds8 |
 | `10.250.3.0/24` | L2TP | K16_112 ↔ три MikroTik |
-| `10.250.4.0/24` | GRE | четыре соединения с vds6 |
+| `10.250.4.0/24` | GRE | четыре соединения с vds4 |
 | `10.250.5.0/24` | резервная service-сеть | активных адресов сейчас нет |
 | `10.250.6.0/24` | транспорт WG/AWG | VDS ↔ vds7, K16/Misha ↔ vds1/vds8 |
 | `10.255.0.0/24` | OSPF loopback | по одному `/32` на каждом маршрутизаторе/VDS |
@@ -246,7 +247,7 @@ wait 2 minutes until files in /usb2/zabbix-proxy/* will be created
 | vds1 | `10.255.0.1/32` | — | `10.250.1.1`, `10.250.2.1`, `10.250.6.1` | — | — |
 | vds2 | `10.255.0.2/32` | — | `10.250.2.2`, `10.250.6.2` | — | — |
 | vds5 | `10.255.0.5/32` | — | `10.250.2.5`, `10.250.6.5` | — | — |
-| vds6 | `10.255.0.6/32` | — | `10.250.2.6`, `10.250.6.6` | — | `.2`, `.6`, `.14`, `.18` в `10.250.4.0/24` |
+| vds4 | `10.255.0.4/32` | — | `10.250.2.4`, `10.250.6.4` | — | `.2`, `.6`, `.14`, `.18` в `10.250.4.0/24` |
 | vds8 | `10.255.0.8/32` | — | `10.250.1.8`, `10.250.2.8`, `10.250.6.8` | — | — |
 | vds7_CHR | `10.255.0.7/32` | `10.250.0.7/32` | `10.250.6.7/32` | — | — |
 | K16_112 | `10.255.0.112/32` | `10.250.0.112/32` | `10.250.6.112/32` | `10.250.3.112/32` | `10.250.4.1/30` |

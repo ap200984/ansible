@@ -12,7 +12,7 @@
 /interface ethernet set [ find default-name=ether4 ] comment="ISP1 (Beeline)"
 /interface ethernet set [ find default-name=ether5 ] comment="ISP2 (TTK)" disabled=yes
 /interface l2tp-client add connect-to=86.110.170.70 disabled=no keepalive-timeout=disabled name=l2tp-to-d24 user=misha
-/interface gre add allow-fast-path=no comment="GRE to VDS6 over OSPF loopbacks" !keepalive local-address=10.255.0.24 mtu=1300 name=gre-vds6 remote-address=10.255.0.6
+/interface gre add allow-fast-path=no comment="GRE to VDS4 over OSPF loopbacks" !keepalive local-address=10.255.0.24 mtu=1300 name=gre-vds6 remote-address=10.255.0.4
 /interface veth add address=172.31.72.2/30 container-mac-address=48:73:D6:10:39:79 dhcp=no gateway=172.31.72.1 gateway6="" mac-address=48:73:D6:10:39:78 name=veth-misha-awg-vds1
 /interface veth add address=172.31.72.6/30 container-mac-address=2E:0D:1B:54:35:75 dhcp=no gateway=172.31.72.5 gateway6="" mac-address=2E:0D:1B:54:35:74 name=veth-misha-awg-vds8
 /interface wireguard add listen-port=37972 mtu=1340 name=wg_vds1
@@ -578,7 +578,7 @@ add comment=ISP2_dhcp_client default-route-tables=main interface=ether5 name=eth
 /ip firewall address-list add address=163.70.151.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall filter add action=accept chain=forward comment="Misha host VDS8 outbound" out-interface=wg_vds8 src-address=192.168.0.190
 /ip firewall filter add action=accept chain=forward comment="Misha host VDS8 return" connection-state=established,related dst-address=192.168.0.190 in-interface=wg_vds8
-/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.24 protocol=gre src-address=10.255.0.6
+/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.24 protocol=gre src-address=10.255.0.4
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=input comment="Google GRE return input" connection-state=established,related in-interface=gre-vds6

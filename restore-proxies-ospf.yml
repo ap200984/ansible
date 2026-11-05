@@ -5,4 +5,4 @@
 - ansible.builtin.import_playbook: 02_deploy_services.yaml
   vars:
     service_containers: [https_proxy]
-    target_hosts: vds1:vds2:vds3:vds5:vds6:vds8
+    target_hosts: vds1:vds2:vds3:vds5:vds8

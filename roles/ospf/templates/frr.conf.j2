@@ -30,7 +30,7 @@ interface {{ amneziawg_interface }}
 {% endif %}
 !
 {% endif %}
-{% for name in (['wg-vds2', 'wg-vds4', 'wg-vds6'] if inventory_hostname == 'vds5' else ['wg1'] if inventory_hostname in (plain_wg_mesh_leaf_hosts | default([])) else []) %}
+{% for name in (['wg-vds2', 'wg-vds4'] if inventory_hostname == 'vds5' else ['wg1'] if inventory_hostname in (plain_wg_mesh_leaf_hosts | default([])) else []) %}
 interface {{ name }}
  ip ospf area 0.0.0.0 10.250.2.{{ inventory_hostname[3:] }}
  ip ospf network point-to-point
@@ -93,7 +93,7 @@ router ospf
 ! BEGIN Ansible loopback source policy
 {% include 'roles/ospf/templates/loopback-source.conf.j2' %}
 ! END Ansible loopback source policy
-{% if inventory_hostname == 'vds6' and google_gre_enabled | default(false) | bool %}
+{% if google_gre_enabled | default(false) | bool %}
 ! BEGIN Ansible passive GRE host advertisements
 {% include 'roles/ospf/templates/passive-gre.conf.j2' %}
 ! END Ansible passive GRE host advertisements

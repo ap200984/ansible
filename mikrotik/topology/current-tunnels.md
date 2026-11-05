@@ -1,22 +1,27 @@
-# Current tunnel topology — 2026-10-11
+# Current tunnel topology — 2026-11-05
+
+The four service GRE tunnels terminate on **VDS4 (`10.255.0.4`)**, with public
+IPv4 **`2.31.171.214`**. VDS6 and its GRE/WireGuard links, VDS5/CHR peers and VPN
+containers are retired. See [current GRE policy](../../docs/google-gre.md).
 
 Live interfaces and OSPF adjacencies were checked after deployment. Retired
 interfaces and phone VPNs are omitted. Linux `wg0` retains ordinary site
 WireGuard. AmneziaWG remains on vds1/vds5/vds8 `wg1`, while two CHR C containers
-connect to vds1/vds8 native `wg2`. vds2/vds6 now use ordinary `wg0` to CHR
+connect to vds1/vds8 native `wg2`. vds2/vds4 use ordinary `wg0` to CHR
 and ordinary `wg1` to vds5; vds5 uses `wg0` to CHR and independent
-`wg-vds2`/`wg-vds6` ordinary mesh interfaces. Linux C
+`wg-vds2`/`wg-vds4` ordinary mesh interfaces. Linux C
 proxy services have been removed from vds1/vds2/vds5/vds6/vds8. Addresses,
 dedicated CHR links use point-to-point OSPF. K16 uses two ARM64 C containers to vds1/vds8 native `wg3`; Misha uses
 two ARM C containers on USB storage to native `wg4`. Both use
 transport `10.250.6.0/24`.
 All 25 OSPF links have BFD enabled; SSTP is a backup with cost 60000.
-Four GRE tunnels now connect K16, 3Ekipazhnyi64, k16_21 and Misha to VDS6
-for Google IPv4 policy traffic over OSPF loopback endpoints.
+Four GRE tunnels connect K16, 3Ekipazhnyi64, k16_21 and Misha to VDS4
+for Google, ChatGPT, Telegram, WhatsApp, Instagram and Meta IPv4 policy traffic.
+Router interface names remain `gre-vds6`; their remote endpoint is VDS4.
 
 [SVG drawing](current-tunnels.svg) · [PNG drawing](current-tunnels.png)
 
-The drawing aligns vds8/vds7_CHR/vds6 on the upper row and
+The drawing aligns vds8/vds7_CHR/vds4 on the upper row and
 vds1/vds5/vds2 on the lower row. The original straight-link style is restored;
 connections within each row are horizontal. Row centers are at y=260 and
 y=430, symmetric about y=345 in the gap between 3Ekipazhnyi64 and k16_21.
@@ -34,7 +39,7 @@ flowchart LR
   C["vds7_CHR · .7"]
   V2["vds2 · wg0 · .2"]
   V5["vds5 · wg0 · .5"]
-  V6["vds6 · wg0 · .6"]
+  V4["vds4 · wg0 · .4"]
   V1 <-->|WG| E & R
   K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.1 · cost 1000| V1
   V8 <-->|WG| E & R
@@ -42,13 +47,13 @@ flowchart LR
   M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.1 · cost 1000| V1
   M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.8 · cost 30000| V8
   C <-->|CHR C container ↔ Linux native AWG wg2| V1 & V8
-  C <-->|WireGuard wg0| V2 & V5 & V6
-  V5 <-->|WireGuard| V2 & V6
+  C <-->|WireGuard wg0| V2 & V5 & V4
+  V5 <-->|WireGuard| V2 & V4
   V5 <-->|AmneziaWG| V1 & V8
   V1 <-->|AmneziaWG| V8
   K & E & R & M <-->|SSTP · cost 60000| C
   E & R & M <-->|L2TP| K
-  K & E & R & M <-->|GRE · Google policy · separate /30s| V6
+  K & E & R & M <-->|GRE · service policy · separate /30s| V4
   K --- LAN["10.9.0.0/24 main · 10.9.1.0/24 Kubernetes"]
   LAN --- L["Logia_Kitchen .2 · SouthRoom .3 · vds3 .120"]
 ```
@@ -64,8 +69,8 @@ Transport addressing uses each node's suffix above:
 | Misha C container ↔ vds1 native AWG wg4 | 10.250.6.24/32 | 10.250.6.1/24 | 1000 |
 | Misha C container ↔ vds8 native AWG wg4 | 10.250.6.24/32 | 10.250.6.8/24 | 30000 |
 | CHR C container ↔ Linux native AWG wg2 | CHR 10.250.6.7/32 | vds1/vds8 10.250.6.N/24 | 1000; vds8 30000 |
-| CHR ↔ ordinary Linux wg0 | CHR 10.250.6.7/32 | vds2/vds5/vds6 10.250.6.N/24 | 1000; vds5 1001 |
-| Ordinary WG star to vds5 | vds2/vds6 10.250.2.N/24 | 10.250.2.5/24 | 200 |
+| CHR ↔ ordinary Linux wg0 | CHR 10.250.6.7/32 | vds2/vds4/vds5 10.250.6.N/24 | 1000; vds5 1001 |
+| Ordinary WG star to vds5 | vds2/vds4 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG star to vds5 | vds1/vds8 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG vds1 ↔ vds8 | 10.250.2.1/24 | 10.250.2.8/24 | 200 |
 | SSTP to CHR | 10.250.0.N/32 | PPP endpoint 10.250.0.7 | 60000 |
@@ -78,6 +83,9 @@ vds3 is a LAN host, not a WireGuard endpoint. LAN labels `.2/.3/.120` above
 are addresses in `10.9.0.0/24`, not transport suffixes.
 
 ## Routing, BFD and restoration
+
+The dated migration results below are historical; current post-retirement
+validation is recorded in [the GRE deployment guide](../../docs/google-gre.md).
 
 All 25 tunnel adjacencies were Full and all 50 BFD endpoints were Up after
 migration on 2026-10-11. All 90 directed loopback checks across ten routers/VDSes
@@ -183,9 +191,9 @@ repository on older distributions. It renders
 `/etc/frr/daemons`, and starts the `frr` service. This play includes role
 files directly rather than invoking a conventional `roles: [ospf]` entry.
 
-## Google GRE egress
+## Service GRE egress on VDS4
 
-| Router | GRE subnet | Router IP | VDS6 IP |
+| Router | GRE subnet | Router IP | VDS4 IP |
 | --- | --- | --- | --- |
 | K16_112 | 10.250.4.0/30 | 10.250.4.1 | 10.250.4.2 |
 | 3Ekipazhnyi64 | 10.250.4.4/30 | 10.250.4.5 | 10.250.4.6 |
@@ -193,15 +201,15 @@ files directly rather than invoking a conventional `roles: [ospf]` entry.
 | Misha | 10.250.4.16/30 | 10.250.4.17 | 10.250.4.18 |
 
 `10.250.4.8/30` is reserved. GRE outer endpoints are each router's
-`10.255.0.N` loopback and VDS6 `10.255.0.6`. These four GRE links carry Google
+`10.255.0.N` loopback and VDS4 `10.255.0.4`. These four GRE links carry Google
 IPv4 traffic marked into `google_ips_table`; they do not participate in OSPF.
 Scripts refresh `google_ips` daily from Google's official prefix feed. Router
-GRE source NAT and VDS6 WAN NAT provide symmetric Internet return paths.
+GRE source NAT and VDS4 WAN NAT provide symmetric Internet return paths.
 See [GRE deployment and recovery](../../docs/google-gre.md).
 
 Additional GRE policies deployed on 2026-10-12: Telegram official IPv4 feed
 and DNS-learned Telegram web, ChatGPT, WhatsApp, Instagram and shared Meta
-addresses use the same four tunnels, routing table and VDS6 egress. See
+addresses use the same four tunnels, routing table and VDS4 egress. See
 [service deployment](../../service-gre.yml) and [policy details](../../docs/google-gre.md).
 
 Loopback source policy updated on 2026-10-12: all ten routing nodes now select

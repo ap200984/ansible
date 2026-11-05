@@ -1,2 +1,3 @@
-[prod]
-vds6 ansible_host=195.245.239.82
+# Retired 2026-11-05; retained for public SSH and final shutdown only.
+[retired]
+vds6 ansible_host=195.245.239.82 ansible_port=19022

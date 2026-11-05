@@ -1,64 +1,12 @@
 ---
-service_containers:
-  - speedtest
-  - socks5
-  - https_proxy
-  - ejabberd
-  - gitlab
-  - gitlab_runner
-  - jenkins
-  - squid
-  - owncloud
-  - certbot
-  - nginx
-
-second_octet: 22
-wg_octet: 253
-gre_octet: 254
-l2tp_octet: 255
-domain: vds06.space
-wireguard_mtu: 1340
-
-wireguard_vds7:
-  interface: wg0
-  address: 10.250.6.6/24
-  old_address: 10.250.6.7/32
-  remote_address: 10.250.6.7
-  public_key: UXPiRL2G6vovV1i838Z69J0bNBsUoXWTznsQ5+bNXHY=
-  port: 56696
-
-# TLS-encrypted forward proxy with HTTPS CONNECT support.
-https_proxy_port: 1981
-https_proxy_users:
-  - username: proxy
-    password: "{{ socks5_proxy_password }}"
-
-https_proxy_tls_certificate_file: "{{ playbook_dir }}/certificates/vds-proxy-server.crt"
-
-# Enable BFD on every active OSPF tunnel; keep daemon timer defaults.
-ospf_bfd_enabled: true
+# Retired on 2026-11-05. Public SSH remains available for final shutdown.
+# GRE egress is restored on VDS4 by google-gre.yml.
+vds_retired: true
+service_containers: []
+google_gre_enabled: false
+ospf_bfd_enabled: false
 ospf_router_id: 10.255.0.6
-ospf_restore_manifest: vars/ospf-restore/vds6.vault.yml
-ospf_firewall_services:
-- ospf-firewall
-- plain-wireguard-firewall
-- google-gre-firewall
-ospf_tunnel_services:
-- wg-quick@wg0
-- wg-quick@wg1
-- gre-k16
-- gre-3ekip
-- gre-k21
-- gre-misha
+ospf_firewall_services: []
+ospf_tunnel_services: []
 ospf_routing_services: []
-
-# Google GRE egress is restored by google-gre.yml and the routing manifest.
-google_gre_enabled: true
-google_gre_wan_interface: eth0
-
-# Jenkins uses the routed loopback instead of wg1's interface address.
-iptables_container_snat_rules:
-  - source: 172.20.240.7/32
-    destination: 10.0.0.0/8
-    to_source: 10.255.0.6
-    comment: jenkins-private-snat
+iptables_container_snat_rules: []

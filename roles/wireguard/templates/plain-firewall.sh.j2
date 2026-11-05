@@ -13,7 +13,6 @@ permit() {
 permit 62.60.216.73 {{ chr_awg_original_ports[inventory_hostname] }}
 {% if inventory_hostname == 'vds5' %}
 permit 38.247.137.237 56712
-permit 195.245.239.82 56716
 permit 2.31.171.214 56714
 {% else %}
 permit 217.144.189.206 56702

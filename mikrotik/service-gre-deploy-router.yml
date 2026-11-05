@@ -20,13 +20,7 @@
     - -o
     - ProxyCommand={{ router_proxy_command | default("none") }}
     - '{{ router_user }}@{{ router_host }}'
-- name: Apply GRE policy and route the prefix update feeds
-  ansible.builtin.command:
-    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines()
-      | join(" ")] }}'
-  register: google_gre_policy
-  failed_when: google_gre_policy.rc != 0 or 'GOOGLE_GRE_POLICY_READY' not in google_gre_policy.stdout
-    or 'syntax error' in google_gre_policy.stdout or 'failure:' in google_gre_policy.stdout
+- ansible.builtin.include_tasks: apply-gre-policy.yml
 - ansible.builtin.include_tasks: service-gre-router.yml
 - name: Reset only service sessions that retain their former NAT path
   ansible.builtin.command:

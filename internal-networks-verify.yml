@@ -1,7 +1,7 @@
 ---
 # Read-only network verification. Detailed bounded results stay on the controller.
 - name: Verify routed internal networks with automatic and explicit VDS sources
-  hosts: "{{ internal_network_verify_hosts | default('vds2:vds6') }}"
+  hosts: "{{ internal_network_verify_hosts | default('vds2:vds4') }}"
   become: true
   gather_facts: false
   vars:
@@ -22,7 +22,7 @@
       - {name: ekipazhnyi_lan_gateway, ip: 10.10.0.1}
       - {name: k16_loopback, ip: 10.255.0.112}
       - {name: vds2_loopback, ip: 10.255.0.2}
-      - {name: vds6_loopback, ip: 10.255.0.6}
+      - {name: vds4_loopback, ip: 10.255.0.4}
       - {name: k16_sstp_endpoint, ip: 10.250.0.112}
       - {name: chr_wireguard_endpoint, ip: 10.250.6.7}
       - {name: vds5_mesh_endpoint, ip: 10.250.2.5}

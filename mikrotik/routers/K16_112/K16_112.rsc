@@ -10,7 +10,7 @@
 /interface ethernet set [ find default-name=ether5 ] comment=TTK
 /interface wifi set [ find default-name=wifi2 ] channel.band=2ghz-ax .skip-dfs-channels=10min-cac .width=20/40mhz configuration.country=Spain .mode=ap .ssid=Ath1 disabled=no name=wifi_2g security.authentication-types=wpa2-psk,wpa3-psk .ft=yes .ft-over-ds=yes
 /interface wifi set [ find default-name=wifi1 ] channel.band=5ghz-ax .skip-dfs-channels=10min-cac .width=20/40/80mhz configuration.country=Spain .mode=ap .ssid=Ath1 disabled=no name=wifi_5g security.authentication-types=wpa2-psk,wpa3-psk .ft=yes .ft-over-ds=yes
-/interface gre add allow-fast-path=no comment="GRE to VDS6 over OSPF loopbacks" !keepalive local-address=10.255.0.112 mtu=1300 name=gre-vds6 remote-address=10.255.0.6
+/interface gre add allow-fast-path=no comment="GRE to VDS4 over OSPF loopbacks" !keepalive local-address=10.255.0.112 mtu=1300 name=gre-vds6 remote-address=10.255.0.4
 /interface veth add address=172.31.71.2/30 container-mac-address=2C:24:17:E9:63:36 dhcp=no gateway=172.31.71.1 gateway6="" mac-address=2C:24:17:E9:63:35 name=veth-k16-awg-vds1
 /interface veth add address=172.31.71.6/30 container-mac-address=7C:0B:DE:66:57:B8 dhcp=no gateway=172.31.71.5 gateway6="" mac-address=7C:0B:DE:66:57:B7 name=veth-k16-awg-vds8
 /interface wireguard add listen-port=37972 mtu=1340 name=wg_vds1
@@ -629,7 +629,7 @@ set authentication=mschap2 enabled=yes
 /ip firewall address-list add address=31.13.84.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall address-list add address=66.220.152.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall address-list add address=163.70.151.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
-/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.112 protocol=gre src-address=10.255.0.6
+/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.112 protocol=gre src-address=10.255.0.4
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=input comment="Google GRE return input" connection-state=established,related in-interface=gre-vds6

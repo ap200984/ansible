@@ -1,5 +1,5 @@
 - name: Prefer Linux loopback sources for OSPF loopback routes
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds4:vds5:vds8
   become: true
   gather_facts: false
   tasks:
@@ -49,8 +49,7 @@
     register: seed_loopback_sources
     changed_when: seed_loopback_sources.stdout != 'LOOPBACK_SOURCES_UPDATED 0'
   - name: Verify the kernel preferred source
-    ansible.builtin.command: ip route get 10.255.0.{{ "112" if inventory_hostname
-      == "vds6" else "6" }}
+    ansible.builtin.command: ip route get 10.255.0.112
     register: loopback_source_route
     until: '"src " ~ ospf_router_id in loopback_source_route.stdout'
     retries: 12

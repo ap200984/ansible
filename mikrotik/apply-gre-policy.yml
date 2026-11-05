@@ -1,0 +1,11 @@
+- name: Apply all GRE destination policies
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/google-gre-policy.rsc.j2").splitlines() | join(" ")] }}'
+  register: google_gre_policy
+  failed_when: google_gre_policy.rc != 0 or 'GOOGLE_GRE_POLICY_READY' not in google_gre_policy.stdout or 'syntax error' in google_gre_policy.stdout or 'failure:' in google_gre_policy.stdout
+- name: Restore the separate Misha host policy after GRE rule ordering
+  ansible.builtin.command:
+    argv: '{{ google_gre_ssh + [lookup("template", "mikrotik/templates/misha-vds8-host.rsc.j2").splitlines() | join(" ")] }}'
+  register: misha_host_policy
+  failed_when: misha_host_policy.rc != 0 or 'MISHA_VDS8_HOST_READY' not in misha_host_policy.stdout
+  when: google_gre_link.identity == 'Misha' and misha_vds8_host_enabled | default(false) | bool

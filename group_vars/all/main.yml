@@ -40,8 +40,8 @@ trusted_hosts:
   - 195.245.239.82/32
   - 62.60.216.73/32
   - 194.113.106.136/32
-trusted_firewall_linux_hosts: [vds1, vds2, vds4, vds5, vds6, vds8]
-ssh_bruteforce_linux_hosts: [vds1, vds2, vds3, vds4, vds5, vds6, vds8, k16_k112_server]
+trusted_firewall_linux_hosts: [vds1, vds2, vds4, vds5, vds8]
+ssh_bruteforce_linux_hosts: [vds1, vds2, vds3, vds4, vds5, vds8, k16_k112_server]
 trusted_firewall_mikrotik_hosts: [vds7_CHR, K16_112, 3Ekipazhnyi64, k16_21, Misha]
 internal_networks: '{{ trusted_networks }}'
 tunnel_networks: '{{ internal_networks }}'
@@ -111,8 +111,8 @@ amneziawg_host_ports: {vds1: 56702, vds5: 56702, vds8: 56702}
 normalized_chr_public_keys:
   vds1: /COMR2JjUcrx6kyrsVb6rGIvQgCr0oQ26t5A33o+ohk=
   vds8: WHc5K+biGIULJ9YNAuv6XeiyWkUSivZ12FZxMMx2ewA=
-chr_plain_wg_hosts: [vds2, vds4, vds5, vds6]
-plain_wg_mesh_leaf_hosts: [vds2, vds4, vds6]
+chr_plain_wg_hosts: [vds2, vds4, vds5]
+plain_wg_mesh_leaf_hosts: [vds2, vds4]
 chr_amneziawg_transport_enabled: false
 amneziawg_enabled: '{{ inventory_hostname in ["vds1", "vds5", "vds8"] }}'
 amneziawg_interface: wg1

@@ -1,0 +1,22 @@
+- name: Load router transport and addressing
+  ansible.builtin.include_vars:
+    file: host_vars/{{ google_gre_link.identity }}.yml
+- name: Build pinned transport through the replacement server
+  ansible.builtin.set_fact:
+    google_gre_ssh:
+    - ssh
+    - -F
+    - /dev/null
+    - -i
+    - '{{ router_ssh_key | expanduser }}'
+    - -p
+    - '{{ router_port | string }}'
+    - -o
+    - BatchMode=yes
+    - -o
+    - StrictHostKeyChecking=yes
+    - -o
+    - UserKnownHostsFile={{ router_known_hosts_file }}
+    - -o
+    - ProxyCommand={{ router_proxy_command | default("none") }}
+    - '{{ router_user }}@{{ router_host }}'

@@ -68,16 +68,6 @@ routeros_records:
   create: true
 - path: /interface wireguard
   values:
-    comment: vds6_interface
-    listen-port: '56696'
-    mtu: '1340'
-    name: vds6_interface
-    private-key: '{{ routeros_secrets.record_5_private_key }}'
-  selector:
-    name: vds6_interface
-  create: true
-- path: /interface wireguard
-  values:
     comment: vds8_interface
     listen-port: '56699'
     mtu: '1340'
@@ -473,18 +463,6 @@ routeros_records:
 - path: /interface wireguard peers
   values:
     allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
-    comment: wg_to_vds6
-    endpoint-address: 195.245.239.82
-    endpoint-port: '56696'
-    interface: vds6_interface
-    name: wg_to_vds6
-    public-key: 98Q4AVfqFMBEOcJzrEONA8oMhIZMdoUOYbPaPtDwX34=
-  selector:
-    name: wg_to_vds6
-  create: true
-- path: /interface wireguard peers
-  values:
-    allowed-address: 10.9.0.0/24,10.9.1.0/24,10.250.0.0/24,10.250.1.0/24,10.250.2.0/24,10.250.3.0/24,10.255.0.0/24,10.251.0.0/24,10.10.0.0/16,10.11.0.0/16,224.0.0.5/32
     comment: wg_to_vds1
     endpoint-address: 172.31.70.6
     endpoint-port: '51820'
@@ -535,15 +513,6 @@ routeros_records:
   selector:
     address: 10.250.1.7
     interface: vds5_interface
-  create: true
-- path: /ip address
-  values:
-    address: 10.250.1.7
-    interface: vds6_interface
-    network: 10.250.1.6
-  selector:
-    address: 10.250.1.7
-    interface: vds6_interface
   create: true
 - path: /ip address
   values:
@@ -612,15 +581,6 @@ routeros_records:
 - path: /ip dns
   values:
     servers: 1.1.1.1,8.8.8.8
-- path: /ip firewall address-list
-  values:
-    address: 195.245.239.82
-    comment: vds6
-    list: Trusted
-  selector:
-    list: Trusted
-    address: 195.245.239.82
-  create: true
 - path: /ip firewall address-list
   values:
     address: 10.250.0.0/16
@@ -804,22 +764,6 @@ routeros_records:
   selector:
     list: tunnels_networks
     address: 10.250.2.0/24
-  create: true
-- path: /ip firewall filter
-  values:
-    action: accept
-    chain: input
-    comment: Plain WireGuard vds6 uplink
-    dst-port: '56696'
-    protocol: udp
-    src-address: 195.245.239.82
-  selector:
-    action: accept
-    chain: input
-    comment: Plain WireGuard vds6 uplink
-    dst-port: '56696'
-    protocol: udp
-    src-address: 195.245.239.82
   create: true
 - path: /ip firewall filter
   values:
@@ -1237,15 +1181,6 @@ routeros_records:
   create: true
 - path: /ip route
   values:
-    comment: WireGuard vds6 transport
-    dst-address: 10.250.1.6/32
-    gateway: 10.250.1.6%vds6_interface
-  selector:
-    dst-address: 10.250.1.6/32
-    gateway: 10.250.1.6%vds6_interface
-  create: true
-- path: /ip route
-  values:
     comment: Native AWG vds8 transport
     dst-address: 10.250.1.8/32
     gateway: 10.250.1.8%vds8_interface
@@ -1493,13 +1428,13 @@ routeros_records:
     area: tunnel-backbone
     comment: OSPF existing WireGuard addresses
     disabled: 'yes'
-    interfaces: vds2_interface,vds6_interface,vds5_interface
+    interfaces: vds2_interface,vds5_interface
     passive: 'yes'
     use-bfd: 'no'
   selector:
     area: tunnel-backbone
     comment: OSPF existing WireGuard addresses
-    interfaces: vds2_interface,vds6_interface,vds5_interface
+    interfaces: vds2_interface,vds5_interface
     passive: 'yes'
     use-bfd: 'no'
   create: true
@@ -1587,27 +1522,6 @@ routeros_records:
     type: ptp
     use-bfd: 'yes'
   create: true
-- path: /routing ospf interface-template
-  values:
-    area: tunnel-backbone
-    comment: OSPF existing vds6_interface
-    cost: '1000'
-    dead-interval: 4m
-    disabled: 'no'
-    hello-interval: 1m
-    interfaces: vds6_interface
-    type: ptp
-    use-bfd: 'yes'
-  selector:
-    area: tunnel-backbone
-    comment: OSPF existing vds6_interface
-    cost: '1000'
-    dead-interval: 4m
-    hello-interval: 1m
-    interfaces: vds6_interface
-    type: ptp
-    use-bfd: 'yes'
-  create: true
 - path: /routing ospf static-neighbor
   values:
     address: 10.250.1.1%vds1_interface
@@ -1649,17 +1563,6 @@ routeros_records:
     poll-interval: 1m
   selector:
     address: 10.250.1.5%vds5_interface
-    area: tunnel-backbone
-    poll-interval: 1m
-  create: true
-- path: /routing ospf static-neighbor
-  values:
-    address: 10.250.1.6%vds6_interface
-    area: tunnel-backbone
-    disabled: 'no'
-    poll-interval: 1m
-  selector:
-    address: 10.250.1.6%vds6_interface
     area: tunnel-backbone
     poll-interval: 1m
   create: true

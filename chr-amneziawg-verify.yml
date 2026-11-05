@@ -3,7 +3,7 @@
 - ansible.builtin.import_playbook: wireguard-plain-verify.yml
 - ansible.builtin.import_playbook: wireguard-normalized-verify.yml
 - name: Verify all Linux CHR C proxy transports and the routed fabric
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds5:vds8
   become: true
   gather_facts: false
   vars_files:

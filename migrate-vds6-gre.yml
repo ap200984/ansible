@@ -1,0 +1,65 @@
+---
+# Use both inventories and a pinned router_proxy_command through VDS4.
+# Preserves router interface names, transport addresses, lists and policy tables.
+- name: Prepare replacement GRE egress on VDS4
+  hosts: vds4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - vars/google-gre.yml
+  tasks:
+    - ansible.builtin.include_tasks: roles/google-gre/tasks/main.yml
+      vars:
+        google_gre_manage_ospf: false
+
+- name: Migrate and verify each router before retiring any old links
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - group_vars/all/main.yml
+    - vars/google-gre.yml
+  tasks:
+    - ansible.builtin.include_tasks: mikrotik/migrate-gre-router.yml
+      loop: '{{ google_gre_links }}'
+      loop_control:
+        loop_var: google_gre_link
+
+- name: Retire the former GRE services and advertisements
+  hosts: vds6
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - vars/google-gre.yml
+  tasks:
+    - name: Stop and disable the old GRE links and firewall startup
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        state: stopped
+        enabled: false
+      loop: '{{ google_gre_links | map(attribute="linux_interface") | list + ["google-gre-firewall"] }}'
+    - name: Remove retired GRE OSPF interface configuration
+      ansible.builtin.command:
+        argv: [vtysh, -c, configure terminal, -c, 'no interface {{ item.linux_interface }}', -c, end, -c, write memory]
+      loop: '{{ google_gre_links }}'
+    - name: Remove retired GRE startup units
+      ansible.builtin.file:
+        path: '/etc/systemd/system/{{ item }}.service'
+        state: absent
+      loop: '{{ google_gre_links | map(attribute="linux_interface") | list + ["google-gre-firewall"] }}'
+    - name: Reload systemd after removing GRE units
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+- name: Advertise replacement GRE endpoint host routes
+  hosts: vds4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - vars/google-gre.yml
+  tasks:
+    - ansible.builtin.include_tasks: roles/google-gre/tasks/ospf.yml

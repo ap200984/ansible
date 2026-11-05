@@ -66,3 +66,7 @@ iptables_container_snat_rules:
     destination: 10.0.0.0/8
     to_source: 10.255.0.4
     comment: jenkins-private-snat
+
+# Primary GRE egress migrated from VDS6.
+google_gre_enabled: true
+google_gre_wan_interface: eth0

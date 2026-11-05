@@ -63,12 +63,12 @@ routeros_records:
 - path: /interface gre
   values:
     allow-fast-path: 'no'
-    comment: GRE to VDS6 over OSPF loopbacks
+    comment: GRE to VDS4 over OSPF loopbacks
     keepalive: ''
     local-address: 10.255.0.112
     mtu: '1300'
     name: gre-vds6
-    remote-address: 10.255.0.6
+    remote-address: 10.255.0.4
   unset:
   - keepalive
   selector:
@@ -5589,14 +5589,14 @@ routeros_records:
     comment: Google GRE outer input
     dst-address: 10.255.0.112
     protocol: gre
-    src-address: 10.255.0.6
+    src-address: 10.255.0.4
   selector:
     action: accept
     chain: input
     comment: Google GRE outer input
     dst-address: 10.255.0.112
     protocol: gre
-    src-address: 10.255.0.6
+    src-address: 10.255.0.4
   create: true
 - path: /ip firewall filter
   values:

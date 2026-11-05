@@ -2,7 +2,7 @@
 # Rebuild managed routing from encrypted active files, without one-time migrations.
 - ansible.builtin.import_playbook: amneziawg-install.yml
 - name: Restore VDS tunnel identities and OSPF routing
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds5:vds8
   become: true
   gather_facts: false
   vars:

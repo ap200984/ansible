@@ -1,0 +1,14 @@
+---
+- name: Verify the replacement GRE egress on every MikroTik
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - group_vars/all/main.yml
+    - vars/google-gre.yml
+  tasks:
+    - ansible.builtin.include_tasks: mikrotik/verify-gre-router.yml
+      loop: '{{ google_gre_links }}'
+      loop_control:
+        loop_var: google_gre_link

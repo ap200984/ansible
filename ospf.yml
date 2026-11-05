@@ -1,7 +1,7 @@
 ---
 - ansible.builtin.import_playbook: wireguard-wg0.yml
 - name: Configure direct OSPF on existing Linux WireGuard hubs
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds5:vds8
   become: true
   gather_facts: false
   vars:
@@ -201,7 +201,7 @@
     when: ospf_wireguard_enabled | default(false) | bool
 - ansible.builtin.import_playbook: mikrotik/ospf.yml
 - name: Verify Linux OSPF and both K16 LANs after configuring both ends
-  hosts: vds1:vds2:vds5:vds6:vds8
+  hosts: vds1:vds2:vds5:vds8
   become: true
   gather_facts: false
   tasks:

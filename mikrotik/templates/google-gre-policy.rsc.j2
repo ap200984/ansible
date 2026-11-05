@@ -25,7 +25,7 @@
 {% endfor %}
 {% endfor %}
 {% set records = records + checks.records + [
- {'path':'/ip firewall address-list','comment':'Service GRE VDS6 public IP','values':'list=vds6_public_ip address=' ~ google_gre_server_public_ip ~ ' disabled=no'},
+ {'path':'/ip firewall address-list','comment':'Service GRE VDS6 public IP','values':'list=vds6_public_ip address=' ~ google_gre_legacy_public_ip ~ ' disabled=no'},
  {'path':'/ip firewall address-list','comment':'Service GRE Meta feed hostname','values':'list=meta_feed_ips address=stat.ripe.net disabled=no'},
  {'path':'/ip firewall address-list','comment':'Service GRE Telegram feed hostname','values':'list=telegram_feed_ips address=core.telegram.org disabled=no'}] %}
 {% set records = records + [
@@ -53,6 +53,3 @@ else={ {{ record.path }} set $r{{ loop.index }} {{ record['values'] }}};
 {% endif %}
 {% endfor %}
 :put "GOOGLE_GRE_POLICY_READY";
-{% if google_gre_link.identity == 'Misha' and misha_vds8_host_enabled | default(false) | bool %}
-{{ lookup('template', 'mikrotik/templates/misha-vds8-host.rsc.j2') }}
-{% endif %}

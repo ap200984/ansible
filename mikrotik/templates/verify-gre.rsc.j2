@@ -1,0 +1,12 @@
+:if ([/interface gre get [find where name="{{ google_gre_interface }}"] remote-address] != "{{ google_gre_server_loopback }}") do={:error "Wrong GRE endpoint"};
+:if ([/ping address={{ google_gre_link.server_address }} src-address={{ google_gre_link.router_address }} interface={{ google_gre_interface }} count=3 interval=1s] != 3) do={:error "GRE peer check failed"};
+:local response [/tool fetch url="https://api.ipify.org" check-certificate=yes output=user as-value];
+:if (($response->"data") != "{{ google_gre_server_public_ip }}") do={:error "Unexpected egress IP"};
+{% for list_name in ['google_ips', 'google_gre_ip_check'] + service_gre_address_lists %}
+:local enabled{{ loop.index }} 0;
+:foreach entry in=[/ip firewall mangle find where dst-address-list="{{ list_name }}" and action="mark-routing"] do={
+:if ([/ip firewall mangle get $entry disabled] != true) do={:set enabled{{ loop.index }} ($enabled{{ loop.index }} + 1)};
+};
+:if ($enabled{{ loop.index }} != 2) do={:error "Missing LAN/output routing for {{ list_name }}"};
+{% endfor %}
+:put "GRE_VDS4_VERIFIED {{ google_gre_link.identity }} {{ google_gre_server_public_ip }} ALL_POLICIES";

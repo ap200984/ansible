@@ -24,8 +24,10 @@ google_gre_links:
   router_address: 10.250.4.17
   server_address: 10.250.4.18
 google_gre_mtu: 1300
-google_gre_server_loopback: 10.255.0.6
-google_gre_server_public_ip: '{{ amneziawg_endpoints.vds6 }}'
+google_gre_server_loopback: 10.255.0.4
+google_gre_server_public_ip: '{{ amneziawg_endpoints.vds4 }}'
+# Retain the former public destination policy through the new egress.
+google_gre_legacy_public_ip: '{{ amneziawg_endpoints.vds6 }}'
 google_gre_feed: https://www.gstatic.com/ipranges/goog.json
 google_gre_check_hostname: api.ipify.org
 meta_gre_asn: 32934

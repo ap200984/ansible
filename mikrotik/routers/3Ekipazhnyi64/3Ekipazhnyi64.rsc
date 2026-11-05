@@ -12,7 +12,7 @@
 /interface ethernet set [ find default-name=ether10 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface ethernet set [ find default-name=sfp1 ] advertise=10M-baseT-half,10M-baseT-full,100M-baseT-half,100M-baseT-full,1G-baseT-half,1G-baseT-full
 /interface l2tp-client add connect-to=86.110.170.70 disabled=no keepalive-timeout=disabled name=l2tp-to-k16 user=3Ekipazhnyi64
-/interface gre add allow-fast-path=no comment="GRE to VDS6 over OSPF loopbacks" !keepalive local-address=10.255.0.64 mtu=1300 name=gre-vds6 remote-address=10.255.0.6
+/interface gre add allow-fast-path=no comment="GRE to VDS4 over OSPF loopbacks" !keepalive local-address=10.255.0.64 mtu=1300 name=gre-vds6 remote-address=10.255.0.4
 /interface wireguard add comment=wg_vds1 listen-port=37972 mtu=1420 name=wg_vds1
 /interface wireguard add comment=wg_vds8 listen-port=37973 mtu=1420 name=wg_vds8
 /interface lte apn set [ find default=yes ] ip-type=ipv4 use-network-apn=no
@@ -514,7 +514,7 @@
 /ip firewall address-list add address=31.13.84.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall address-list add address=66.220.152.0/21 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
 /ip firewall address-list add address=163.70.151.0/24 comment="Meta AS32934 2026-10-12T08:00:00" list=meta_ips
-/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.64 protocol=gre src-address=10.255.0.6
+/ip firewall filter add action=accept chain=input comment="Google GRE outer input" dst-address=10.255.0.64 protocol=gre src-address=10.255.0.4
 /ip firewall filter add action=accept chain=forward comment="Google GRE outbound" dst-address-list=google_ips in-interface=LAN out-interface=gre-vds6
 /ip firewall filter add action=accept chain=forward comment="Google GRE return forward" connection-state=established,related in-interface=gre-vds6
 /ip firewall filter add action=accept chain=input comment="Google GRE return input" connection-state=established,related in-interface=gre-vds6
