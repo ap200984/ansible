@@ -25,8 +25,9 @@
   ansible.builtin.copy:
     dest: /opt/squid/passwords
     owner: root
-    group: root
-    mode: "0600"
+    # The authentication helper runs as proxy (GID 13) in ubuntu/squid.
+    group: "13"
+    mode: "0640"
     content: >-
       {{ squid_user }}:{{ squid_pass | password_hash(
       'sha512', (squid_user | hash('sha256'))[:16]) }}

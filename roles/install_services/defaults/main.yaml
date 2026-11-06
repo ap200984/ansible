@@ -122,6 +122,10 @@ nexus_proxy_repositories:
     extra:
       storage:
         strictContentTypeValidation: false
+      httpClient:
+        connection:
+          timeout: 120
+          retries: 3
   - name: pypi-proxy
     format: pypi
     endpoint: pypi/proxy

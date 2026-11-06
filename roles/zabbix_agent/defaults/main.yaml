@@ -3,6 +3,8 @@ server: 217.144.189.206
 server_active: 217.144.189.206
 zabbix_agent_allowed_servers: "{{ zabbix_server | default(server) }},172.20.0.0/16"
 zabbix_agent_release_version: "8.0-0.5"
+zabbix_agent_release_download_timeout: 60
+zabbix_agent_release_download_retries: 3
 zabbix_agent_host_metadata_group: ""
 zabbix_agent_host_metadata_tag: ""
 psk_identity: zabbix_host

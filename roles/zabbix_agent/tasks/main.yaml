@@ -26,6 +26,8 @@
 
 - name: Set Zabbix release package URL
   set_fact:
+    zabbix_agent_release_package_path: >-
+      /var/cache/zabbix-release-{{ zabbix_agent_release_version }}-{{ ansible_distribution | lower }}-{{ ansible_distribution_version }}.deb
     zabbix_agent_release_url: >-
       {{
         zabbix_agent_repository_base_url ~ '/zabbix/8.0/release/debian/pool/main/z/zabbix-release/zabbix-release_' ~ zabbix_agent_release_version ~ '%2Bdebian' ~ ansible_distribution_major_version ~ '_all.deb'
@@ -110,9 +112,25 @@
     - zabbix_agent
     - "zabbix_agent:remove_old"
 
+- name: Download Zabbix 8.0 release repository package
+  ansible.builtin.get_url:
+    url: "{{ zabbix_agent_release_url }}"
+    dest: "{{ zabbix_agent_release_package_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    timeout: "{{ zabbix_agent_release_download_timeout }}"
+  register: zabbix_agent_release_download
+  until: zabbix_agent_release_download is succeeded
+  retries: "{{ zabbix_agent_release_download_retries }}"
+  delay: 5
+  tags:
+    - zabbix_agent
+    - "zabbix_agent:repo"
+
 - name: Install Zabbix 8.0 release repository
   apt:
-    deb: "{{ zabbix_agent_release_url }}"
+    deb: "{{ zabbix_agent_release_package_path }}"
     dpkg_options: force-confnew
   tags:
     - zabbix_agent
@@ -158,14 +176,32 @@
     - zabbix_agent
     - "zabbix_agent:repo"
 
-- name: Refresh apt metadata after changing Zabbix sources
-  ansible.builtin.apt:
-    update_cache: true
-  when: >-
-    (zabbix_agent_nexus_sources is defined and
-     zabbix_agent_nexus_sources.changed | default(false)) or
-    (zabbix_agent_upstream_sources is defined and
-     zabbix_agent_upstream_sources.changed | default(false))
+- name: Refresh Zabbix apt metadata
+  ansible.builtin.command:
+    argv:
+      - apt-get
+      - update
+      - -o
+      - "Dir::Etc::sourcelist={{ item.path }}"
+      - -o
+      - Dir::Etc::sourceparts=-
+      - -o
+      - APT::Get::List-Cleanup=0
+      - -o
+      - Acquire::http::Timeout=30
+      - -o
+      - Acquire::https::Timeout=30
+      - -o
+      - Acquire::Retries=2
+      - -o
+      - APT::Update::Error-Mode=any
+  loop: "{{ zabbix_agent_source_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  changed_when: true
+  async: 300
+  poll: 5
+  when: not ansible_check_mode
   tags:
     - zabbix_agent
     - "zabbix_agent:repo"
@@ -174,7 +210,7 @@
   apt:
     name: acl
     state: present
-    update_cache: true
+    update_cache: false
   tags:
     - zabbix_agent
     - "zabbix_agent:packages"
