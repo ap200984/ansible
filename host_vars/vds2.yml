@@ -1,4 +1,6 @@
 ---
+hostname: vds2
+
 service_containers:
   - speedtest
   - socks5

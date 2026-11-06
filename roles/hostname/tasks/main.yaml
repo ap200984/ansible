@@ -9,6 +9,28 @@
     - "hostname:validate"
     - "hostname:config"
 
+- name: Check for cloud-init configuration directory
+  ansible.builtin.stat:
+    path: /etc/cloud/cloud.cfg.d
+  register: hostname_cloud_init_config_directory
+  tags:
+    - hostname
+    - "hostname:config"
+
+- name: Preserve the managed hostname across cloud-init runs
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud.cfg.d/99-zz-ansible-hostname.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      #cloud-config
+      preserve_hostname: true
+  when: hostname_cloud_init_config_directory.stat.isdir | default(false)
+  tags:
+    - hostname
+    - "hostname:config"
+
 - name: Set standards-compliant runtime hostname
   ansible.builtin.hostname:
     name: "{{ hostname_name }}"
