@@ -35,11 +35,11 @@ ospf_routers:
   - interface: vds1_interface
     peer: wg_to_vds1
     remote: 10.250.6.1
-    cost: 1000
+    cost: '{{ ospf_wireguard_costs.vds1 }}'
   - interface: vds8_interface
     peer: wg_to_vds8
     remote: 10.250.6.8
-    cost: 30000
+    cost: '{{ ospf_wireguard_costs.vds8 }}'
   trusted_lists:
   - Trusted
 - identity: K16_112
@@ -66,12 +66,12 @@ ospf_routers:
     peer: wg_to_vds1
     remote: '{{ "10.250.6.1" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool else "10.250.1.1" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool }}'
-    cost: 1000
+    cost: '{{ ospf_wireguard_costs.vds1 }}'
   - interface: wg_vds8
     peer: wg_to_vds8
     remote: '{{ "10.250.6.8" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool else "10.250.1.8" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/K16_112.yml") | from_yaml).k16_amneziawg_enabled | default(false) | bool }}'
-    cost: 30000
+    cost: '{{ ospf_wireguard_costs.vds8 }}'
   trusted_lists:
   - MGMT Networks
   - tunnel networks
@@ -92,11 +92,11 @@ ospf_routers:
   - interface: wg_vds1
     peer: wg_to_vds1
     remote: 10.250.1.1
-    cost: 1000
+    cost: '{{ ospf_wireguard_costs.vds1 }}'
   - interface: wg_vds8
     peer: wg_to_vds8
     remote: 10.250.1.8
-    cost: 30000
+    cost: '{{ ospf_wireguard_costs.vds8 }}'
   trusted_lists:
   - Trusted
 - identity: k16_21
@@ -116,11 +116,11 @@ ospf_routers:
   - interface: wg_vds1
     peer: wg_to_vds1
     remote: 10.250.1.1
-    cost: 1000
+    cost: '{{ ospf_wireguard_costs.vds1 }}'
   - interface: wg_vds8
     peer: wg_to_vds8
     remote: 10.250.1.8
-    cost: 30000
+    cost: '{{ ospf_wireguard_costs.vds8 }}'
   trusted_lists:
   - Trusted
 - identity: Misha
@@ -141,12 +141,12 @@ ospf_routers:
     peer: wg_to_vds1
     remote: '{{ "10.250.6.1" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool else "10.250.1.1" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool }}'
-    cost: 1000
+    cost: '{{ ospf_wireguard_costs.vds1 }}'
   - interface: wg_vds8
     peer: wg_to_vds8
     remote: '{{ "10.250.6.8" if (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool else "10.250.1.8" }}'
     amnezia: '{{ (lookup("file", lookup("env", "PWD") + "/mikrotik/host_vars/Misha.yml") | from_yaml).misha_amneziawg_enabled | default(false) | bool }}'
-    cost: 30000
+    cost: '{{ ospf_wireguard_costs.vds8 }}'
   trusted_lists:
   - Trusted
 ospf_routed_networks:

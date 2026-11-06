@@ -119,14 +119,15 @@ amneziawg_interface: wg1
 amneziawg_port: '{{ amneziawg_host_ports.get(inventory_hostname, 56702) }}'
 amneziawg_mtu: 1340
 amneziawg_ospf_cost: 200
-# Break CHR↔vds8's equal-cost paths through vds1/vds5 on both ends.
+# Prefer VDS8 over VDS1 on site/CHR links. Keep CHR↔VDS5 at 1001
+# to break the equal-cost fallback paths through the shared AWG mesh.
 ospf_wireguard_costs:
-  vds1: 1000
+  vds1: 30000
   vds2: 1000
   vds4: 1000
   vds5: 1001
   vds6: 1000
-  vds8: 30000
+  vds8: 1000
 amneziawg_peers:
   vds1: [vds5, vds8]
   vds5: [vds1, vds8]

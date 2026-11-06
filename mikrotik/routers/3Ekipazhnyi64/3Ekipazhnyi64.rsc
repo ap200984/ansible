@@ -647,8 +647,8 @@ set [ find default=yes ] advertise-dns=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp" cost=60000 dead-interval=4m disabled=no hello-interval=1m interfaces=sstp-vds7 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp" cost=100 dead-interval=4m disabled=no hello-interval=1m interfaces=l2tp-to-k16 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing WireGuard addresses" disabled=yes interfaces=wg_vds1,wg_vds8 passive use-bfd=no
-/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds1" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds1 type=ptmp use-bfd=yes
-/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds8" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds8 type=ptmp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds1" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds1 type=ptmp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds8" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds8 type=ptmp use-bfd=yes
 /routing ospf static-neighbor add address=10.250.1.1%wg_vds1 area=tunnel-backbone disabled=no poll-interval=1m
 /routing ospf static-neighbor add address=10.250.1.8%wg_vds8 area=tunnel-backbone disabled=no poll-interval=1m
 /snmp set contact=mikrotik_3Ekipazhnyi64 enabled=yes location=3Ekipazhnyi64

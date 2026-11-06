@@ -1,0 +1,43 @@
+---
+- name: Load router connection settings
+  ansible.builtin.include_vars:
+    file: 'mikrotik/host_vars/{{ ospf_router.identity }}.yml'
+
+- name: Swap only the existing VDS1 and VDS8 OSPF costs
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -F
+      - /dev/null
+      - -i
+      - '{{ router_ssh_key | expanduser }}'
+      - -p
+      - '{{ router_port | string }}'
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=10
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - 'UserKnownHostsFile={{ router_known_hosts_file }}'
+      - -o
+      - 'ProxyCommand={{ router_proxy_command | default("none") }}'
+      - '{{ router_user }}@{{ router_host }}'
+      - '{{ ospf_cost_script.splitlines() | join(" ") }}'
+  vars:
+    ospf_cost_script: >-
+      :local preferred [/routing ospf interface-template find where comment="OSPF existing {{ 'vds8_interface' if ospf_router.identity == 'vds7_CHR' else 'wg_vds8' }}"];
+      :local fallback [/routing ospf interface-template find where comment="OSPF existing {{ 'vds1_interface' if ospf_router.identity == 'vds7_CHR' else 'wg_vds1' }}"];
+      :if (([:len $preferred] != 1) or ([:len $fallback] != 1)) do={:error "Expected one OSPF template for each hub"};
+      :if ([/routing ospf interface-template get $preferred cost] != {{ ospf_wireguard_costs.vds8 }}) do={
+      {% if not ansible_check_mode %}/routing ospf interface-template set $preferred cost={{ ospf_wireguard_costs.vds8 }};{% endif %}
+      :put "OSPF_COST_CHANGED"};
+      :if ([/routing ospf interface-template get $fallback cost] != {{ ospf_wireguard_costs.vds1 }}) do={
+      {% if not ansible_check_mode %}/routing ospf interface-template set $fallback cost={{ ospf_wireguard_costs.vds1 }};{% endif %}
+      :put "OSPF_COST_CHANGED"};
+      :put "OSPF_COSTS_VERIFIED"
+  register: ospf_router_cost_result
+  check_mode: false
+  changed_when: "'OSPF_COST_CHANGED' in ospf_router_cost_result.stdout"
+  failed_when: ospf_router_cost_result.rc != 0 or 'OSPF_COSTS_VERIFIED' not in ospf_router_cost_result.stdout

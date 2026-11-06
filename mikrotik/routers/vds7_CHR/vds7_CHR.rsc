@@ -139,8 +139,8 @@ set [ find default=yes ] advertise-dns=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp-21" cost=60000 dead-interval=4m disabled=no hello-interval=1m networks=10.250.0.21/32 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing sstp-24" cost=60000 dead-interval=4m disabled=no hello-interval=1m networks=10.250.0.24/32 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing WireGuard addresses" disabled=yes interfaces=vds2_interface,vds5_interface passive use-bfd=no
-/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing vds1_interface" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=vds1_interface type=ptp use-bfd=yes
-/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing vds8_interface" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=vds8_interface type=ptp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing vds1_interface" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=vds1_interface type=ptp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing vds8_interface" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=vds8_interface type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing vds2_interface" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=vds2_interface type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing vds5_interface" cost=1001 dead-interval=4m disabled=no hello-interval=1m interfaces=vds5_interface type=ptp use-bfd=yes
 /routing ospf static-neighbor add address=10.250.1.1%vds1_interface area=tunnel-backbone disabled=no poll-interval=1m

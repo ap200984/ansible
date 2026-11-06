@@ -41,11 +41,11 @@ flowchart LR
   V5["vds5 · wg0 · .5"]
   V4["vds4 · wg0 · .4"]
   V1 <-->|WG| E & R
-  K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.1 · cost 1000| V1
+  K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.1 · cost 30000| V1
   V8 <-->|WG| E & R
-  K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.8 · cost 30000| V8
-  M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.1 · cost 1000| V1
-  M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.8 · cost 30000| V8
+  K <-->|AWG wg3 · 10.250.6.112 ↔ 10.250.6.8 · cost 1000| V8
+  M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.1 · cost 30000| V1
+  M <-->|AWG wg4 · 10.250.6.24 ↔ 10.250.6.8 · cost 1000| V8
   C <-->|CHR C container ↔ Linux native AWG wg2| V1 & V8
   C <-->|WireGuard wg0| V2 & V5 & V4
   V5 <-->|WireGuard| V2 & V4
@@ -62,13 +62,13 @@ Transport addressing uses each node's suffix above:
 
 | Transport | Client address | Server | OSPF cost |
 | --- | --- | --- | --- |
-| WireGuard sites 64/21 to vds1 | 10.250.1.N/24 | 10.250.1.1 | 1000 |
-| WireGuard sites 64/21 to vds8 | 10.250.1.N/24 | 10.250.1.8 | 30000 |
-| K16 C container ↔ vds1 native AWG wg3 | 10.250.6.112/32 | 10.250.6.1/24 | 1000 |
-| K16 C container ↔ vds8 native AWG wg3 | 10.250.6.112/32 | 10.250.6.8/24 | 30000 |
-| Misha C container ↔ vds1 native AWG wg4 | 10.250.6.24/32 | 10.250.6.1/24 | 1000 |
-| Misha C container ↔ vds8 native AWG wg4 | 10.250.6.24/32 | 10.250.6.8/24 | 30000 |
-| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.6.7/32 | vds1/vds8 10.250.6.N/24 | 1000; vds8 30000 |
+| WireGuard sites 64/21 to vds1 | 10.250.1.N/24 | 10.250.1.1 | 30000 |
+| WireGuard sites 64/21 to vds8 | 10.250.1.N/24 | 10.250.1.8 | 1000 |
+| K16 C container ↔ vds1 native AWG wg3 | 10.250.6.112/32 | 10.250.6.1/24 | 30000 |
+| K16 C container ↔ vds8 native AWG wg3 | 10.250.6.112/32 | 10.250.6.8/24 | 1000 |
+| Misha C container ↔ vds1 native AWG wg4 | 10.250.6.24/32 | 10.250.6.1/24 | 30000 |
+| Misha C container ↔ vds8 native AWG wg4 | 10.250.6.24/32 | 10.250.6.8/24 | 1000 |
+| CHR C container ↔ Linux native AWG wg2 | CHR 10.250.6.7/32 | vds1/vds8 10.250.6.N/24 | vds8 1000; vds1 30000 |
 | CHR ↔ ordinary Linux wg0 | CHR 10.250.6.7/32 | vds2/vds4/vds5 10.250.6.N/24 | 1000; vds5 1001 |
 | Ordinary WG star to vds5 | vds2/vds4 10.250.2.N/24 | 10.250.2.5/24 | 200 |
 | AmneziaWG star to vds5 | vds1/vds8 10.250.2.N/24 | 10.250.2.5/24 | 200 |
@@ -163,10 +163,10 @@ vds1 or vds8 without CHR. Cost 200 prefers direct AmneziaWG between VDSes,
 while site-to-CHR SSTP paths remain available as higher-cost backups.
 
 The existing CHR↔vds5 link, now ordinary WireGuard, uses cost **1001 on both ends**.
-Without that one-unit distinction, CHR has equal-cost routes to vds8 via
-vds1 and vds5, while shared-interface cryptokey routing permits CHR's
-source prefix on only one peer. Removing this ECMP tie makes CHR↔vds8
-prefer vds1 symmetrically, with vds5 as the fallback.
+Without that one-unit distinction, CHR has equal-cost fallback routes to
+vds1 via vds8 and vds5, while shared-interface cryptokey routing permits
+CHR's source prefix on only one peer. CHR↔vds1 therefore prefers vds8
+symmetrically, with vds5 as the fallback.
 
 ## Source NAT policy
 

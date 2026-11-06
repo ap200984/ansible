@@ -1,0 +1,29 @@
+---
+# Change costs only: leave tunnel addresses, neighbors and firewall rules intact.
+- name: Lower the preferred Linux hub cost
+  hosts: vds8
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: roles/ospf/tasks/update-costs.yml
+
+- name: Set the preferred hub on the CHR and physical MikroTiks
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/all/main.yml
+    - mikrotik/vars/ospf-topology.yml
+  tasks:
+    - ansible.builtin.include_tasks: mikrotik/ospf-cost-router.yml
+      loop: '{{ ospf_routers }}'
+      loop_control:
+        loop_var: ospf_router
+        label: '{{ ospf_router.identity }}'
+
+- name: Align the fallback Linux hub and retain the VDS5 tie breaker
+  hosts: vds1:vds5
+  become: true
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks: roles/ospf/tasks/update-costs.yml

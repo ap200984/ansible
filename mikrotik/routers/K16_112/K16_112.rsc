@@ -869,8 +869,8 @@ set authentication=mschap2 enabled=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp-21" cost=100 dead-interval=4m disabled=no hello-interval=1m networks=10.250.3.21/32 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing l2tp-24" cost=100 dead-interval=4m disabled=no hello-interval=1m networks=10.250.3.24/32 type=ptp use-bfd=yes
 /routing ospf interface-template add area=tunnel-backbone comment="OSPF existing WireGuard addresses" disabled=yes interfaces=*A,*B passive use-bfd=no
-/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds1" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds1 type=ptp use-bfd=yes
-/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds8" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds8 type=ptp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds1" cost=30000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds1 type=ptp use-bfd=yes
+/routing ospf interface-template add area=tunnel-backbone comment="OSPF existing wg_vds8" cost=1000 dead-interval=4m disabled=no hello-interval=1m interfaces=wg_vds8 type=ptp use-bfd=yes
 /routing ospf static-neighbor add address=10.255.2.1%wg_vds1 area=tunnel-backbone disabled=no poll-interval=1m
 /routing ospf static-neighbor add address=10.255.2.8%wg_vds8 area=tunnel-backbone disabled=no poll-interval=1m
 /routing rule add action=lookup-only-in-table disabled=yes routing-mark=ISP1_routing_table table=ISP1_routing_table

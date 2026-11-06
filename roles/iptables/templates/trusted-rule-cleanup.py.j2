@@ -9,6 +9,15 @@ trusted_hosts = {
     ipaddress.ip_interface(value).ip for value in {{ trusted_hosts | to_json }}
 }
 ssh_port = '{{ iptables_input_ssh_port }}'
+wireguard_port = '{{ iptables_input_wireguard_port }}'
+wireguard_sources = [
+    ipaddress.ip_network(value, strict=False)
+    for value in {{ iptables_input_wireguard_sources | default([]) | to_json }}
+]
+if any(source.version != 4 for source in wireguard_sources):
+    raise ValueError('WireGuard INPUT sources must be IPv4 networks')
+if wireguard_sources and not 1 <= int(wireguard_port) <= 65535:
+    raise ValueError('WireGuard INPUT port must be between 1 and 65535')
 
 if subprocess.run(['ipset', 'list', 'Blacklist'], stdout=subprocess.DEVNULL,
                   stderr=subprocess.DEVNULL).returncode != 0:
@@ -28,6 +37,16 @@ desired = [
      '-m', 'comment', '--comment', 'ansible-ssh-blacklist', '-j', 'DROP'],
     ['-p', 'tcp', '-m', 'tcp', '--dport', ssh_port, '-j', 'ACCEPT'],
 ]
+
+# Allow the authenticated VPN listener without trusting these public sources
+# for other host services. Include these rules in every boot-time cleanup.
+for source in wireguard_sources:
+    # iptables omits the unrestricted source when exporting a 0.0.0.0/0 rule.
+    source_match = [] if source.prefixlen == 0 else ['-s', str(source)]
+    desired.append(source_match + [
+        '-p', 'udp', '-m', 'udp', '--dport', wireguard_port,
+        '-m', 'comment', '--comment', 'ansible-wireguard-peer', '-j', 'ACCEPT',
+    ])
 
 
 def run(*args, check=True):
@@ -74,6 +93,10 @@ for line in original_rules:
         continue
     rule = args[2:]
     if is_managed(rule):
+        delete(rule)
+        continue
+    if ('--comment' in rule and
+            rule[rule.index('--comment') + 1] == 'ansible-wireguard-peer'):
         delete(rule)
         continue
     if '-s' not in args or '-j' not in args:
@@ -138,7 +161,7 @@ for line in original_rules:
                 run('-A', 'INPUT', *rule)
             print(f'COMPACTED_PUBLIC_SERVICE_RULE={line}')
 
-# Inserting the block in reverse produces the requested order at positions 1-6.
+# Inserting the block in reverse preserves the canonical order and VPN exceptions.
 for rule in reversed(desired):
     run('-I', 'INPUT', '1', *rule)
 

@@ -1442,7 +1442,7 @@ routeros_records:
   values:
     area: tunnel-backbone
     comment: OSPF existing vds1_interface
-    cost: '1000'
+    cost: '30000'
     dead-interval: 4m
     disabled: 'no'
     hello-interval: 1m
@@ -1452,7 +1452,7 @@ routeros_records:
   selector:
     area: tunnel-backbone
     comment: OSPF existing vds1_interface
-    cost: '1000'
+    cost: '30000'
     dead-interval: 4m
     hello-interval: 1m
     interfaces: vds1_interface
@@ -1463,7 +1463,7 @@ routeros_records:
   values:
     area: tunnel-backbone
     comment: OSPF existing vds8_interface
-    cost: '30000'
+    cost: '1000'
     dead-interval: 4m
     disabled: 'no'
     hello-interval: 1m
@@ -1473,7 +1473,7 @@ routeros_records:
   selector:
     area: tunnel-backbone
     comment: OSPF existing vds8_interface
-    cost: '30000'
+    cost: '1000'
     dead-interval: 4m
     hello-interval: 1m
     interfaces: vds8_interface

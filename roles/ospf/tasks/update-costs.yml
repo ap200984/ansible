@@ -1,0 +1,50 @@
+---
+- name: Read current OSPF costs
+  ansible.builtin.command:
+    argv: [vtysh, -c, show running-config]
+  register: ospf_cost_running
+  changed_when: false
+  check_mode: false
+
+- name: Set and persist existing Linux OSPF interface costs
+  ansible.builtin.command:
+    argv:
+      - vtysh
+      - -c
+      - configure terminal
+      - -c
+      - 'interface {{ ospf_cost_interface }}'
+      - -c
+      - 'ip ospf cost {{ ospf_wireguard_costs[inventory_hostname] }}'
+      - -c
+      - end
+      - -c
+      - write memory
+  loop: '{{ ["wg0"] if inventory_hostname == "vds5" else ["wg0", "wg2", "wg3", "wg4"] }}'
+  loop_control:
+    loop_var: ospf_cost_interface
+  vars:
+    ospf_cost_block: '{{ ospf_cost_running.stdout | regex_search("(?ms)^interface " ~ ospf_cost_interface ~ "\n(?:(?!^!).)*") | default("", true) }}'
+  when:
+    - ospf_cost_block | length > 0
+    - ospf_cost_block | regex_search('(?m)^ ip ospf cost ' ~ ospf_wireguard_costs[inventory_hostname] ~ '$') is none
+  changed_when: true
+
+- name: Verify the current Linux interface costs
+  ansible.builtin.command:
+    argv: [vtysh, -c, show running-config]
+  register: ospf_cost_verified
+  changed_when: false
+  check_mode: false
+
+- name: Require expected costs on each existing hub interface
+  ansible.builtin.assert:
+    that:
+      - ospf_verified_block | length > 0
+      - ospf_verified_block | regex_search('(?m)^ ip ospf cost ' ~ ospf_wireguard_costs[inventory_hostname] ~ '$') is not none
+  vars:
+    ospf_verified_block: '{{ ospf_cost_verified.stdout | regex_search("(?ms)^interface " ~ ospf_cost_interface ~ "\n(?:(?!^!).)*") | default("", true) }}'
+  loop: '{{ ["wg0"] if inventory_hostname == "vds5" else ["wg0", "wg2", "wg3", "wg4"] }}'
+  loop_control:
+    loop_var: ospf_cost_interface
+  when: not ansible_check_mode

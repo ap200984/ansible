@@ -21,6 +21,9 @@ wireguard_interface: wg0
 wireguard_addresses:
   - 10.250.1.8/24
 wireguard_listen_port: 56699
+# Allow WireGuard peers to roam between public IP addresses.
+iptables_input_wireguard_sources:
+  - 0.0.0.0/0
 wireguard_private_key: "{{ wireguard_server_private_key }}"
 wireguard_peers:
   - name: vds7
