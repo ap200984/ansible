@@ -4,7 +4,7 @@ set -euo pipefail
 # Keep the official proxy entrypoint responsible for Zabbix configuration.
 python3 /usr/local/libexec/deye_cloud_proxy.py &
 cloud_pid=$!
-/usr/bin/docker-entrypoint.sh "$@" &
+/usr/bin/docker-entrypoint "$@" &
 proxy_pid=$!
 
 stop_children() {

@@ -188,3 +188,37 @@
   tags:
     - docker
     - "docker:service"
+
+- name: Install cron for Docker cleanup
+  ansible.builtin.apt:
+    name: cron
+    state: present
+  tags:
+    - docker
+    - "docker:prune"
+
+- name: Ensure cron is enabled and started
+  ansible.builtin.service:
+    name: cron
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+  tags:
+    - docker
+    - "docker:prune"
+
+- name: Schedule Docker cleanup at midnight UTC
+  ansible.builtin.cron:
+    name: Docker daily cleanup at 00:00 UTC
+    cron_file: docker-prune
+    user: root
+    # Debian cron uses the host timezone and does not support CRON_TZ.
+    # Check UTC each minute so the cleanup schedule is independent of it.
+    minute: "*"
+    job: >-
+      if [ "$(/usr/bin/date -u +\%H\%M)" = 0000 ]; then
+      /usr/bin/docker system prune -fa;
+      /usr/bin/docker volume prune -fa; fi
+  tags:
+    - docker
+    - "docker:prune"

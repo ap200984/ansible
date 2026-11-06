@@ -1,4 +1,4 @@
-ARG ZABBIX_PROXY_BASE_IMAGE=zabbix/zabbix-proxy-sqlite3:ubuntu-7.4-latest
+ARG ZABBIX_PROXY_BASE_IMAGE=zabbix/zabbix-proxy-sqlite3:ubuntu-8.0-latest
 FROM ${ZABBIX_PROXY_BASE_IMAGE}
 
 USER root
@@ -17,7 +17,8 @@ RUN chmod 0755 /usr/lib/zabbix/externalscripts/deye_modbus_metrics.py \
     && chmod 0700 /var/lib/zabbix/deye-cloud-cache
 
 USER 1997
-RUN /usr/lib/zabbix/externalscripts/deye_modbus_metrics.py --help > /dev/null \
+RUN test -x /usr/bin/docker-entrypoint \
+    && /usr/lib/zabbix/externalscripts/deye_modbus_metrics.py --help > /dev/null \
     && /usr/local/libexec/deye_cloud_proxy.py --help > /dev/null
 
 ENTRYPOINT ["/usr/local/bin/deye-proxy-entrypoint"]

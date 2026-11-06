@@ -57,7 +57,7 @@ After a successful renewal, Certbot touches
 read-only certificate volume and reloads itself within one minute. This does
 not require host cron, the Docker socket, or privileged container access.
 
-The Zabbix proxy uses a custom image built from the official Ubuntu 7.4 SQLite
+The Zabbix proxy uses a custom image built from the official Ubuntu 8.0 SQLite
 proxy image. The Dockerfile and Deye Modbus TCP external check live in
 `files/zabbix_proxy/`. Python is installed inside the image; the checks use only
 the standard library. A small supervisor starts the upstream Zabbix entrypoint
@@ -91,7 +91,8 @@ the private `zabbix-proxy-deye-cloud-cache` Docker volume and renews them on the
 first cloud poll after 24 hours, before earlier expiration, or after an
 authentication rejection. No cloud account credentials are baked into the image.
 
-Deploy the proxy image and migrate the three existing proxy hosts with:
+After upgrading the Zabbix server to 8.0, deploy the proxy image to the three
+existing proxy hosts with:
 
 ```shell
 ansible-playbook -i inventory/vds1 -i inventory/vds8 \
