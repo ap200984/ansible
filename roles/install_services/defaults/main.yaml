@@ -10,6 +10,10 @@ zabbix_proxy_image: local/zabbix-proxy-deye:ubuntu-8.0
 zabbix_proxy_build_pull: true
 zabbix_proxy_deye_cloud_credentials_file: "{{ zabbix_proxy_psk_dir }}/deye-cloud.json"
 zabbix_proxy_deye_cloud_cache_volume: zabbix-proxy-deye-cloud-cache
+zabbix_proxy_hostname: ''
+zabbix_proxy_server_host: ''
+zabbix_proxy_server_port: 10051
+zabbix_proxy_tls_psk_identity: ''
 
 owncloud_data_dir: /owncloud
 owncloud_users:
@@ -207,6 +211,18 @@ service_catalog:
         if socks5_proxy_password | default('') | string | length > 0
         else {}
       }}
+
+  shadowsocks:
+    name: ss2022
+    image: ghcr.io/shadowsocks/ssserver-rust:latest
+    no_log: true
+    ports:
+      - 8443:8443/tcp
+      - 8443:8443/udp
+    volumes:
+      - /opt/shadowsocks/config.json:/etc/shadowsocks-rust/config.json:ro
+    memory: 64m
+    prepare: shadowsocks
 
   socks5_pmikle:
     name: socks5_pmikle

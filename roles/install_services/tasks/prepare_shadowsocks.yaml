@@ -1,0 +1,35 @@
+---
+- name: Validate Shadowsocks password
+  ansible.builtin.assert:
+    that:
+      - shadowsocks_password | mandatory | string | length > 0
+  no_log: true
+
+- name: Create Shadowsocks configuration directory
+  ansible.builtin.file:
+    path: /opt/shadowsocks
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure Shadowsocks server
+  ansible.builtin.copy:
+    dest: /opt/shadowsocks/config.json
+    owner: root
+    group: root
+    mode: '0600'
+    content: |
+      {
+        "server": "0.0.0.0",
+        "server_port": 8443,
+        "method": "2022-blake3-aes-128-gcm",
+        "password": {{ shadowsocks_password | to_json }},
+        "mode": "tcp_and_udp"
+      }
+  register: shadowsocks_configuration
+  no_log: true
+
+- name: Recreate Shadowsocks after configuration changes
+  ansible.builtin.set_fact:
+    service_force_recreate: "{{ shadowsocks_configuration.changed }}"

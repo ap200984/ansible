@@ -2,6 +2,7 @@
 service_containers:
   - speedtest
   - socks5
+  - shadowsocks
   - https_proxy
   - postgres
   - zabbix_backend
