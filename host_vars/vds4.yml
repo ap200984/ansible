@@ -9,8 +9,13 @@ service_containers:
   - squid
   - owncloud
   - certbot
+  - ejabberd
   - nginx
   - shadowsocks
+
+# The official ecs image is x86-only; build the pinned source release natively
+# for this host's aarch64 architecture.
+ejabberd_build_from_source: true
 
 second_octet: 20
 wg_octet: 253

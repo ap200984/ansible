@@ -2,6 +2,14 @@
 service_containers: []
 
 ejabberd_users: []
+ejabberd_version: "24.10"
+ejabberd_prebuilt_image: "ejabberd/ecs:{{ ejabberd_version }}"
+ejabberd_source_image: "local/ejabberd:{{ ejabberd_version }}-source"
+ejabberd_build_from_source: false
+ejabberd_build_pull: true
+ejabberd_source_commit: 601fcba4cbf881942fae4ab89bc8f666f7a9213f
+ejabberd_otp_version: "26.2"
+ejabberd_elixir_version: "1.16.2"
 
 zabbix_proxy_psk_dir: /opt/zabbix-proxy/enc
 zabbix_proxy_psk_file: "{{ zabbix_proxy_psk_dir }}/zbxprx.psk"
@@ -301,7 +309,11 @@ service_catalog:
 
   ejabberd:
     name: ejabberd
-    image: ejabberd/ecs:24.10
+    image: >-
+      {{ ejabberd_source_image
+         if ejabberd_build_from_source | bool
+         else ejabberd_prebuilt_image }}
+    pull: "{{ not (ejabberd_build_from_source | bool) }}"
     ports:
       - 1883:1883/tcp
       - 4369:4369/tcp

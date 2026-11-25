@@ -81,6 +81,73 @@
     mode: "0644"
   register: rendered_ejabberd_configuration
 
+- name: Validate ejabberd source build settings
+  ansible.builtin.assert:
+    that:
+      - ejabberd_version | string is match('^[0-9]+\.[0-9]+$')
+      - ejabberd_source_commit | string is match('^[0-9a-f]{40}$')
+      - ejabberd_source_image | string | length > 0
+      - ejabberd_otp_version | string | length > 0
+      - ejabberd_elixir_version | string | length > 0
+    fail_msg: >-
+      Configure a release version, pinned 40-character source commit, local
+      image name, Erlang/OTP version, and Elixir version for the ejabberd
+      source build.
+  when: ejabberd_build_from_source | bool
+
+- name: Build ejabberd from source
+  when:
+    - ejabberd_build_from_source | bool
+    - not ansible_check_mode
+  block:
+    - name: Create temporary ejabberd build directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: ejabberd-build-
+      register: ejabberd_build_directory
+      changed_when: false
+
+    - name: Stage ejabberd Docker build context
+      ansible.builtin.copy:
+        src: ejabberd/Dockerfile
+        dest: "{{ ejabberd_build_directory.path }}/Dockerfile"
+        owner: root
+        group: root
+        mode: "0644"
+      changed_when: false
+
+    - name: Build native ejabberd image from pinned source
+      community.docker.docker_image:
+        name: "{{ ejabberd_source_image }}"
+        source: build
+        force_source: true
+        build:
+          path: "{{ ejabberd_build_directory.path }}"
+          pull: "{{ ejabberd_build_pull | bool }}"
+          args:
+            EJABBERD_VERSION: "{{ ejabberd_version | string }}"
+            EJABBERD_SOURCE_COMMIT: "{{ ejabberd_source_commit | string }}"
+            OTP_VERSION: "{{ ejabberd_otp_version | string }}"
+            ELIXIR_VERSION: "{{ ejabberd_elixir_version | string }}"
+          http_timeout: 3600
+      register: ejabberd_source_image_result
+
+    - name: Recreate ejabberd after source image changes
+      ansible.builtin.set_fact:
+        service_force_recreate: >-
+          {{ service_force_recreate | bool
+             or ejabberd_source_image_result.changed }}
+
+  always:
+    - name: Remove temporary ejabberd build context
+      ansible.builtin.file:
+        path: "{{ ejabberd_build_directory.path }}"
+        state: absent
+      when: ejabberd_build_directory.path is defined
+      changed_when: false
+
 - name: Recreate ejabberd after configuration changes
   ansible.builtin.set_fact:
-    service_force_recreate: "{{ rendered_ejabberd_configuration.changed }}"
+    service_force_recreate: >-
+      {{ service_force_recreate | bool
+         or rendered_ejabberd_configuration.changed }}

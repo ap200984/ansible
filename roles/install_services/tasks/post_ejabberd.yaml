@@ -15,11 +15,23 @@
     label: "{{ ejabberd_user.keys() | first | default('invalid entry') }}"
   no_log: true
 
+- name: Wait for ejabberd to become ready
+  community.docker.docker_container_exec:
+    container: ejabberd
+    argv:
+      - ejabberdctl
+      - status
+  register: ejabberd_status
+  until: ejabberd_status is succeeded
+  retries: 30
+  delay: 2
+  changed_when: false
+
 - name: Check existing ejabberd accounts
   community.docker.docker_container_exec:
     container: ejabberd
     argv:
-      - bin/ejabberdctl
+      - ejabberdctl
       - check_account
       - "{{ ejabberd_account.0.key }}"
       - "{{ ejabberd_account.1 }}"
@@ -43,7 +55,7 @@
   community.docker.docker_container_exec:
     container: ejabberd
     argv:
-      - bin/ejabberdctl
+      - ejabberdctl
       - register
       - "{{ ejabberd_check.ejabberd_account.0.key }}"
       - "{{ ejabberd_check.ejabberd_account.1 }}"

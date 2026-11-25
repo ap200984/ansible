@@ -171,6 +171,20 @@ ejabberd_users:
 Every account is registered on both `localhost` and `ejabberd.<domain>`.
 Existing accounts are left unchanged; only missing accounts are registered.
 
+The default `ejabberd/ecs` image is used on x86 hosts. Hosts that need a
+native source build, such as aarch64 VDS4, enable it in host vars:
+
+```yaml
+ejabberd_build_from_source: true
+```
+
+The role builds `ejabberd_source_image` from the pinned
+`ejabberd_source_commit` using the ProcessOne release's Erlang/OTP and Elixir
+versions. The build runs on the target Docker host, preserves UID 9000 and the
+`/home/ejabberd` volume layout, and recreates the container when the image
+changes. Override the version, commit, toolchain, image name, or base-image
+pull behavior only as a coordinated source-build update.
+
 VDS hosts select `https_proxy` to run a TLS-encrypted authenticated forward
 proxy with HTTPS CONNECT support on TCP 1981. Configure `https_proxy_port`,
 `https_proxy_users`, and `https_proxy_tls_certificate_file` in host vars;

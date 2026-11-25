@@ -1,10 +1,12 @@
 # VDS4 standby
 
-`host_vars/vds4.yml` selects the same ten container services as VDS6 after
-excluding ejabberd. They use `vds04.space` and VDS4's public address
-`2.31.171.214`. Application data is copied separately with the snapshot and restore workflow below,
-including GitLab encryption secrets, Jenkins credentials, ownCloud SQLite data,
-and runner configuration.
+`host_vars/vds4.yml` selects the backup container services, including
+ejabberd. The official `ejabberd/ecs` image is x86-only, so VDS4 builds the
+pinned 24.10 release from source in a native aarch64 image before starting the
+container. The services use `vds04.space` and VDS4's public address
+`2.31.171.214`. Application data is copied separately with the snapshot and
+restore workflow below, including GitLab encryption secrets, Jenkins
+credentials, ownCloud SQLite data, and runner configuration.
 
 | Link | VDS4 address | Remote address | Public UDP endpoints |
 | --- | --- | --- | --- |
@@ -21,6 +23,17 @@ Run from the repository root with the normal SSH and Vault credentials:
 ansible-playbook -i inventory/vds5 -i inventory/vds4 vds4-backup.yml
 ansible-playbook -i inventory/vds4 02_deploy_services.yaml
 ```
+
+To build and deploy only ejabberd (and refresh its NGINX proxy), run:
+
+```sh
+ansible-playbook -i inventory/vds4 02_deploy_services.yaml \
+  --tags ejabberd,nginx
+```
+
+The first native source build downloads the pinned upstream source and build
+dependencies and can take several minutes. Later runs reuse Docker's build
+cache.
 
 The RouterOS step uses its public management address through VDS8. It expects
 the previously verified SSH keys in `/tmp/ansible-known-hosts`; set that file up
