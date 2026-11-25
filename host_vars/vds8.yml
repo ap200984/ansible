@@ -47,7 +47,7 @@ second_octet: 20
 wg_octet: 253
 gre_octet: 254
 l2tp_octet: 255
-domain: vds08.space
+domain: vds08.online
 
 # TLS-encrypted forward proxy with HTTPS CONNECT support.
 https_proxy_port: 1981

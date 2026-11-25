@@ -10,6 +10,7 @@ service_containers:
   - owncloud
   - certbot
   - nginx
+  - shadowsocks
 
 second_octet: 20
 wg_octet: 253
